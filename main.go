@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MindHunter86/aniliSeeder/p2p"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -101,7 +102,8 @@ func DefaultAction(name string) cli.ActionFunc {
 		// }
 
 		log.Debug().Strs("args", os.Args).Msg("")
-		return nil
+		log.Info().Err(p2p.NewP2PClient(&log).Bootstrap()).Msg("Done")
+		return
 	}
 }
 
