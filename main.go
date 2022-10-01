@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MindHunter86/aniliSeeder/p2p"
+	// "github.com/MindHunter86/aniliSeeder/p2p"
+	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -16,6 +17,14 @@ var log zerolog.Logger
 var version = "devel" // -ldflags="-X 'main.version=X.X.X'"
 
 func main() {
+	// logger
+	log := zerolog.New(zerolog.ConsoleWriter{
+		Out: os.Stderr,
+	}).With().Timestamp().Logger().Hook(SeverityHook{})
+	zerolog.TimeFieldFormat = time.RFC3339Nano
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+
+	// application
 	app := cli.NewApp()
 	cli.VersionFlag = &cli.BoolFlag{Name: "print-version", Aliases: []string{"V"}}
 
@@ -33,15 +42,40 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		// common settings
-		// cli.DurationFlag{
-		// 	Name:  "http-client-timeout",
-		// 	Usage: "Internal HTTP client connection `TIMEOUT` (format: 1000ms, 1s)",
-		// 	Value: 10 * time.Second,
-		// },
-		// cli.BoolFlag{
-		// 	Name:  "http-client-insecure",
-		// 	Usage: "Flag for TLS certificate verification disabling",
-		// },
+		&cli.DurationFlag{
+			Name:  "http-client-timeout",
+			Usage: "Internal HTTP client connection `TIMEOUT` (format: 1000ms, 1s)",
+			Value: 3 * time.Second,
+		},
+		&cli.BoolFlag{
+			Name:  "http-client-insecure",
+			Usage: "Flag for TLS certificate verification disabling",
+		},
+		&cli.DurationFlag{
+			Name:  "http-tcp-timeout",
+			Usage: "",
+			Value: 1 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "http-tls-handshake-timeout",
+			Usage: "",
+			Value: 1 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "http-idle-timeout",
+			Usage: "",
+			Value: 300 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "http-keepalive-timeout",
+			Usage: "",
+			Value: 300 * time.Second,
+		},
+		&cli.IntFlag{
+			Name:  "http-max-idle-conns",
+			Usage: "",
+			Value: 100,
+		},
 
 		&cli.IntFlag{
 			Name:    "verbose",
@@ -61,35 +95,26 @@ func main() {
 
 		// queue settings
 		// application settings
-
-		// billmanager opts
 		&cli.StringFlag{
-			Name: "command",
+			Name:  "anilibria-api-baseurl",
+			Usage: "",
+			Value: "https://api.anilibria.tv/v2",
 		},
 		&cli.StringFlag{
-			Name: "subcommand",
+			Name:  "torrentfiles-dir",
+			Usage: "",
+			Value: "./data",
+		},
+		&cli.UintFlag{
+			Name:  "disk-minimal-avaliable",
+			Usage: "In MB",
+			Value: 128,
 		},
 	}
 
-	app.Action = DefaultAction("")
-
-	sort.Sort(cli.FlagsByName(app.Flags))
-	sort.Sort(cli.CommandsByName(app.Commands))
-
-	if e := app.Run(os.Args); e != nil {
-		log.Fatal().Err(e).Msg("")
-	}
-}
-
-func DefaultAction(name string) cli.ActionFunc {
-	return func(c *cli.Context) (e error) {
-		log := zerolog.New(zerolog.ConsoleWriter{
-			Out: os.Stderr,
-		}).With().Timestamp().Logger().Hook(SeverityHook{})
-		zerolog.TimeFieldFormat = time.RFC3339Nano
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-
+	app.Action = func(c *cli.Context) error {
 		log.Debug().Msg("ready...")
+		log.Debug().Strs("args", os.Args).Msg("")
 
 		// TODO
 		// if c.Int("verbose") < -1 || c.Int("verbose") > 5 {
@@ -101,9 +126,21 @@ func DefaultAction(name string) cli.ActionFunc {
 		// 	zerolog.SetGlobalLevel(zerolog.Disabled)
 		// }
 
-		log.Debug().Strs("args", os.Args).Msg("")
-		log.Info().Err(p2p.NewP2PClient(&log).Bootstrap()).Msg("Done")
-		return
+		// return p2p.NewP2PClient(&log).Bootstrap()
+
+		api, err := anilibria.NewApiClient(c, &log)
+		if err != nil {
+			return err
+		}
+
+		return api.GetTileSchedule()
+	}
+
+	sort.Sort(cli.FlagsByName(app.Flags))
+	sort.Sort(cli.CommandsByName(app.Commands))
+
+	if e := app.Run(os.Args); e != nil {
+		log.Fatal().Err(e).Msg("")
 	}
 }
 
