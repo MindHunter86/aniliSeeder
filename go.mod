@@ -1,13 +1,16 @@
 module github.com/MindHunter86/aniliSeeder
 
-go 1.17
+go 1.18
+
+replace github.com/MindHunter86/go-libdeluge => github.com/gdm85/go-libdeluge v0.5.6
 
 require (
+	github.com/MindHunter86/go-libdeluge v0.0.0-00010101000000-000000000000
 	github.com/anacrolix/torrent v1.47.0
 	github.com/rs/zerolog v1.28.0
 	github.com/urfave/cli/v2 v2.17.1
-	golang.org/x/net v0.0.0-20220630215102-69896b714898
-	golang.org/x/sys v0.0.0-20220702020025-31831981b65f
+	golang.org/x/net v0.0.0-20221002022538-bcab6841153b
+	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec
 )
 
 require (
@@ -38,6 +41,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
+	github.com/gdm85/go-rencode v0.1.8 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/btree v1.1.2 // indirect
