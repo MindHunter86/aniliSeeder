@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"mime"
@@ -264,6 +265,22 @@ func (m *ApiClient) getTorrentFile(tileId string) (e error) {
 }
 
 func (m *ApiClient) parseFileFromResponse(rsp *io.ReadCloser, filename string) (e error) {
+
+	var fi fs.FileInfo
+	if fi, e = os.Stat(gCli.String("torrentfiles-dir") + "/" + filename); e != nil {
+		if !os.IsNotExist(e) {
+			return
+		}
+
+		gLog.Debug().Str("path", gCli.String("torrentfiles-dir")+"/"+filename).
+			Msg("given filepath is not found; continue...")
+	}
+
+	if fi != nil {
+		gLog.Warn().Str("path", gCli.String("torrentfiles-dir")+"/"+filename).
+			Msg("destination file isa already exists; skipping downloading...")
+		return
+	}
 
 	var fd *os.File
 	if fd, e = os.Create(gCli.String("torrentfiles-dir") + "/" + filename); e != nil {
