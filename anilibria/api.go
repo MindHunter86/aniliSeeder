@@ -28,31 +28,31 @@ type (
 	}
 	rspGetSchedule struct {
 		Day  int
-		List []*rspGetTile
+		List []*rspGetTitle
 	}
-	rspGetTile struct {
-		Names    *rspTileNames
-		Status   *rspTileStatus
-		Type     *rspTileType
-		Torrents *rspTileTorrents
+	rspGetTitle struct {
+		Names    *rspTitleNames
+		Status   *rspTitleStatus
+		Type     *rspTitleType
+		Torrents *rspTitleTorrents
 	}
-	rspTileNames struct {
+	rspTitleNames struct {
 		Ru          string
 		En          string
 		Alternative string
 	}
-	rspTileStatus struct {
+	rspTitleStatus struct {
 		String string
 		Code   int
 	}
-	rspTileType struct {
+	rspTitleType struct {
 		FullString string
 		Code       int
 		String     string
 		Series     interface{}
 		Length     int
 	}
-	rspTileTorrents struct {
+	rspTitleTorrents struct {
 		Series *rspTorrentSeries
 		List   []*rspTorrentList
 	}
@@ -214,14 +214,14 @@ func (m *ApiClient) checkApiAuthorization(rrl *url.URL) error {
 	return m.GetApiAuthorization()
 }
 
-func (m *ApiClient) getTorrentFile(tileId string) (e error) {
+func (m *ApiClient) getTorrentFile(titleId string) (e error) {
 	var rrl *url.URL
 	if rrl, e = url.Parse(m.siteBaseUrl.String() + string(siteMethodTorrentDownload)); e != nil {
 		return
 	}
 
 	var rgs = &url.Values{}
-	rgs.Add("id", tileId)
+	rgs.Add("id", titleId)
 	rrl.RawQuery = rgs.Encode()
 
 	if e = m.checkApiAuthorization(rrl); e != nil {
@@ -357,17 +357,17 @@ func (m *ApiClient) GetApiAuthorization() (e error) {
 	return m.apiAuthorize(strings.NewReader(authForm.Encode()))
 }
 
-func (m *ApiClient) GetTileSchedule() (e error) {
-	gLog.Debug().Msg("Called GetTileSchedule")
+func (m *ApiClient) GetTitleSchedule() (e error) {
+	gLog.Debug().Msg("Called GetTitleSchedule")
 
 	var schedule []*rspGetSchedule
 
 	if e = m.getApiResponse("GET", apiMethodGetSchedule, &schedule); e != nil {
-		gLog.Debug().Msg("Called GetTileSchedule 2")
+		gLog.Debug().Msg("Called GetTitleSchedule 2")
 		return e
 	}
 
-	gLog.Debug().Msg("Called GetTileSchedule 3")
+	gLog.Debug().Msg("Called GetTitleSchedule 3")
 
 	gLog.Info().Int("response_length", len(schedule)).Msg("DONE!")
 
@@ -376,7 +376,7 @@ func (m *ApiClient) GetTileSchedule() (e error) {
 	return m.getTorrentFile("20862")
 }
 
-func (m *ApiClient) getTileTorrentFile(torrentId string) (e error) {
+func (m *ApiClient) getTitleTorrentFile(torrentId string) (e error) {
 	gLog.Debug().Msg("trying to fetch torrent file for " + torrentId)
 	return m.getTorrentFile(torrentId)
 }
