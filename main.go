@@ -101,6 +101,21 @@ func main() {
 			Value: "https://api.anilibria.tv/v2",
 		},
 		&cli.StringFlag{
+			Name:  "anilibria-login-url",
+			Usage: "",
+			Value: "https://www.anilibria.tv/public/login.php",
+		},
+		&cli.StringFlag{
+			Name:    "anilibria-login-username",
+			Usage:   "login",
+			EnvVars: []string{"ANILIBRIA_LOGIN"},
+		},
+		&cli.StringFlag{
+			Name:    "anilibria-login-password",
+			Usage:   "password",
+			EnvVars: []string{"ANILIBRIA_PASSWORD"},
+		},
+		&cli.StringFlag{
 			Name:  "torrentfiles-dir",
 			Usage: "",
 			Value: "./data",

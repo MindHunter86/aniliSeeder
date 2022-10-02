@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"time"
 
@@ -19,8 +20,10 @@ var (
 )
 
 type ApiClient struct {
-	http    *http.Client
-	baseUrl *url.URL
+	http         *http.Client
+	baseUrl      *url.URL
+	loginUrl     *url.URL
+	unauthorized bool
 }
 
 // TODO:
@@ -61,11 +64,26 @@ func NewApiClient(ctx *cli.Context, log *zerolog.Logger) (*ApiClient, error) {
 		gLog.Warn().Err(err).Msg("could not upgrade http transport to v2 because of internal error")
 	}
 
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		gLog.Error().Err(err).Msg("there is some problems with cookiejar initialization because of internal golang error")
+	}
+
 	var apiClient *ApiClient = &ApiClient{
 		http: &http.Client{
 			Timeout:   time.Duration(gCli.Int("http-client-timeout")) * time.Second,
 			Transport: httpTransport,
+			Jar:       jar,
 		},
+	}
+
+	// ??
+	// todo optimize
+	if err = apiClient.getLoginUrl(); err != nil {
+		gLog.Error().Err(err).Msg("there are some errors in parsing login url; sleeping for 30 seconds")
+		time.Sleep(30 * time.Second)
+	} else {
+		apiClient.checkAuthData()
 	}
 
 	return apiClient, apiClient.getBaseUrl()
@@ -74,4 +92,19 @@ func NewApiClient(ctx *cli.Context, log *zerolog.Logger) (*ApiClient, error) {
 func (m *ApiClient) getBaseUrl() (e error) {
 	m.baseUrl, e = url.Parse(gCli.String("anilibria-api-baseurl"))
 	return e
+}
+
+func (m *ApiClient) getLoginUrl() (e error) {
+	m.loginUrl, e = url.Parse(gCli.String("anilibria-login-url"))
+	return e
+}
+
+func (m *ApiClient) checkAuthData() {
+	if gCli.String("anilibria-login-username") == "" || gCli.String("anilibria-login-password") == "" {
+		m.unauthorized = true
+		gLog.Warn().Msg("could not parse username and\\or password")
+		gLog.Warn().Msg("ATTENTION! Unauthorized peering detected; Anilibria could not detect the seeder, so it's stats will be disable!!!")
+		gLog.Info().Msg("\"unauthorized\" has been toggled; sleeping for 3 seconds...")
+		time.Sleep(3 * time.Second)
+	}
 }

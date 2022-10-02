@@ -2,16 +2,24 @@ package anilibria
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"time"
 )
 
 type (
+	reqAuthForm struct {
+		Mail    string
+		Passwd  string
+		Fa2Code string
+		Csrf    int
+	}
 	rspGetSchedule struct {
 		Day  int
 		List []*rspGetTile
@@ -76,8 +84,78 @@ const (
 	apiMethodGetSchedule ApiRequestMethod = "/getSchedule"
 )
 
+var (
+	errApiAuthorizationFailed = errors.New("there is some problems with the authorization proccess")
+)
+
 // common
 func (m *ApiClient) checkApiHealth() {
+	return
+}
+
+func (m *ApiClient) debugHttpHandshake(data interface{}) {
+	if !gCli.Bool("debug") {
+		return
+	}
+
+	var e error
+	var dump []byte
+
+	switch v := data.(type) {
+	case *http.Request:
+		dump, e = httputil.DumpRequestOut(data.(*http.Request), true)
+	case *http.Response:
+		dump, e = httputil.DumpResponse(data.(*http.Response), false)
+	default:
+		gLog.Error().Msgf("there is an internal application error; undefined type - %T", v)
+	}
+
+	if e != nil {
+		gLog.Warn().Msg("could not dump the request because of httputil internal errors")
+		return
+	}
+
+	log.Println(string(dump))
+}
+
+func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
+	gLog.Debug().Msg("Called apiAuthorize")
+
+	var req *http.Request
+	if req, e = http.NewRequest("POST", m.loginUrl.String(), authBody); e != nil {
+		return
+	}
+
+	m.getBaseRequest(req)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	var rsp *http.Response
+	if rsp, e = m.http.Do(req); e != nil {
+		return
+	}
+	defer rsp.Body.Close()
+
+	m.debugHttpHandshake(req)
+	m.debugHttpHandshake(rsp)
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		cookies := m.http.Jar.Cookies(m.loginUrl)
+		for _, cookie := range cookies {
+			if cookie.Name == "PHPSESSID" {
+				gLog.Info().Str("session", cookie.Value).Msg("authorization process has been completed successfully")
+				gLog.Info().Time("session_expire", cookie.Expires).Msg("authorization process has been completed successfully")
+				return nil
+			}
+		}
+
+		gLog.Error().Int("login_response_code", rsp.StatusCode).Msg("there is abnormal site reponse; auth failed on 200 OK; check logs")
+		return errApiAuthorizationFailed
+	default:
+		gLog.Error().Int("login_response_code", rsp.StatusCode).Msg("there is abnormal status code from login page; check you auth data")
+		return errApiAuthorizationFailed
+	}
+
 	return
 }
 
@@ -88,14 +166,51 @@ func (m *ApiClient) getBaseRequest(req *http.Request) {
 	// req.Header.Set("Accept-Encoding", "gzip, deflate, br")
 	// req.Header.Set("Connection", "keep-alive")
 	// req.Header.Set("DNT", "1")
-	// req.Header.Set("Upgrade-Insecure-Requests", "1")
-	// req.Header.Set("Sec-Fetch-Dest", "document")
-	// req.Header.Set("Sec-Fetch-Mode", "navigate")
-	// req.Header.Set("Sec-Fetch-Site", "none")
-	// req.Header.Set("Sec-Fetch-User", "?1")
-	// req.Header.Set("Sec-GPC", "1")
-	// req.Header.Set("Pragma", "no-cache")
-	// req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Upgrade-Insecure-Requests", "1")
+	req.Header.Set("Sec-Fetch-Dest", "document")
+	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	req.Header.Set("Sec-Fetch-Site", "none")
+	req.Header.Set("Sec-Fetch-User", "?1")
+	req.Header.Set("Sec-GPC", "1")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("Cache-Control", "no-cache")
+}
+
+// ??
+// todo
+// refactor
+func (m *ApiClient) checkApiAuthorization(reqUrl *url.URL) error {
+	if m.unauthorized == true {
+		gLog.Debug().Msg("authorization step has been skipped because of `unauthorized` flag detected")
+		return nil
+	}
+
+	if len(m.http.Jar.Cookies(reqUrl)) == 0 {
+		gLog.Info().Msg("unauthorized request detected; initiate the authorization proccess...")
+		return m.GetApiAuthorization()
+	}
+
+	for _, cookie := range m.http.Jar.Cookies(reqUrl) {
+		if cookie.Name == "PHPSESSID" {
+			if time.Now().Unix() < cookie.Expires.Unix() {
+				gLog.Info().Time("session_expire", cookie.Expires).Msg("session expiration has been verified")
+				return nil
+			} else {
+				gLog.Warn().Time("now", time.Now()).Time("session_expire", cookie.Expires).Msg("session has been expired; initiating the reauthentication proccess")
+				m.cleanApiAuthorization(reqUrl)
+				return m.GetApiAuthorization()
+			}
+
+			gLog.Warn().Msg("there is no PHPSESSID cookie found; initiate the authentication proccess...")
+			return m.GetApiAuthorization()
+		}
+	}
+
+	return nil
+}
+
+func (m *ApiClient) cleanApiAuthorization(reqUrl *url.URL) {
+	m.http.Jar.SetCookies(reqUrl, nil)
 }
 
 func (m *ApiClient) getResponse(httpMethod string, apiMethod ApiRequestMethod, rspSchema interface{}) (e error) {
@@ -104,6 +219,10 @@ func (m *ApiClient) getResponse(httpMethod string, apiMethod ApiRequestMethod, r
 	var reqUrl url.URL = *m.baseUrl
 	reqUrl.Path = reqUrl.Path + string(apiMethod)
 
+	if e = m.checkApiAuthorization(&reqUrl); e != nil {
+		return
+	}
+
 	var req *http.Request
 	if req, e = http.NewRequest(httpMethod, reqUrl.String(), nil); e != nil {
 		return
@@ -111,36 +230,14 @@ func (m *ApiClient) getResponse(httpMethod string, apiMethod ApiRequestMethod, r
 
 	m.getBaseRequest(req) // ???
 
-	if gCli.Bool("debug") {
-		var dump []byte
-		dump, e = httputil.DumpRequestOut(req, true)
-		if e != nil {
-			gLog.Warn().Err(e).Msg("could not dump the request because of httputil internal errors")
-		}
-
-		// gLog.Debug().Bytes("request", dump).Msg("")
-		log.Println(string(dump))
-	}
-
 	var rsp *http.Response
 	if rsp, e = m.http.Do(req); e != nil {
 		return
 	}
+	defer rsp.Body.Close()
 
-	if rsp.Uncompressed {
-		gLog.Warn().Str("api_method", string(apiMethod)).Msg("there is uncopressed request detected")
-	}
-
-	if gCli.Bool("debug") {
-		var dump []byte
-		dump, e = httputil.DumpResponse(rsp, false)
-		if e != nil {
-			gLog.Warn().Err(e).Msg("could not dump the request because of httputil internal errors")
-		}
-
-		// gLog.Debug().Bytes("response", dump).Msg("")
-		log.Println(string(dump))
-	}
+	m.debugHttpHandshake(req)
+	m.debugHttpHandshake(rsp)
 
 	switch rsp.StatusCode {
 	case http.StatusOK:
@@ -149,7 +246,6 @@ func (m *ApiClient) getResponse(httpMethod string, apiMethod ApiRequestMethod, r
 		gLog.Warn().Str("api_method", string(apiMethod)).Int("api_response_code", rsp.StatusCode).Msg("Abnormal API response")
 	}
 
-	defer rsp.Body.Close()
 	return m.parseResponse(&rsp.Body, rspSchema)
 }
 
@@ -162,6 +258,20 @@ func (m *ApiClient) parseResponse(rsp *io.ReadCloser, schema interface{}) error 
 }
 
 // methods
+func (m *ApiClient) GetApiAuthorization() (e error) {
+	gLog.Debug().Msg("Called apiAuthorize()")
+
+	authForm := url.Values{
+		"mail":    {gCli.String("anilibria-login-username")},
+		"passwd":  {gCli.String("anilibria-login-password")},
+		"fa2code": {""},
+		"csrf":    {"1"},
+	}
+
+	gLog.Debug().Str("username", gCli.String("anilibria-login-username")).Msg("trying to complete authorization process on anilibria")
+	return m.apiAuthorize(strings.NewReader(authForm.Encode()))
+}
+
 func (m *ApiClient) GetTileSchedule() (e error) {
 	gLog.Debug().Msg("Called GetTileSchedule")
 
