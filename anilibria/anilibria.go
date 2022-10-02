@@ -65,16 +65,10 @@ func NewApiClient(ctx *cli.Context, log *zerolog.Logger) (*ApiClient, error) {
 		gLog.Warn().Err(err).Msg("could not upgrade http transport to v2 because of internal error")
 	}
 
-	// jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
-	// if err != nil {
-	// 	gLog.Error().Err(err).Msg("there is some problems with cookiejar initialization because of internal golang error")
-	// }
-
 	var apiClient *ApiClient = &ApiClient{
 		http: &http.Client{
 			Timeout:   time.Duration(gCli.Int("http-client-timeout")) * time.Second,
 			Transport: httpTransport,
-			// Jar:       jar,
 		},
 	}
 
