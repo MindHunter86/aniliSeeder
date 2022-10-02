@@ -18,10 +18,15 @@ vendor/
 
 # Binary data
 bin/
+aniliSeeder
 
 # VSCode data
 pkg/.vscode/launch.json
 .vscode/launch.json
-test/
 
+# removing sesetive data
 ..bfg-report/
+
+# removing dynamic content and test data
+data/
+test/
