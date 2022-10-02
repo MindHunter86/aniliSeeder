@@ -143,8 +143,8 @@ func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
 		cookies := m.http.Jar.Cookies(m.loginUrl)
 		for _, cookie := range cookies {
 			if cookie.Name == "PHPSESSID" {
-				gLog.Info().Str("session", cookie.Value).Msg("authorization process has been completed successfully")
-				gLog.Info().Time("session_expire", cookie.Expires).Msg("authorization process has been completed successfully")
+				gLog.Info().Str("session", cookie.Value).Msg("authentication proccess has been completed successfully")
+				gLog.Info().Time("session_expire", cookie.Expires).Msg("authentication proccess has been completed successfully")
 				return nil
 			}
 		}
@@ -268,7 +268,7 @@ func (m *ApiClient) GetApiAuthorization() (e error) {
 		"csrf":    {"1"},
 	}
 
-	gLog.Debug().Str("username", gCli.String("anilibria-login-username")).Msg("trying to complete authorization process on anilibria")
+	gLog.Debug().Str("username", gCli.String("anilibria-login-username")).Msg("trying to complete authentication proccess on anilibria")
 	return m.apiAuthorize(strings.NewReader(authForm.Encode()))
 }
 
