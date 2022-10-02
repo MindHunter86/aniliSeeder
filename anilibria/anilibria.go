@@ -129,3 +129,11 @@ func (m *ApiClient) checkDownloadDir() error {
 	gLog.Error().Msg("given download dir is not directory; check and try again")
 	return errors.New("given download dir is not directory; check and try again")
 }
+
+type TitleTorrents struct {
+
+}
+
+func (m *ApiClient) GetPopularTorrents() (error, error) {
+	return nil, nil
+}

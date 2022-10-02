@@ -167,7 +167,7 @@ func main() {
 			return err
 		}
 
-		if err = api.GetTitleSchedule(); err != nil {
+		if _, err = api.GetTitleSchedule(); err != nil {
 			return err
 		}
 

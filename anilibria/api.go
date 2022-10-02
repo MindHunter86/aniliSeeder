@@ -357,23 +357,13 @@ func (m *ApiClient) GetApiAuthorization() (e error) {
 	return m.apiAuthorize(strings.NewReader(authForm.Encode()))
 }
 
-func (m *ApiClient) GetTitleSchedule() (e error) {
-	gLog.Debug().Msg("Called GetTitleSchedule")
-
-	var schedule []*rspGetSchedule
-
+func (m *ApiClient) GetTitleSchedule() (schedule []*rspGetSchedule, e error) {
 	if e = m.getApiResponse("GET", apiMethodGetSchedule, &schedule); e != nil {
-		gLog.Debug().Msg("Called GetTitleSchedule 2")
-		return e
+		return
 	}
 
-	gLog.Debug().Msg("Called GetTitleSchedule 3")
-
 	gLog.Info().Int("response_length", len(schedule)).Msg("DONE!")
-
-	// !!
-	// test data
-	return m.getTorrentFile("20862")
+	return
 }
 
 func (m *ApiClient) getTitleTorrentFile(torrentId string) (e error) {
