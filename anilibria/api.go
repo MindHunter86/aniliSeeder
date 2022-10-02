@@ -8,11 +8,14 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"golang.org/x/net/publicsuffix"
 )
 
 type (
@@ -125,8 +128,10 @@ func (m *ApiClient) debugHttpHandshake(data interface{}) {
 func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
 	gLog.Debug().Msg("Called apiAuthorize")
 
+	var loginUrl = m.siteBaseUrl.String() + string(siteMethodLogin)
+
 	var req *http.Request
-	if req, e = http.NewRequest("POST", m.siteBaseUrl.String()+string(siteMethodLogin), authBody); e != nil {
+	if req, e = http.NewRequest("POST", loginUrl, authBody); e != nil {
 		return
 	}
 
@@ -139,6 +144,14 @@ func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
 	}
 	defer rsp.Body.Close()
 
+	var jar *cookiejar.Jar
+	if jar, e = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List}); e != nil {
+		gLog.Error().Err(e).Msg("there is some problems with cookiejar initialization because of internal golang error")
+	}
+
+	jar.SetCookies(m.siteBaseUrl, rsp.Cookies())
+	m.http.Jar = jar
+
 	m.debugHttpHandshake(req)
 	m.debugHttpHandshake(rsp)
 
@@ -146,11 +159,8 @@ func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
 	case http.StatusOK:
 		cookies := m.http.Jar.Cookies(m.siteBaseUrl)
 		for _, cookie := range cookies {
-			if cookie.Name == "PHPSESSID" {
+			if cookie.Name == "PHPSESSID" && cookie.Value != "" {
 				gLog.Info().Str("session", cookie.Value).Msg("authentication proccess has been completed successfully")
-				gLog.Info().Time("session_expire", cookie.Expires).Msg("authentication proccess has been completed successfully")
-				log.Println(cookie.RawExpires)
-				log.Println(cookie.Expires)
 				return nil
 			}
 		}
@@ -182,42 +192,25 @@ func (m *ApiClient) getBaseRequest(req *http.Request) {
 	req.Header.Set("Cache-Control", "no-cache")
 }
 
-// ??
-// todo
-// refactor
-func (m *ApiClient) checkApiAuthorization(reqUrl *url.URL) error {
+func (m *ApiClient) checkApiAuthorization(rrl *url.URL) error {
 	if m.unauthorized == true {
 		gLog.Debug().Msg("authorization step has been skipped because of `unauthorized` flag detected")
 		return nil
 	}
 
-	if len(m.http.Jar.Cookies(reqUrl)) == 0 {
-		gLog.Info().Msg("unauthorized request detected; initiate the authorization proccess...")
+	if m.http.Jar == nil || len(m.http.Jar.Cookies(rrl)) == 0 {
+		gLog.Info().Msg("unauthorized request detected; initiate the authentication proccess...")
 		return m.GetApiAuthorization()
 	}
 
-	for _, cookie := range m.http.Jar.Cookies(reqUrl) {
-		if cookie.Name == "PHPSESSID" {
-			if time.Now().Unix() < cookie.Expires.Unix() {
-				gLog.Info().Time("session_expire", cookie.Expires).Msg("session expiration has been verified")
-				return nil
-			} else {
-				gLog.Warn().Time("now", time.Now()).Time("session_expire", cookie.Expires).Msg("session has been expired; initiating the reauthentication proccess")
-				m.cleanApiAuthorization(reqUrl)
-				return m.GetApiAuthorization()
-			}
-
-			gLog.Warn().Msg("there is no PHPSESSID cookie found; initiate the authentication proccess...")
-			return m.GetApiAuthorization()
+	for _, cookie := range m.http.Jar.Cookies(rrl) {
+		if cookie.Name == "PHPSESSID" && cookie.Value != "" {
+			return nil
 		}
 	}
 
-	gLog.Warn().Msg("internal application warning")
+	gLog.Warn().Msg("there is no PHPSESSID cookie found; initiate the authentication proccess...")
 	return m.GetApiAuthorization()
-}
-
-func (m *ApiClient) cleanApiAuthorization(reqUrl *url.URL) {
-	m.http.Jar.SetCookies(reqUrl, nil)
 }
 
 func (m *ApiClient) getTorrentFile(tileId string) (e error) {
@@ -290,15 +283,15 @@ func (m *ApiClient) parseFileFromResponse(rsp *io.ReadCloser, filename string) (
 func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod, rspSchema interface{}) (e error) {
 	gLog.Debug().Msg("Called getResponse.")
 
-	var reqUrl url.URL = *m.apiBaseUrl
-	reqUrl.Path = reqUrl.Path + string(apiMethod)
+	var rrl url.URL = *m.apiBaseUrl
+	rrl.Path = rrl.Path + string(apiMethod)
 
-	if e = m.checkApiAuthorization(&reqUrl); e != nil {
+	if e = m.checkApiAuthorization(&rrl); e != nil {
 		return
 	}
 
 	var req *http.Request
-	if req, e = http.NewRequest(httpMethod, reqUrl.String(), nil); e != nil {
+	if req, e = http.NewRequest(httpMethod, rrl.String(), nil); e != nil {
 		return
 	}
 

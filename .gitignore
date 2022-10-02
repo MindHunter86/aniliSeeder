@@ -28,5 +28,6 @@ pkg/.vscode/launch.json
 ..bfg-report/
 
 # removing dynamic content and test data
+.bash_history
 data/
 test/
