@@ -108,21 +108,15 @@ func (m *ApiClient) debugHttpHandshake(data interface{}) {
 		return
 	}
 
-	var e error
 	var dump []byte
 
 	switch v := data.(type) {
 	case *http.Request:
-		dump, e = httputil.DumpRequestOut(data.(*http.Request), true)
+		dump, _ = httputil.DumpRequestOut(data.(*http.Request), false)
 	case *http.Response:
-		dump, e = httputil.DumpResponse(data.(*http.Response), false)
+		dump, _ = httputil.DumpResponse(data.(*http.Response), false)
 	default:
 		gLog.Error().Msgf("there is an internal application error; undefined type - %T", v)
-	}
-
-	if e != nil {
-		gLog.Warn().Err(e).Msg("could not dump the request because of httputil internal errors")
-		return
 	}
 
 	log.Println(string(dump))
