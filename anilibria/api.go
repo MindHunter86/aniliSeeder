@@ -6,9 +6,11 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"mime"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -84,8 +86,16 @@ const (
 	apiMethodGetSchedule ApiRequestMethod = "/getSchedule"
 )
 
+type SiteRequestMethod string
+
+const (
+	siteMethodLogin           SiteRequestMethod = "/public/login.php"
+	siteMethodTorrentDownload SiteRequestMethod = "/public/torrent/download.php"
+)
+
 var (
 	errApiAuthorizationFailed = errors.New("there is some problems with the authorization proccess")
+	errApiAbnormalResponse    = errors.New("there is some problems with anilibria servers communication")
 )
 
 // common
@@ -111,7 +121,7 @@ func (m *ApiClient) debugHttpHandshake(data interface{}) {
 	}
 
 	if e != nil {
-		gLog.Warn().Msg("could not dump the request because of httputil internal errors")
+		gLog.Warn().Err(e).Msg("could not dump the request because of httputil internal errors")
 		return
 	}
 
@@ -122,7 +132,7 @@ func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
 	gLog.Debug().Msg("Called apiAuthorize")
 
 	var req *http.Request
-	if req, e = http.NewRequest("POST", m.loginUrl.String(), authBody); e != nil {
+	if req, e = http.NewRequest("POST", m.siteBaseUrl.String()+string(siteMethodLogin), authBody); e != nil {
 		return
 	}
 
@@ -140,11 +150,13 @@ func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
 
 	switch rsp.StatusCode {
 	case http.StatusOK:
-		cookies := m.http.Jar.Cookies(m.loginUrl)
+		cookies := m.http.Jar.Cookies(m.siteBaseUrl)
 		for _, cookie := range cookies {
 			if cookie.Name == "PHPSESSID" {
 				gLog.Info().Str("session", cookie.Value).Msg("authentication proccess has been completed successfully")
 				gLog.Info().Time("session_expire", cookie.Expires).Msg("authentication proccess has been completed successfully")
+				log.Println(cookie.RawExpires)
+				log.Println(cookie.Expires)
 				return nil
 			}
 		}
@@ -206,17 +218,85 @@ func (m *ApiClient) checkApiAuthorization(reqUrl *url.URL) error {
 		}
 	}
 
-	return nil
+	gLog.Warn().Msg("internal application warning")
+	return m.GetApiAuthorization()
 }
 
 func (m *ApiClient) cleanApiAuthorization(reqUrl *url.URL) {
 	m.http.Jar.SetCookies(reqUrl, nil)
 }
 
-func (m *ApiClient) getResponse(httpMethod string, apiMethod ApiRequestMethod, rspSchema interface{}) (e error) {
+func (m *ApiClient) getTorrentFile(tileId string) (e error) {
+	var rrl *url.URL
+	if rrl, e = url.Parse(m.siteBaseUrl.String() + string(siteMethodTorrentDownload)); e != nil {
+		return
+	}
+
+	var rgs = &url.Values{}
+	rgs.Add("id", tileId)
+	rrl.RawQuery = rgs.Encode()
+
+	if e = m.checkApiAuthorization(rrl); e != nil {
+		return
+	}
+
+	var req *http.Request
+	if req, e = http.NewRequest("GET", rrl.String(), nil); e != nil {
+		return
+	}
+	m.getBaseRequest(req) // ???
+
+	var rsp *http.Response
+	if rsp, e = m.http.Do(req); e != nil {
+		return
+	}
+	defer rsp.Body.Close()
+
+	m.debugHttpHandshake(req)
+	m.debugHttpHandshake(rsp)
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		gLog.Debug().Msg("the requested torrent file has been found")
+	default:
+		gLog.Warn().Int("response_code", rsp.StatusCode).Msg("could not fetch the requested torrent file because of abnormal anilibria server response")
+		return errApiAbnormalResponse
+	}
+
+	if rsp.Header.Get("Content-Type") != "application/x-bittorrent" {
+		gLog.Warn().Msg("there is an abnormal content-type in the torrent file response")
+	}
+
+	_, params, e := mime.ParseMediaType(rsp.Header.Get("Content-Disposition"))
+	if e != nil {
+		return
+	}
+
+	gLog.Debug().Str("filename", params["filename"]).Msg("trying to download and save the torrent file...")
+	return m.parseFileFromResponse(&rsp.Body, params["filename"])
+}
+
+func (m *ApiClient) parseFileFromResponse(rsp *io.ReadCloser, filename string) (e error) {
+
+	var fd *os.File
+	if fd, e = os.Create(gCli.String("torrentfiles-dir") + "/" + filename); e != nil {
+		return
+	}
+	defer fd.Close()
+
+	var n int64
+	if n, e = io.Copy(fd, *rsp); e != nil {
+		return
+	} else {
+		gLog.Info().Int64("bytes", n).Msg("the torrnet file has been successfully saved")
+		return
+	}
+}
+
+func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod, rspSchema interface{}) (e error) {
 	gLog.Debug().Msg("Called getResponse.")
 
-	var reqUrl url.URL = *m.baseUrl
+	var reqUrl url.URL = *m.apiBaseUrl
 	reqUrl.Path = reqUrl.Path + string(apiMethod)
 
 	if e = m.checkApiAuthorization(&reqUrl); e != nil {
@@ -244,6 +324,7 @@ func (m *ApiClient) getResponse(httpMethod string, apiMethod ApiRequestMethod, r
 		gLog.Info().Str("api_method", string(apiMethod)).Msg("Correct response")
 	default:
 		gLog.Warn().Str("api_method", string(apiMethod)).Int("api_response_code", rsp.StatusCode).Msg("Abnormal API response")
+		return errApiAbnormalResponse
 	}
 
 	return m.parseResponse(&rsp.Body, rspSchema)
@@ -277,7 +358,7 @@ func (m *ApiClient) GetTileSchedule() (e error) {
 
 	var schedule []*rspGetSchedule
 
-	if e = m.getResponse("GET", apiMethodGetSchedule, &schedule); e != nil {
+	if e = m.getApiResponse("GET", apiMethodGetSchedule, &schedule); e != nil {
 		gLog.Debug().Msg("Called GetTileSchedule 2")
 		return e
 	}
@@ -285,5 +366,13 @@ func (m *ApiClient) GetTileSchedule() (e error) {
 	gLog.Debug().Msg("Called GetTileSchedule 3")
 
 	gLog.Info().Int("response_length", len(schedule)).Msg("DONE!")
-	return
+
+	// !!
+	// test data
+	return m.getTorrentFile("20862")
+}
+
+func (m *ApiClient) getTileTorrentFile(torrentId string) (e error) {
+	gLog.Debug().Msg("trying to fetch torrent file for " + torrentId)
+	return m.getTorrentFile(torrentId)
 }

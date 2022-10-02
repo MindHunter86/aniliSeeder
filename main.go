@@ -101,9 +101,9 @@ func main() {
 			Value: "https://api.anilibria.tv/v2",
 		},
 		&cli.StringFlag{
-			Name:  "anilibria-login-url",
+			Name:  "anilibria-baseurl",
 			Usage: "",
-			Value: "https://www.anilibria.tv/public/login.php",
+			Value: "https://www.anilibria.tv",
 		},
 		&cli.StringFlag{
 			Name:    "anilibria-login-username",

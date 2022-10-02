@@ -3,10 +3,12 @@ package anilibria
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -21,8 +23,8 @@ var (
 
 type ApiClient struct {
 	http         *http.Client
-	baseUrl      *url.URL
-	loginUrl     *url.URL
+	apiBaseUrl   *url.URL
+	siteBaseUrl  *url.URL
 	unauthorized bool
 }
 
@@ -79,23 +81,27 @@ func NewApiClient(ctx *cli.Context, log *zerolog.Logger) (*ApiClient, error) {
 
 	// ??
 	// todo optimize
-	if err = apiClient.getLoginUrl(); err != nil {
+	if err = apiClient.getSiteBaseUrl(); err != nil {
 		gLog.Error().Err(err).Msg("there are some errors in parsing login url; sleeping for 30 seconds")
 		time.Sleep(30 * time.Second)
 	} else {
 		apiClient.checkAuthData()
 	}
 
-	return apiClient, apiClient.getBaseUrl()
+	if err = apiClient.checkDownloadDir(); err != nil {
+		return nil, err
+	}
+
+	return apiClient, apiClient.getApiBaseUrl()
 }
 
-func (m *ApiClient) getBaseUrl() (e error) {
-	m.baseUrl, e = url.Parse(gCli.String("anilibria-api-baseurl"))
+func (m *ApiClient) getApiBaseUrl() (e error) {
+	m.apiBaseUrl, e = url.Parse(gCli.String("anilibria-api-baseurl"))
 	return e
 }
 
-func (m *ApiClient) getLoginUrl() (e error) {
-	m.loginUrl, e = url.Parse(gCli.String("anilibria-login-url"))
+func (m *ApiClient) getSiteBaseUrl() (e error) {
+	m.siteBaseUrl, e = url.Parse(gCli.String("anilibria-baseurl"))
 	return e
 }
 
@@ -107,4 +113,26 @@ func (m *ApiClient) checkAuthData() {
 		gLog.Info().Msg("\"unauthorized\" has been toggled; sleeping for 3 seconds...")
 		time.Sleep(3 * time.Second)
 	}
+}
+
+func (m *ApiClient) checkDownloadDir() error {
+	fi, e := os.Stat(gCli.String("torrentfiles-dir"))
+
+	if os.IsNotExist(e) {
+		gLog.Warn().Str("path", gCli.String("torrentfiles-dir")).Msg("could not find the given download dir; trying to create it ...")
+		if err := os.MkdirAll(gCli.String("torrentfiles-dir"), os.ModePerm); err != nil {
+			return err
+		}
+		gLog.Info().Msg("download directory has been successfully created")
+		return nil
+	} else {
+		return e
+	}
+
+	if fi.IsDir() {
+		return nil
+	}
+
+	gLog.Error().Msg("given download dir is not directory; check and try again")
+	return errors.New("given download dir is not directory; check and try again")
 }
