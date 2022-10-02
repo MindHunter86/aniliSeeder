@@ -7,6 +7,8 @@ crawshaw.io/sqlite v0.3.3-0.20210127221821-98b1f83c5508 h1:fILCBBFnjnrQ0whVJlGhf
 crawshaw.io/sqlite v0.3.3-0.20210127221821-98b1f83c5508/go.mod h1:igAO5JulrQ1DbdZdtVq48mnZUBAPOeFzer7VhDWNtW4=
 filippo.io/edwards25519 v1.0.0-rc.1 h1:m0VOOB23frXZvAOK44usCgLWvtsxIoMCTBGJZlpmGfU=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
+github.com/MindHunter86/go-libdeluge v0.0.0-20221002035026-4eeeac7cd2bf h1:mKcr++zh4EYUvJ8KqHgTmt9XifSXIjbLg9wD17RZYtQ=
+github.com/MindHunter86/go-libdeluge v0.0.0-20221002035026-4eeeac7cd2bf/go.mod h1:UIS2dTL0G3t2ePp4XixuGTXmRAP8Qoyu5EwgyuqooNw=
 github.com/RoaringBitmap/roaring v0.4.7/go.mod h1:8khRDP4HmeXns4xIj9oGrKSz7XTQiJx2zgh7AcNke4w=
 github.com/RoaringBitmap/roaring v0.4.17/go.mod h1:D3qVegWTmfCaX4Bl5CrBE9hfrSrrXIr8KVNvRsDi1NI=
 github.com/RoaringBitmap/roaring v0.4.23/go.mod h1:D0gp8kJQgE1A4LQ5wFLggQEyvDi06Mq5mKs52e1TwOo=
@@ -117,6 +119,8 @@ github.com/frankban/quicktest v1.9.0/go.mod h1:ui7WezCLWMWxVWr1GETZY3smRy0G4KWq9
 github.com/frankban/quicktest v1.14.3 h1:FJKSZTDHjyhriyC81FLQ0LY93eSai0ZyR/ZIkd3ZUKE=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
+github.com/gdm85/go-rencode v0.1.8 h1:7+qxwoQWU1b1nMGcESOyoUR5dzPtRA6yLQpKn7uXmnI=
+github.com/gdm85/go-rencode v0.1.8/go.mod h1:0dr3BuaKzeseY1of6o1KRTGB/Oo7eio+YEyz8KDp5+s=
 github.com/glycerine/go-unsnap-stream v0.0.0-20180323001048-9f0cb55181dd/go.mod h1:/20jfyN9Y5QPEAprSgKAUr+glWDY39ZiUEAYOEv5dsE=
 github.com/glycerine/go-unsnap-stream v0.0.0-20181221182339-f9677308dec2/go.mod h1:/20jfyN9Y5QPEAprSgKAUr+glWDY39ZiUEAYOEv5dsE=
 github.com/glycerine/go-unsnap-stream v0.0.0-20190901134440-81cf024a9e0a/go.mod h1:/20jfyN9Y5QPEAprSgKAUr+glWDY39ZiUEAYOEv5dsE=

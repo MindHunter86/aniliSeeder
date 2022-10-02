@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	// "github.com/MindHunter86/aniliSeeder/p2p"
 	"github.com/MindHunter86/aniliSeeder/anilibria"
+	"github.com/MindHunter86/aniliSeeder/p2p"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -108,13 +108,32 @@ func main() {
 		&cli.StringFlag{
 			Name:    "anilibria-login-username",
 			Usage:   "login",
-			EnvVars: []string{"ANILIBRIA_LOGIN"},
+			EnvVars: []string{"ANILIBRIA_LOGIN", "ANILIBRIA_USERNAME"},
 		},
 		&cli.StringFlag{
 			Name:    "anilibria-login-password",
 			Usage:   "password",
 			EnvVars: []string{"ANILIBRIA_PASSWORD"},
 		},
+
+		&cli.StringFlag{
+			Name:  "deluge-addr",
+			Usage: "",
+			Value: "127.0.0.1:58846",
+		},
+		&cli.StringFlag{
+			Name:    "deluge-username",
+			Usage:   "",
+			Value:   "localclient",
+			EnvVars: []string{"DELUGE_LOGIN", "DELUGE_USERNAME"},
+		},
+		&cli.StringFlag{
+			Name:    "deluge-password",
+			Usage:   "",
+			Value:   "",
+			EnvVars: []string{"DELUGE_PASSWORD"},
+		},
+
 		&cli.StringFlag{
 			Name:  "torrentfiles-dir",
 			Usage: "",
@@ -148,7 +167,16 @@ func main() {
 			return err
 		}
 
-		return api.GetTileSchedule()
+		if err = api.GetTitleSchedule(); err != nil {
+			return err
+		}
+
+		dClient, err := p2p.NewClient(c, &log)
+		if err != nil {
+			return err
+		}
+
+		return dClient.GetTorrentsStatus()
 	}
 
 	sort.Sort(cli.FlagsByName(app.Flags))
