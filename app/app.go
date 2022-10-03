@@ -73,7 +73,7 @@ func (m *App) Bootstrap() (e error) {
 	return
 }
 
-func (m *App) loop(done func()) {
+func (_ *App) loop(done func()) {
 	defer done()
 
 	kernSignal := gCtx.Value(contextKeyKernSignal).(chan os.Signal)

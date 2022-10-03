@@ -36,7 +36,7 @@ func (m *Client) GetTorrentsHashes() ([]string, error) {
 	}
 
 	var hashes []string
-	for hash, _ := range trrs {
+	for hash := range trrs {
 		hashes = append(hashes, hash)
 	}
 

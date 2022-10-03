@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func TestDial(c *cli.Context, test string) {
+func TestDial(c *cli.Context, _ string) {
 	log.Println("trying to connect via unix socket")
 
 	conn, err := net.Dial("unix", c.String("socket-path"))

@@ -15,7 +15,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var log zerolog.Logger
 var version = "devel" // -ldflags="-X 'main.version=X.X.X'"
 
 func main() {
@@ -217,7 +216,7 @@ func main() {
 
 type SeverityHook struct{}
 
-func (h SeverityHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
+func (_ SeverityHook) Run(e *zerolog.Event, level zerolog.Level, _ string) {
 	if level != zerolog.DebugLevel {
 		return
 	}

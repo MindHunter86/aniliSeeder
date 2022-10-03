@@ -67,7 +67,7 @@ func (m *SockServer) Serve(done func()) error {
 	}
 }
 
-func (m *SockServer) clientTestHandler(c net.Conn) {
+func (_ *SockServer) clientTestHandler(c net.Conn) {
 	var clientId = c.RemoteAddr().Network()
 
 	gLog.Info().Str("client", clientId).Msg("socket server: client connected")
@@ -137,7 +137,7 @@ func (m *SockServer) clientRpcHandler(c net.Conn) {
 	}
 }
 
-func (m *SockServer) getResponseMessage(rw io.ReadWriter) io.ReadWriter {
+func (_ *SockServer) getResponseMessage(rw io.ReadWriter) io.ReadWriter {
 	_, err := rw.Write([]byte("\n\n"))
 	if err != nil {
 		gLog.Warn().Err(err).Msg("could not prepare response message because of internal golang error")
@@ -146,7 +146,7 @@ func (m *SockServer) getResponseMessage(rw io.ReadWriter) io.ReadWriter {
 	return rw
 }
 
-func (m *SockServer) checkRespondErrors(written int64, e error, cmd, id string) error {
+func (_ *SockServer) checkRespondErrors(written int64, e error, cmd, id string) error {
 	if e != nil {
 		gLog.Warn().Err(e).Str("client", id).Str("cmd", cmd).Msg("there are some errors with client communication")
 		return e
@@ -156,7 +156,7 @@ func (m *SockServer) checkRespondErrors(written int64, e error, cmd, id string) 
 	return nil
 }
 
-func (m *SockServer) parseClientCmd(cmd string) rpcCommand {
+func (_ *SockServer) parseClientCmd(cmd string) rpcCommand {
 	switch strings.TrimSpace(cmd) {
 	case "getTorrents":
 		return cmdsRpcGetTorrents
