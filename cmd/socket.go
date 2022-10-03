@@ -34,17 +34,22 @@ func TestDial(c *cli.Context, test string) {
 	// 	log.Printf("good, close; written bytes %d\n", n)
 	// }
 
+	// !!
+	// TODO
+	// github.com/tcnksm/go-input
+
 	var buf bytes.Buffer
 	for {
 		buf.Reset()
 
 		reader := bufio.NewReader(os.Stdin)
+		fmt.Print(":> ")
 		data, err := reader.ReadString('\n')
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		log.Println("readed input")
+		// log.Println("readed input")
 
 		buf.WriteString(data)
 		_, err = io.Copy(conn, &buf)
@@ -52,7 +57,7 @@ func TestDial(c *cli.Context, test string) {
 			log.Fatal(err)
 		}
 
-		log.Println("sent input")
+		// log.Println("sent input")
 
 		buf.Reset()
 
@@ -72,12 +77,7 @@ func TestDial(c *cli.Context, test string) {
 			log.Fatal(scanner.Err())
 		}
 
-		// _, err = io.Copy(&buf, conn)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-
-		log.Println("received response")
+		// log.Println("received response")
 		for _, line := range lines {
 			fmt.Println(line)
 		}

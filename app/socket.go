@@ -113,28 +113,37 @@ func (m *SockServer) clientRpcHandler(c net.Conn) {
 		if clientCmd = m.parseClientCmd(msg); clientCmd == cmdRpcUndefined {
 			gLog.Warn().Str("client", clientId).Str("cmd", msg).Msg("received cmd is undefined")
 
-			var buf = bytes.NewBufferString("command not found\n\n")
-			if n, err := io.Copy(c, buf); m.checkRespondErrors(n, err, msg, clientId) != nil {
+			var buf = bytes.NewBufferString("command not found")
+			if n, err := io.Copy(c, m.getResponseMessage(buf)); m.checkRespondErrors(n, err, msg, clientId) != nil {
 				return
 			}
 
 			continue
 		}
 
-		var buf io.Reader
+		var buf io.ReadWriter
 		if buf, err = m.runClientCmd(clientCmd); err != nil {
 			gLog.Warn().Str("client", clientId).Str("cmd", msg).Err(err).Msg("could not run received cmd because of internal errors")
 
-			var buf2 = bytes.NewBufferString("internal server error")
-			if n, err := io.Copy(c, buf2); m.checkRespondErrors(n, err, msg, clientId) != nil {
+			var buf = bytes.NewBufferString("internal server error")
+			if n, err := io.Copy(c, m.getResponseMessage(buf)); m.checkRespondErrors(n, err, msg, clientId) != nil {
 				return
 			}
 		}
 
-		if n, err := io.Copy(c, buf); m.checkRespondErrors(n, err, msg, clientId) != nil {
+		if n, err := io.Copy(c, m.getResponseMessage(buf)); m.checkRespondErrors(n, err, msg, clientId) != nil {
 			return
 		}
 	}
+}
+
+func (m *SockServer) getResponseMessage(rw io.ReadWriter) io.ReadWriter {
+	_, err := rw.Write([]byte("\n\n"))
+	if err != nil {
+		gLog.Warn().Err(err).Msg("could not prepare response message because of internal golang error")
+	}
+
+	return rw
 }
 
 func (m *SockServer) checkRespondErrors(written int64, e error, cmd, id string) error {
@@ -157,7 +166,7 @@ func (m *SockServer) parseClientCmd(cmd string) rpcCommand {
 	}
 }
 
-func (m *SockServer) runClientCmd(cmd rpcCommand) (io.Reader, error) {
+func (m *SockServer) runClientCmd(cmd rpcCommand) (io.ReadWriter, error) {
 	switch cmd {
 	case cmdsRpcGetTorrents:
 		return m.cmd.getAvaliableTorrentHashes()

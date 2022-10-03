@@ -16,9 +16,9 @@ type cmds struct{}
 
 func newCmds() *cmds { return &cmds{} }
 
-func (*cmds) getAvaliableTorrentHashes() (io.Reader, error) {
+func (*cmds) getAvaliableTorrentHashes() (io.ReadWriter, error) {
 	var buf *bytes.Buffer
 	buf = bytes.NewBufferString("")
-	buf.WriteString("fuckyou nigga\n\n")
+	buf.WriteString("fuckyou nigga")
 	return buf, nil
 }
