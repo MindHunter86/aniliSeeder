@@ -1,7 +1,8 @@
 package app
 
 import (
-	"io"
+	"io/ioutil"
+	"log"
 	"net"
 	"os"
 )
@@ -9,6 +10,9 @@ import (
 type SockServer struct {
 	ln net.Listener
 }
+
+// !!
+// socket.Close()
 
 func NewSockServer() *SockServer {
 	return &SockServer{}
@@ -24,21 +28,33 @@ func (m *SockServer) Bootstrap() (e error) {
 		return
 	}
 
+	go m.close()
+
+	gLog.Debug().Msg("socket server has been bootstrapped successfully")
 	return
+}
+
+func (m *SockServer) close() {
+	<-gCtx.Done()
+	gLog.Debug().Msg("context close() event has been caught; closing unix socket")
+	m.ln.Close()
 }
 
 func (m *SockServer) Serve(done func()) error {
 	defer done()
 
+	gLog.Info().Msg("initiating unix socket serving...")
+	defer gLog.Info().Msg("unix socket has been closed")
+
 	for {
 		conn, err := m.ln.Accept()
-		if err != nil {
+		if err == nil {
 			go m.clientHandler(conn)
 			continue
 		}
 
 		if err == net.ErrClosed {
-			return nil
+			return err
 		}
 
 		return err
@@ -47,6 +63,22 @@ func (m *SockServer) Serve(done func()) error {
 
 func (m *SockServer) clientHandler(c net.Conn) {
 	gLog.Info().Str("client", c.RemoteAddr().Network()).Msg("socket server: client connected")
-	io.Copy(c, c)
-	c.Close()
+	defer gLog.Info().Str("client", c.RemoteAddr().Network()).Msg("client disconnected")
+	defer c.Close()
+
+	msg, err := ioutil.ReadAll(c)
+	if err != nil {
+		gLog.Warn().Err(err).Msg("there are some errors with client communication")
+		return
+	}
+	log.Println(string(msg))
+	gLog.Debug().Str("message", string(msg)).Int("message_lentgh", len(msg)).Msg("there is new message from unix socket server client")
+
+	gLog.Debug().Msg("trying to respond the client's message to the client")
+	if n, err := c.Write(msg); err != nil {
+		gLog.Warn().Err(err).Msg("there are some errors with client communication")
+		return
+	} else {
+		gLog.Debug().Int("bytes_count", n).Msg("the server has been successfully responed")
+	}
 }

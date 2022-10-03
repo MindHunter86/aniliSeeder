@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"io"
 	"log"
 	"net"
 
@@ -10,11 +9,20 @@ import (
 )
 
 func TestDial(c *cli.Context, test string) {
+	log.Println("trying to connect via unix socket")
+
 	conn, err := net.Dial("unix", c.String("socket-path"))
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer conn.Close()
 
-	var buf = bytes.NewBuffer([]byte(test))
-	io.Copy(buf, conn)
+	log.Println("connection successfull; trying to sen some data")
+
+	var buf = bytes.NewBufferString(test)
+	if n, err := conn.Write(buf.Bytes()); err != nil {
+		log.Fatal(err)
+	} else {
+		log.Printf("good, close; written bytes %d\n", n)
+	}
 }

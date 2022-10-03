@@ -200,7 +200,7 @@ func main() {
 			Name:  "test",
 			Usage: "",
 			Action: func(c *cli.Context) error {
-				cmd.TestDial(c, "asdasdasdasdliksdghflaskdhfgasdkljfgasdlkjfhasdklfhdas")
+				cmd.TestDial(c, "fuckyouunixscoket")
 				return nil
 			},
 		},

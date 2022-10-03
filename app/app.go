@@ -35,6 +35,7 @@ func (m *App) Bootstrap() (e error) {
 
 	var wg = sync.WaitGroup{}
 	defer wg.Wait()
+	defer gLog.Debug().Msg("waiting for opened goroutines")
 
 	// main event loop
 	wg.Add(1)
