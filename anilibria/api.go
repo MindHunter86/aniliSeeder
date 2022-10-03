@@ -97,7 +97,7 @@ var (
 )
 
 // common
-func (m *ApiClient) debugHttpHandshake(data interface{}) {
+func (*ApiClient) debugHttpHandshake(data interface{}) {
 	if !gCli.Bool("debug") {
 		return
 	}
@@ -166,7 +166,7 @@ func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
 	return
 }
 
-func (m *ApiClient) getBaseRequest(req *http.Request) *http.Request {
+func (*ApiClient) getBaseRequest(req *http.Request) *http.Request {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:99.0) Gecko/20100101 Firefox/99.0")
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "en,ru;q=0.5")
@@ -256,7 +256,7 @@ func (m *ApiClient) getTorrentFile(titleId string) (e error) {
 	return m.parseFileFromResponse(&rsp.Body, params["filename"])
 }
 
-func (m *ApiClient) parseFileFromResponse(rsp *io.ReadCloser, filename string) (e error) {
+func (*ApiClient) parseFileFromResponse(rsp *io.ReadCloser, filename string) (e error) {
 
 	var fi fs.FileInfo
 	if fi, e = os.Stat(gCli.String("torrentfiles-dir") + "/" + filename); e != nil {
@@ -326,7 +326,7 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 	return m.parseResponse(&rsp.Body, rspSchema)
 }
 
-func (m *ApiClient) parseResponse(rsp *io.ReadCloser, schema interface{}) error {
+func (*ApiClient) parseResponse(rsp *io.ReadCloser, schema interface{}) error {
 	if data, err := ioutil.ReadAll(*rsp); err == nil {
 		return json.Unmarshal(data, &schema)
 	} else {

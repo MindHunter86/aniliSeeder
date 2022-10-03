@@ -108,7 +108,7 @@ func (m *ApiClient) checkAuthData() {
 	}
 }
 
-func (m *ApiClient) checkDownloadDir() error {
+func (*ApiClient) checkDownloadDir() error {
 	fi, e := os.Stat(gCli.String("torrentfiles-dir"))
 
 	if e != nil && fi.IsDir() {
@@ -133,6 +133,6 @@ func (m *ApiClient) checkDownloadDir() error {
 type TitleTorrents struct {
 }
 
-func (m *ApiClient) GetPopularTorrents() (error, error) {
+func (*ApiClient) GetPopularTorrents() (error, error) {
 	return nil, nil
 }
