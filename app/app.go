@@ -27,7 +27,7 @@ func NewApp(c *cli.Context, l *zerolog.Logger) *App {
 	return &App{}
 }
 
-func (m *App) Bootstrap() error {
+func (m *App) Bootstrap() (e error) {
 	kernSignal := make(chan os.Signal, 1)
 	signal.Notify(kernSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGTERM, syscall.SIGQUIT)
 
@@ -40,10 +40,19 @@ func (m *App) Bootstrap() error {
 	wg.Add(1)
 	go m.loop(wg.Done)
 
+	// socket server
+	var sServer = NewSockServer()
+	if e = sServer.Bootstrap(); e != nil {
+		return
+	}
+
+	wg.Add(1)
+	go sServer.Serve(wg.Done)
+
 	// another subsystems
 	// ...
 
-	return nil
+	return
 }
 
 func (m *App) loop(done func()) {
@@ -67,6 +76,7 @@ LOOP:
 	}
 }
 
-func (m *App) Close() error {
-	return nil
-}
+// todo
+// func (m *App) Close() error {
+// 	return nil
+// }

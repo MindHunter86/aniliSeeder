@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
+	application "github.com/MindHunter86/aniliSeeder/app"
+	"github.com/MindHunter86/aniliSeeder/cmd"
 	"github.com/MindHunter86/aniliSeeder/p2p"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
@@ -75,6 +77,12 @@ func main() {
 			Name:  "http-max-idle-conns",
 			Usage: "",
 			Value: 100,
+		},
+
+		&cli.StringFlag{
+			Name:  "socket-path",
+			Usage: "",
+			Value: "/tmp/aniliSeeder.sock",
 		},
 
 		&cli.IntFlag{
@@ -177,6 +185,25 @@ func main() {
 		}
 
 		return dClient.GetTorrentsStatus()
+	}
+
+	app.Commands = []*cli.Command{
+		&cli.Command{
+			Name:  "serve",
+			Usage: "",
+			Action: func(c *cli.Context) error {
+				a := application.NewApp(c, &log)
+				return a.Bootstrap()
+			},
+		},
+		&cli.Command{
+			Name:  "test",
+			Usage: "",
+			Action: func(c *cli.Context) error {
+				cmd.TestDial(c, "asdasdasdasdliksdghflaskdhfgasdkljfgasdlkjfhasdklfhdas")
+				return nil
+			},
+		},
 	}
 
 	sort.Sort(cli.FlagsByName(app.Flags))
