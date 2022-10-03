@@ -186,7 +186,7 @@ func (m *ApiClient) getBaseRequest(req *http.Request) *http.Request {
 }
 
 func (m *ApiClient) checkApiAuthorization(rrl *url.URL) error {
-	if m.unauthorized == true {
+	if m.unauthorized {
 		gLog.Debug().Msg("authorization step has been skipped because of `unauthorized` flag detected")
 		return nil
 	}
