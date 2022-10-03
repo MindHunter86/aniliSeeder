@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"strings"
@@ -67,30 +65,6 @@ func (m *SockServer) Serve(done func()) error {
 	}
 }
 
-func (_ *SockServer) clientTestHandler(c net.Conn) {
-	var clientId = c.RemoteAddr().Network()
-
-	gLog.Info().Str("client", clientId).Msg("socket server: client connected")
-	defer gLog.Info().Str("client", c.RemoteAddr().Network()).Msg("client disconnected")
-	defer c.Close()
-
-	msg, err := ioutil.ReadAll(c)
-	if err != nil {
-		gLog.Warn().Err(err).Msg("there are some errors with client communication")
-		return
-	}
-	log.Println(string(msg))
-	gLog.Debug().Str("message", string(msg)).Int("message_lentgh", len(msg)).Msg("there is new message from unix socket server client")
-
-	gLog.Debug().Msg("trying to respond the client's message to the client")
-	if n, err := c.Write(msg); err != nil {
-		gLog.Warn().Err(err).Msg("there are some errors with client communication")
-		return
-	} else {
-		gLog.Debug().Int("bytes_count", n).Msg("the server has been successfully responed")
-	}
-}
-
 func (m *SockServer) clientRpcHandler(c net.Conn) {
 	var clientId = c.RemoteAddr().Network()
 
@@ -137,7 +111,7 @@ func (m *SockServer) clientRpcHandler(c net.Conn) {
 	}
 }
 
-func (_ *SockServer) getResponseMessage(rw io.ReadWriter) io.ReadWriter {
+func (*SockServer) getResponseMessage(rw io.ReadWriter) io.ReadWriter {
 	_, err := rw.Write([]byte("\n\n"))
 	if err != nil {
 		gLog.Warn().Err(err).Msg("could not prepare response message because of internal golang error")
@@ -146,7 +120,7 @@ func (_ *SockServer) getResponseMessage(rw io.ReadWriter) io.ReadWriter {
 	return rw
 }
 
-func (_ *SockServer) checkRespondErrors(written int64, e error, cmd, id string) error {
+func (*SockServer) checkRespondErrors(written int64, e error, cmd, id string) error {
 	if e != nil {
 		gLog.Warn().Err(e).Str("client", id).Str("cmd", cmd).Msg("there are some errors with client communication")
 		return e
@@ -156,7 +130,7 @@ func (_ *SockServer) checkRespondErrors(written int64, e error, cmd, id string) 
 	return nil
 }
 
-func (_ *SockServer) parseClientCmd(cmd string) rpcCommand {
+func (*SockServer) parseClientCmd(cmd string) rpcCommand {
 	switch strings.TrimSpace(cmd) {
 	case "getTorrents":
 		return cmdsRpcGetTorrents
