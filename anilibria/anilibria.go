@@ -111,6 +111,10 @@ func (m *ApiClient) checkAuthData() {
 func (m *ApiClient) checkDownloadDir() error {
 	fi, e := os.Stat(gCli.String("torrentfiles-dir"))
 
+	if e != nil && fi.IsDir() {
+		return nil
+	}
+
 	if os.IsNotExist(e) {
 		gLog.Warn().Str("path", gCli.String("torrentfiles-dir")).Msg("could not find the given download dir; trying to create it ...")
 		if err := os.MkdirAll(gCli.String("torrentfiles-dir"), os.ModePerm); err != nil {
@@ -122,16 +126,11 @@ func (m *ApiClient) checkDownloadDir() error {
 		return e
 	}
 
-	if fi.IsDir() {
-		return nil
-	}
-
 	gLog.Error().Msg("given download dir is not directory; check and try again")
 	return errors.New("given download dir is not directory; check and try again")
 }
 
 type TitleTorrents struct {
-
 }
 
 func (m *ApiClient) GetPopularTorrents() (error, error) {
