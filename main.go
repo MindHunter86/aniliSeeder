@@ -10,12 +10,11 @@ import (
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	application "github.com/MindHunter86/aniliSeeder/app"
 	"github.com/MindHunter86/aniliSeeder/cmd"
-	"github.com/MindHunter86/aniliSeeder/p2p"
+	"github.com/MindHunter86/aniliSeeder/deluge"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
 
-var log zerolog.Logger
 var version = "devel" // -ldflags="-X 'main.version=X.X.X'"
 
 func main() {
@@ -179,7 +178,7 @@ func main() {
 			return err
 		}
 
-		dClient, err := p2p.NewClient(c, &log)
+		dClient, err := deluge.NewClient(c, &log)
 		if err != nil {
 			return err
 		}
@@ -192,6 +191,7 @@ func main() {
 			Name:  "serve",
 			Usage: "",
 			Action: func(c *cli.Context) error {
+				log.Debug().Msg("ready for serving...")
 				a := application.NewApp(c, &log)
 				return a.Bootstrap()
 			},
@@ -216,7 +216,7 @@ func main() {
 
 type SeverityHook struct{}
 
-func (h SeverityHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
+func (SeverityHook) Run(e *zerolog.Event, level zerolog.Level, _ string) {
 	if level != zerolog.DebugLevel {
 		return
 	}

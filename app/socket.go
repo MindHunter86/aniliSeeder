@@ -1,14 +1,17 @@
 package app
 
 import (
-	"io/ioutil"
-	"log"
+	"bufio"
+	"bytes"
+	"io"
 	"net"
 	"os"
+	"strings"
 )
 
 type SockServer struct {
-	ln net.Listener
+	ln  net.Listener
+	cmd *cmds
 }
 
 // !!
@@ -28,6 +31,7 @@ func (m *SockServer) Bootstrap() (e error) {
 		return
 	}
 
+	m.cmd = newCmds()
 	go m.close()
 
 	gLog.Debug().Msg("socket server has been bootstrapped successfully")
@@ -49,7 +53,7 @@ func (m *SockServer) Serve(done func()) error {
 	for {
 		conn, err := m.ln.Accept()
 		if err == nil {
-			go m.clientHandler(conn)
+			go m.clientRpcHandler(conn)
 			continue
 		}
 
@@ -61,24 +65,90 @@ func (m *SockServer) Serve(done func()) error {
 	}
 }
 
-func (m *SockServer) clientHandler(c net.Conn) {
-	gLog.Info().Str("client", c.RemoteAddr().Network()).Msg("socket server: client connected")
+func (m *SockServer) clientRpcHandler(c net.Conn) {
+	var clientId = c.RemoteAddr().Network()
+
+	gLog.Info().Str("client", clientId).Msg("socket server: client connected")
 	defer gLog.Info().Str("client", c.RemoteAddr().Network()).Msg("client disconnected")
 	defer c.Close()
 
-	msg, err := ioutil.ReadAll(c)
-	if err != nil {
-		gLog.Warn().Err(err).Msg("there are some errors with client communication")
-		return
-	}
-	log.Println(string(msg))
-	gLog.Debug().Str("message", string(msg)).Int("message_lentgh", len(msg)).Msg("there is new message from unix socket server client")
+	var reader = bufio.NewReader(c)
+	for {
+		msg, err := reader.ReadString('\n')
+		// msg, err := ioutil.ReadAll(c)
+		if err != nil {
+			gLog.Warn().Err(err).Str("client", clientId).Msg("there are some errors with client communication")
+			return
+		}
 
-	gLog.Debug().Msg("trying to respond the client's message to the client")
-	if n, err := c.Write(msg); err != nil {
-		gLog.Warn().Err(err).Msg("there are some errors with client communication")
-		return
-	} else {
-		gLog.Debug().Int("bytes_count", n).Msg("the server has been successfully responed")
+		gLog.Info().Str("client", clientId).Str("cmd", msg).Msg("received a cmd from the client")
+
+		var clientCmd rpcCommand
+		if clientCmd = m.parseClientCmd(msg); clientCmd == cmdRpcUndefined {
+			gLog.Warn().Str("client", clientId).Str("cmd", msg).Msg("received cmd is undefined")
+
+			var buf = bytes.NewBufferString("command not found")
+			if n, err := io.Copy(c, m.getResponseMessage(buf)); m.checkRespondErrors(n, err, msg, clientId) != nil {
+				return
+			}
+
+			continue
+		}
+
+		var buf io.ReadWriter
+		if buf, err = m.runClientCmd(clientCmd); err != nil {
+			gLog.Warn().Str("client", clientId).Str("cmd", msg).Err(err).Msg("could not run received cmd because of internal errors")
+
+			var buf = bytes.NewBufferString("internal server error")
+			if n, err := io.Copy(c, m.getResponseMessage(buf)); m.checkRespondErrors(n, err, msg, clientId) != nil {
+				return
+			}
+		}
+
+		if n, err := io.Copy(c, m.getResponseMessage(buf)); m.checkRespondErrors(n, err, msg, clientId) != nil {
+			return
+		}
 	}
+}
+
+func (*SockServer) getResponseMessage(rw io.ReadWriter) io.ReadWriter {
+	_, err := rw.Write([]byte("\n\n"))
+	if err != nil {
+		gLog.Warn().Err(err).Msg("could not prepare response message because of internal golang error")
+	}
+
+	return rw
+}
+
+func (*SockServer) checkRespondErrors(written int64, e error, cmd, id string) error {
+	if e != nil {
+		gLog.Warn().Err(e).Str("client", id).Str("cmd", cmd).Msg("there are some errors with client communication")
+		return e
+	}
+
+	gLog.Debug().Str("client", id).Int64("response_length", written).Msg("successfully responded to the client")
+	return nil
+}
+
+func (*SockServer) parseClientCmd(cmd string) rpcCommand {
+	switch strings.TrimSpace(cmd) {
+	case "getTorrents":
+		return cmdsRpcGetTorrents
+	default:
+		gLog.Debug().Str("cmd", strings.TrimSpace(cmd)).Msg("trimmed")
+		return cmdRpcUndefined
+	}
+}
+
+func (m *SockServer) runClientCmd(cmd rpcCommand) (io.ReadWriter, error) {
+	switch cmd {
+	case cmdsRpcGetTorrents:
+		return m.cmd.getAvaliableTorrentHashes()
+
+	default:
+		gLog.Error().Msg("golang internal error; given cmd is undefined in runClientCmd()")
+	}
+
+	// !!
+	return nil, nil
 }
