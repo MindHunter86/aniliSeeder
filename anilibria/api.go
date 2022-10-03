@@ -20,12 +20,6 @@ import (
 )
 
 type (
-	reqAuthForm struct {
-		Mail    string
-		Passwd  string
-		Fa2Code string
-		Csrf    int
-	}
 	rspGetSchedule struct {
 		Day  int
 		List []*rspGetTitle
@@ -103,10 +97,6 @@ var (
 )
 
 // common
-func (m *ApiClient) checkApiHealth() {
-	return
-}
-
 func (m *ApiClient) debugHttpHandshake(data interface{}) {
 	if !gCli.Bool("debug") {
 		return
