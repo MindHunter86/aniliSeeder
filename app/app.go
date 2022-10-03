@@ -7,6 +7,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/MindHunter86/aniliSeeder/anilibria"
+	"github.com/MindHunter86/aniliSeeder/deluge"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -19,6 +21,9 @@ var (
 
 	gCtx   context.Context
 	gAbort context.CancelFunc
+
+	gAniApi *anilibria.ApiClient
+	gDeluge *deluge.Client
 )
 
 func NewApp(c *cli.Context, l *zerolog.Logger) *App {
@@ -41,7 +46,20 @@ func (m *App) Bootstrap() (e error) {
 	wg.Add(1)
 	go m.loop(wg.Done)
 
-	// socket server
+	// anilibria API
+	if gAniApi, e = anilibria.NewApiClient(gCli, gLog); e != nil {
+		return
+	}
+
+	// deluge RPC client
+	if gDeluge, e = deluge.NewClient(gCli, gLog); e != nil {
+		return
+	}
+
+	// another subsystems
+	// ...
+
+	// socket cmds server
 	var sServer = NewSockServer()
 	if e = sServer.Bootstrap(); e != nil {
 		return
@@ -49,9 +67,6 @@ func (m *App) Bootstrap() (e error) {
 
 	wg.Add(1)
 	go sServer.Serve(wg.Done)
-
-	// another subsystems
-	// ...
 
 	return
 }

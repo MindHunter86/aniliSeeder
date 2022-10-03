@@ -1,6 +1,8 @@
 package app
 
 import (
+	"bytes"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -8,7 +10,8 @@ import (
 )
 
 type SockServer struct {
-	ln net.Listener
+	ln  net.Listener
+	cmd *cmds
 }
 
 // !!
@@ -28,6 +31,7 @@ func (m *SockServer) Bootstrap() (e error) {
 		return
 	}
 
+	m.cmd = newCmds()
 	go m.close()
 
 	gLog.Debug().Msg("socket server has been bootstrapped successfully")
@@ -49,7 +53,7 @@ func (m *SockServer) Serve(done func()) error {
 	for {
 		conn, err := m.ln.Accept()
 		if err == nil {
-			go m.clientHandler(conn)
+			go m.clientRpcHandler(conn)
 			continue
 		}
 
@@ -61,8 +65,10 @@ func (m *SockServer) Serve(done func()) error {
 	}
 }
 
-func (m *SockServer) clientHandler(c net.Conn) {
-	gLog.Info().Str("client", c.RemoteAddr().Network()).Msg("socket server: client connected")
+func (m *SockServer) clientTestHandler(c net.Conn) {
+	var clientId = c.RemoteAddr().Network()
+
+	gLog.Info().Str("client", clientId).Msg("socket server: client connected")
 	defer gLog.Info().Str("client", c.RemoteAddr().Network()).Msg("client disconnected")
 	defer c.Close()
 
@@ -81,4 +87,77 @@ func (m *SockServer) clientHandler(c net.Conn) {
 	} else {
 		gLog.Debug().Int("bytes_count", n).Msg("the server has been successfully responed")
 	}
+}
+
+func (m *SockServer) clientRpcHandler(c net.Conn) {
+	var clientId = c.RemoteAddr().Network()
+
+	gLog.Info().Str("client", clientId).Msg("socket server: client connected")
+	defer gLog.Info().Str("client", c.RemoteAddr().Network()).Msg("client disconnected")
+	defer c.Close()
+
+	for {
+		msg, err := ioutil.ReadAll(c)
+		if err != nil {
+			gLog.Warn().Err(err).Str("client", clientId).Msg("there are some errors with client communication")
+			return
+		}
+
+		gLog.Info().Str("client", clientId).Str("cmd", string(msg)).Msg("received a cmd from the client")
+
+		var clientCmd rpcCommand
+		if clientCmd = m.parseClientCmd(string(msg)); clientCmd == cmdRpcUndefined {
+			gLog.Warn().Str("client", clientId).Str("cmd", string(msg)).Msg("received cmd is undefined")
+
+			var buf = bytes.NewBufferString("command not found")
+			n, err := io.Copy(c, buf)
+			if err != nil {
+				gLog.Warn().Err(err).Str("client", clientId).Msg("there are some errors with client communication")
+				return
+			}
+
+			gLog.Debug().Str("client", clientId).Int64("response_length", n).Msg("successfully responded to the client")
+		}
+
+		var buf io.Reader
+		if buf, err = m.runClientCmd(clientCmd); err != nil {
+			gLog.Warn().Str("client", clientId).Str("cmd", string(msg)).Err(err).Msg("could not run received cmd because of internal errors")
+
+			var buf = bytes.NewBufferString("internal server error")
+			_, err := io.Copy(c, buf)
+			if err != nil {
+				gLog.Warn().Err(err).Str("client", clientId).Msg("there are some errors with client communication")
+				return
+			}
+		}
+
+		n, err := io.Copy(c, buf)
+		if err != nil {
+			gLog.Warn().Err(err).Str("client", clientId).Msg("there are some errors with client communication")
+			return
+		}
+		gLog.Debug().Str("client", clientId).Int64("response_length", n).Msg("successfully responded to the client")
+	}
+}
+
+func (m *SockServer) parseClientCmd(cmd string) rpcCommand {
+	switch cmd {
+	case "getTorrents":
+		return cmdsRpcGetTorrents
+	default:
+		return cmdRpcUndefined
+	}
+}
+
+func (m *SockServer) runClientCmd(cmd rpcCommand) (io.Reader, error) {
+	switch cmd {
+	case cmdsRpcGetTorrents:
+		return m.cmd.getAvaliableTorrentHashes()
+
+	default:
+		gLog.Error().Msg("golang internal error; given cmd is undefined in runClientCmd()")
+	}
+
+	// !!
+	return nil, nil
 }
