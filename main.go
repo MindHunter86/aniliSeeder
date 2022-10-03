@@ -10,7 +10,7 @@ import (
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	application "github.com/MindHunter86/aniliSeeder/app"
 	"github.com/MindHunter86/aniliSeeder/cmd"
-	"github.com/MindHunter86/aniliSeeder/p2p"
+	"github.com/MindHunter86/aniliSeeder/deluge"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -179,7 +179,7 @@ func main() {
 			return err
 		}
 
-		dClient, err := p2p.NewClient(c, &log)
+		dClient, err := deluge.NewClient(c, &log)
 		if err != nil {
 			return err
 		}
