@@ -126,7 +126,7 @@ func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
 		return
 	}
 
-	m.getBaseRequest(req)
+	req = m.getBaseRequest(req)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	var rsp *http.Response
@@ -166,7 +166,7 @@ func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
 	return
 }
 
-func (m *ApiClient) getBaseRequest(req *http.Request) {
+func (m *ApiClient) getBaseRequest(req *http.Request) *http.Request {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:99.0) Gecko/20100101 Firefox/99.0")
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "en,ru;q=0.5")
@@ -181,6 +181,8 @@ func (m *ApiClient) getBaseRequest(req *http.Request) {
 	req.Header.Set("Sec-GPC", "1")
 	req.Header.Set("Pragma", "no-cache")
 	req.Header.Set("Cache-Control", "no-cache")
+
+	return req
 }
 
 func (m *ApiClient) checkApiAuthorization(rrl *url.URL) error {
@@ -222,7 +224,7 @@ func (m *ApiClient) getTorrentFile(titleId string) (e error) {
 	if req, e = http.NewRequest("GET", rrl.String(), nil); e != nil {
 		return
 	}
-	m.getBaseRequest(req) // ???
+	req = m.getBaseRequest(req) // ???
 
 	var rsp *http.Response
 	if rsp, e = m.http.Do(req); e != nil {
@@ -302,7 +304,7 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 		return
 	}
 
-	m.getBaseRequest(req) // ???
+	req = m.getBaseRequest(req) // ???
 
 	var rsp *http.Response
 	if rsp, e = m.http.Do(req); e != nil {
