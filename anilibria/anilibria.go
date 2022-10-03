@@ -65,7 +65,7 @@ func NewApiClient(ctx *cli.Context, log *zerolog.Logger) (*ApiClient, error) {
 		gLog.Warn().Err(err).Msg("could not upgrade http transport to v2 because of internal error")
 	}
 
-	var apiClient *ApiClient = &ApiClient{
+	var apiClient = &ApiClient{
 		http: &http.Client{
 			Timeout:   time.Duration(gCli.Int("http-client-timeout")) * time.Second,
 			Transport: httpTransport,
@@ -108,8 +108,12 @@ func (m *ApiClient) checkAuthData() {
 	}
 }
 
-func (m *ApiClient) checkDownloadDir() error {
+func (*ApiClient) checkDownloadDir() error {
 	fi, e := os.Stat(gCli.String("torrentfiles-dir"))
+
+	if e != nil && fi.IsDir() {
+		return nil
+	}
 
 	if os.IsNotExist(e) {
 		gLog.Warn().Str("path", gCli.String("torrentfiles-dir")).Msg("could not find the given download dir; trying to create it ...")
@@ -122,18 +126,13 @@ func (m *ApiClient) checkDownloadDir() error {
 		return e
 	}
 
-	if fi.IsDir() {
-		return nil
-	}
-
 	gLog.Error().Msg("given download dir is not directory; check and try again")
 	return errors.New("given download dir is not directory; check and try again")
 }
 
 type TitleTorrents struct {
-
 }
 
-func (m *ApiClient) GetPopularTorrents() (error, error) {
+func (*ApiClient) GetPopularTorrents() (error, error) {
 	return nil, nil
 }
