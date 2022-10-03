@@ -21,6 +21,8 @@ func TestDial(c *cli.Context, test string) {
 
 	var buf = bytes.NewBufferString(test)
 	if n, err := conn.Write(buf.Bytes()); err != nil {
+		// log.Fatal will exit, and defer conn.Close() will not run
+		// CRT-D0011
 		log.Fatal(err)
 	} else {
 		log.Printf("good, close; written bytes %d\n", n)
