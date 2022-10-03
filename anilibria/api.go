@@ -292,7 +292,7 @@ func (m *ApiClient) parseFileFromResponse(rsp *io.ReadCloser, filename string) (
 func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod, rspSchema interface{}) (e error) {
 	gLog.Debug().Msg("Called getResponse.")
 
-	var rrl url.URL = *m.apiBaseUrl
+	var rrl = *m.apiBaseUrl
 	rrl.Path = rrl.Path + string(apiMethod)
 
 	if e = m.checkApiAuthorization(&rrl); e != nil {

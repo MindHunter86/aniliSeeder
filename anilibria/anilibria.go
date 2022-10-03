@@ -65,7 +65,7 @@ func NewApiClient(ctx *cli.Context, log *zerolog.Logger) (*ApiClient, error) {
 		gLog.Warn().Err(err).Msg("could not upgrade http transport to v2 because of internal error")
 	}
 
-	var apiClient *ApiClient = &ApiClient{
+	var apiClient = &ApiClient{
 		http: &http.Client{
 			Timeout:   time.Duration(gCli.Int("http-client-timeout")) * time.Second,
 			Transport: httpTransport,
