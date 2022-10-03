@@ -52,7 +52,7 @@ func (m *App) loop(done func()) {
 	kernSignal := gCtx.Value(contextKeyKernSignal).(chan os.Signal)
 
 	gLog.Debug().Msg("initiate main event loop")
-	defer gLog.Debug().Msg("initiate main event loop")
+	defer gLog.Debug().Msg("main event loop has been closed")
 
 LOOP:
 	for {
