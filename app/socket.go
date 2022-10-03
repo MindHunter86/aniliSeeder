@@ -1,12 +1,14 @@
 package app
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"strings"
 )
 
 type SockServer struct {
@@ -96,36 +98,40 @@ func (m *SockServer) clientRpcHandler(c net.Conn) {
 	defer gLog.Info().Str("client", c.RemoteAddr().Network()).Msg("client disconnected")
 	defer c.Close()
 
+	var reader = bufio.NewReader(c)
 	for {
-		msg, err := ioutil.ReadAll(c)
+		msg, err := reader.ReadString('\n')
+		// msg, err := ioutil.ReadAll(c)
 		if err != nil {
 			gLog.Warn().Err(err).Str("client", clientId).Msg("there are some errors with client communication")
 			return
 		}
 
-		gLog.Info().Str("client", clientId).Str("cmd", string(msg)).Msg("received a cmd from the client")
+		gLog.Info().Str("client", clientId).Str("cmd", msg).Msg("received a cmd from the client")
 
 		var clientCmd rpcCommand
-		if clientCmd = m.parseClientCmd(string(msg)); clientCmd == cmdRpcUndefined {
-			gLog.Warn().Str("client", clientId).Str("cmd", string(msg)).Msg("received cmd is undefined")
+		if clientCmd = m.parseClientCmd(msg); clientCmd == cmdRpcUndefined {
+			gLog.Warn().Str("client", clientId).Str("cmd", msg).Msg("received cmd is undefined")
 
-			var buf = bytes.NewBufferString("command not found")
-			if n, err := io.Copy(c, buf); m.checkRespondErrors(n, err, string(msg), clientId) != nil {
+			var buf = bytes.NewBufferString("command not found\n\n")
+			if n, err := io.Copy(c, buf); m.checkRespondErrors(n, err, msg, clientId) != nil {
 				return
 			}
+
+			continue
 		}
 
 		var buf io.Reader
 		if buf, err = m.runClientCmd(clientCmd); err != nil {
-			gLog.Warn().Str("client", clientId).Str("cmd", string(msg)).Err(err).Msg("could not run received cmd because of internal errors")
+			gLog.Warn().Str("client", clientId).Str("cmd", msg).Err(err).Msg("could not run received cmd because of internal errors")
 
-			var buf = bytes.NewBufferString("internal server error")
-			if n, err := io.Copy(c, buf); m.checkRespondErrors(n, err, string(msg), clientId) != nil {
+			var buf2 = bytes.NewBufferString("internal server error")
+			if n, err := io.Copy(c, buf2); m.checkRespondErrors(n, err, msg, clientId) != nil {
 				return
 			}
 		}
 
-		if n, err := io.Copy(c, buf); m.checkRespondErrors(n, err, string(msg), clientId) != nil {
+		if n, err := io.Copy(c, buf); m.checkRespondErrors(n, err, msg, clientId) != nil {
 			return
 		}
 	}
@@ -142,10 +148,11 @@ func (m *SockServer) checkRespondErrors(written int64, e error, cmd, id string) 
 }
 
 func (m *SockServer) parseClientCmd(cmd string) rpcCommand {
-	switch cmd {
+	switch strings.TrimSpace(cmd) {
 	case "getTorrents":
 		return cmdsRpcGetTorrents
 	default:
+		gLog.Debug().Str("cmd", strings.TrimSpace(cmd)).Msg("trimmed")
 		return cmdRpcUndefined
 	}
 }

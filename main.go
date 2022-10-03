@@ -192,6 +192,7 @@ func main() {
 			Name:  "serve",
 			Usage: "",
 			Action: func(c *cli.Context) error {
+				log.Debug().Msg("ready for serving...")
 				a := application.NewApp(c, &log)
 				return a.Bootstrap()
 			},
