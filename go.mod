@@ -10,6 +10,7 @@ require (
 	github.com/MindHunter86/go-libdeluge v0.0.0-20221002035026-4eeeac7cd2bf
 	github.com/anacrolix/torrent v1.47.0
 	github.com/jedib0t/go-pretty/v6 v6.4.0
+	github.com/manifoldco/promptui v0.9.0
 	github.com/rs/zerolog v1.28.0
 	github.com/urfave/cli/v2 v2.17.1
 	golang.org/x/net v0.0.0-20221002022538-bcab6841153b
@@ -40,6 +41,7 @@ require (
 	github.com/benbjohnson/immutable v0.3.0 // indirect
 	github.com/bits-and-blooms/bitset v1.2.2 // indirect
 	github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8 // indirect
+	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect

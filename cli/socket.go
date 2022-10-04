@@ -7,8 +7,8 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
 
+	"github.com/manifoldco/promptui"
 	"github.com/urfave/cli/v2"
 )
 
@@ -38,21 +38,35 @@ func TestDial(c *cli.Context, _ string) {
 	// TODO
 	// github.com/tcnksm/go-input
 
-	var buf bytes.Buffer
+	var buf = bytes.NewBuffer(nil)
+
 	for {
 		buf.Reset()
 
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print(":> ")
-		data, err := reader.ReadString('\n')
+		pr := promptui.Prompt{
+			Label: ":>",
+			// IsVimMode: true,
+			Templates: &promptui.PromptTemplates{
+				Prompt:  "{{ . }} ",
+				Valid:   "{{ . | green }} ",
+				Invalid: "{{ . | red }} ",
+				Success: "{{ . | bold }} ",
+			},
+			AllowEdit: true,
+		}
+		data, err := pr.Run()
+
+		// reader := bufio.NewReader(os.Stdin)
+		// fmt.Print(":> ")
+		// data, err := reader.ReadString('\n')
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		// log.Println("readed input")
 
-		buf.WriteString(data)
-		_, err = io.Copy(conn, &buf)
+		buf.WriteString(data + "\n")
+		_, err = io.Copy(conn, buf)
 		if err != nil {
 			log.Fatal(err)
 		}

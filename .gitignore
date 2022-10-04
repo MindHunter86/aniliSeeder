@@ -32,3 +32,4 @@ pkg/.vscode/launch.json
 .bash_history
 data/
 test/
+*.sock
