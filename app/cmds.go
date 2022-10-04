@@ -54,7 +54,7 @@ func (*cmds) statCurrentTorrents() (io.ReadWriter, error) {
 		name, _, _ := strings.Cut(torrent.Name, "- AniLibria.TV")
 		seedTime := time.Duration(torrent.SeedingTime) * time.Second
 		tb.AppendRow([]interface{}{
-			hash, name, torrent.TotalSize / 1024 / 1024, torrent.Ratio, torrent.TotalUploaded / 1024 / 1024, seedTime.String(),
+			hash[0:9], name, torrent.TotalSize / 1024 / 1024, torrent.Ratio, torrent.TotalUploaded / 1024 / 1024, seedTime.String(),
 			// ??
 			// todo optimize
 			gDeluge.GetScoreFromInput(float64(torrent.TotalUploaded), seedTime.Hours()/float64(24), float64(torrent.TotalSize)),
