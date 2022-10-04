@@ -2,6 +2,7 @@ package deluge
 
 import (
 	"encoding/json"
+	"math"
 	"os"
 
 	delugeclient "github.com/MindHunter86/go-libdeluge"
@@ -42,6 +43,29 @@ func (m *Client) GetTorrentsHashes() ([]string, error) {
 
 	gLog.Debug().Int("hashes_length", len(hashes)).Msg("the torrnets hashes has been collected")
 	return hashes, e
+}
+
+// TODO:
+// weak score formula (VKSCORE):
+//
+// uploaded / seed time * 100
+// --------------------------
+// 			size
+//
+// formula is valid for for torrents with ratio >= 1
+// if score < 25 - give weak flag for torrent
+// if torrent has 3 weak flags - drop
+//
+// ratio notice:
+// if seed time > N days and ratio < 1 = drop torrent
+
+func (m *Client) GetScoreFromInput(upld, seed, size float64) float64 {
+	return m.roundGivenScore(upld/seed*100/size, 3)
+}
+
+func (*Client) roundGivenScore(val float64, precision uint) float64 {
+	ratio := math.Pow(10, float64(precision))
+	return math.Round(val*ratio) / ratio
 }
 
 func (m *Client) GetWeakTorrents() ([]*delugeclient.TorrentStatus, error) {

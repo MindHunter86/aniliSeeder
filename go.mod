@@ -9,6 +9,7 @@ exclude github.com/gdm85/go-libdeluge v0.5.6
 require (
 	github.com/MindHunter86/go-libdeluge v0.0.0-20221002035026-4eeeac7cd2bf
 	github.com/anacrolix/torrent v1.47.0
+	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/rs/zerolog v1.28.0
 	github.com/urfave/cli/v2 v2.17.1
 	golang.org/x/net v0.0.0-20221002022538-bcab6841153b
@@ -53,6 +54,7 @@ require (
 	github.com/lispad/go-generics-tools v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/pion/datachannel v1.5.2 // indirect
 	github.com/pion/dtls/v2 v2.1.5 // indirect
@@ -72,6 +74,7 @@ require (
 	github.com/pion/udp v0.1.1 // indirect
 	github.com/pion/webrtc/v3 v3.1.42 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/dnscache v0.0.0-20211102005908-e0241e321417 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/tidwall/btree v1.3.1 // indirect

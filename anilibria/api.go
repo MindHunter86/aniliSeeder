@@ -22,38 +22,42 @@ import (
 type (
 	rspGetSchedule struct {
 		Day  int
-		List []*rspGetTitle
+		List []*Title
 	}
-	rspGetTitle struct {
-		Names    *rspTitleNames
-		Status   *rspTitleStatus
-		Type     *rspTitleType
-		Torrents *rspTitleTorrents
+	Title struct {
+		Id         int
+		Code       string
+		Updated    time.Time
+		LastChange time.Time
+		Names      *TitleNames
+		Status     *TitleStatus
+		Type       *TitleType
+		Torrents   *TitleTorrent
 	}
-	rspTitleNames struct {
+	TitleNames struct {
 		Ru          string
 		En          string
 		Alternative string
 	}
-	rspTitleStatus struct {
+	TitleStatus struct {
 		String string
 		Code   int
 	}
-	rspTitleType struct {
+	TitleType struct {
 		FullString string
 		Code       int
 		String     string
 		Series     interface{}
 		Length     int
 	}
-	rspTitleTorrents struct {
-		Series *rspTorrentSeries
-		List   []*rspTorrentList
+	TitleTorrents struct {
+		Series *TorrentSeries
+		List   []*TitleTorrent
 	}
-	rspTorrentList struct {
+	TitleTorrent struct {
 		TorrentId         int
-		Series            *rspTorrentSeries
-		Quality           *rspTorrentQuality
+		Series            *TorrentSeries
+		Quality           *TorrentQuality
 		Leechers          int
 		Seeders           int
 		Downloads         int
@@ -64,12 +68,12 @@ type (
 		Metadata          interface{}
 		RawBase64File     interface{}
 	}
-	rspTorrentSeries struct {
+	TorrentSeries struct {
 		Firest int
 		Last   int
 		String string
 	}
-	rspTorrentQuality struct {
+	TorrentQuality struct {
 		String     string
 		Type       string
 		Resolution string
@@ -98,7 +102,7 @@ var (
 
 // common
 func (*ApiClient) debugHttpHandshake(data interface{}) {
-	if !gCli.Bool("debug") {
+	if !gCli.Bool("http-debug") {
 		return
 	}
 
@@ -171,7 +175,7 @@ func (*ApiClient) getBaseRequest(req *http.Request) *http.Request {
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "en,ru;q=0.5")
 	// req.Header.Set("Accept-Encoding", "gzip, deflate, br")
-	// req.Header.Set("Connection", "keep-alive")
+	// req.Header.Set("Connection", "keep-alive") // !!
 	// req.Header.Set("DNT", "1")
 	req.Header.Set("Upgrade-Insecure-Requests", "1")
 	req.Header.Set("Sec-Fetch-Dest", "document")
@@ -350,12 +354,19 @@ func (m *ApiClient) GetApiAuthorization() (e error) {
 	return m.apiAuthorize(strings.NewReader(authForm.Encode()))
 }
 
-func (m *ApiClient) GetTitleSchedule() (schedule []*rspGetSchedule, e error) {
-	if e = m.getApiResponse("GET", apiMethodGetSchedule, &schedule); e != nil {
+func (m *ApiClient) GetTitlesFromSchedule() (titles []*Title, e error) {
+	var weekSchedule []*rspGetSchedule
+	if e = m.getApiResponse("GET", apiMethodGetSchedule, &weekSchedule); e != nil {
 		return
 	}
 
-	gLog.Info().Int("response_length", len(schedule)).Msg("DONE!")
+	for _, schedule := range weekSchedule {
+		for _, title := range schedule.List {
+			titles = append(titles, title)
+		}
+	}
+
+	gLog.Debug().Int("titles_count", len(titles)).Msg("titles has been successfully parsed from schedule")
 	return
 }
 

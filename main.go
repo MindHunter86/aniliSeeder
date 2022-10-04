@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MindHunter86/aniliSeeder/anilibria"
 	application "github.com/MindHunter86/aniliSeeder/app"
-	"github.com/MindHunter86/aniliSeeder/cmd"
+	appcli "github.com/MindHunter86/aniliSeeder/cli"
 	"github.com/MindHunter86/aniliSeeder/deluge"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
@@ -77,6 +76,10 @@ func main() {
 			Usage: "",
 			Value: 100,
 		},
+		&cli.BoolFlag{
+			Name:  "http-debug",
+			Usage: "",
+		},
 
 		&cli.StringFlag{
 			Name:  "socket-path",
@@ -89,10 +92,6 @@ func main() {
 			Aliases: []string{"v"},
 			Value:   5,
 			Usage:   "Verbose `LEVEL` (value from 5(debug) to 0(panic) and -1 for log disabling(quite mode))",
-		},
-		&cli.BoolFlag{
-			Name:  "debug",
-			Usage: "",
 		},
 		&cli.BoolFlag{
 			Name:    "quite",
@@ -169,14 +168,18 @@ func main() {
 
 		// return p2p.NewP2PClient(&log).Bootstrap()
 
-		api, err := anilibria.NewApiClient(c, &log)
-		if err != nil {
-			return err
-		}
+		os.Exit(1)
 
-		if _, err = api.GetTitleSchedule(); err != nil {
-			return err
-		}
+		// ====================
+
+		// api, err := anilibria.NewApiClient(c, &log)
+		// if err != nil {
+		// 	return err
+		// }
+
+		// if _, err = api.GetTitleSchedule(); err != nil {
+		// 	return err
+		// }
 
 		dClient, err := deluge.NewClient(c, &log)
 		if err != nil {
@@ -200,7 +203,7 @@ func main() {
 			Name:  "test",
 			Usage: "",
 			Action: func(c *cli.Context) error {
-				cmd.TestDial(c, "fuckyouunixscoket")
+				appcli.TestDial(c, "fuckyouunixscoket")
 				return nil
 			},
 		},
