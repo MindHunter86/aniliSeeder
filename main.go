@@ -99,6 +99,16 @@ func main() {
 			Usage:   "Flag is equivalent to verbose -1",
 		},
 
+		&cli.BoolFlag{
+			Name:  "swarm-is-master",
+			Usage: "",
+		},
+		&cli.StringFlag{
+			Name:  "swarm-master-addrs",
+			Usage: "",
+			Value: "localhost:8081",
+		},
+
 		// queue settings
 		// application settings
 		&cli.StringFlag{
