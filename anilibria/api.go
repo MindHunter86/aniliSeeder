@@ -166,8 +166,6 @@ func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
 		gLog.Error().Int("login_response_code", rsp.StatusCode).Msg("there is abnormal status code from login page; check you auth data")
 		return errApiAuthorizationFailed
 	}
-
-	return
 }
 
 func (*ApiClient) getBaseRequest(req *http.Request) *http.Request {

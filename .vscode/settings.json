@@ -9,4 +9,5 @@
   "editor.insertSpaces": true,
 
   "gopls": { "ui.semanticTokens": true }
+  // "go.inferGopath": false
 }

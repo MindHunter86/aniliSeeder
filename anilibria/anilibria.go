@@ -3,7 +3,6 @@ package anilibria
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"net"
 	"net/http"
 	"net/url"
@@ -122,12 +121,12 @@ func (*ApiClient) checkDownloadDir() error {
 		}
 		gLog.Info().Msg("download directory has been successfully created")
 		return nil
-	} else {
+	} else if os.IsExist(e) {
+		gLog.Error().Msg("given download dir is not directory; check and try again")
 		return e
 	}
 
-	gLog.Error().Msg("given download dir is not directory; check and try again")
-	return errors.New("given download dir is not directory; check and try again")
+	return e
 }
 
 // popular domains origin
