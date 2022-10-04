@@ -361,9 +361,7 @@ func (m *ApiClient) GetTitlesFromSchedule() (titles []*Title, e error) {
 	}
 
 	for _, schedule := range weekSchedule {
-		for _, title := range schedule.List {
-			titles = append(titles, title)
-		}
+		titles = append(titles, schedule.List...)
 	}
 
 	gLog.Debug().Int("titles_count", len(titles)).Msg("titles has been successfully parsed from schedule")

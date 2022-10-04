@@ -145,6 +145,11 @@ func main() {
 			Usage: "",
 			Value: "./data",
 		},
+		&cli.IntFlag{
+			Name:  "torrents-vkscore-line",
+			Usage: "",
+			Value: 25,
+		},
 		&cli.UintFlag{
 			Name:  "disk-minimal-avaliable",
 			Usage: "In MB",

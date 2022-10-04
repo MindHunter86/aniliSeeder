@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 type rpcCommand uint8
@@ -49,6 +50,14 @@ func (*cmds) statCurrentTorrents() (io.ReadWriter, error) {
 		return nil, e
 	}
 
+	// colorize := func(data float64) string {
+	// 	if data > float64(gCli.Int("torrents-vkscore-line")) {
+	// 		return text.FgGreen.Sprintf("%f", data)
+	// 	} else {
+	// 		return text.FgYellow.Sprintf("%f", data)
+	// 	}
+	// }
+
 	for hash, torrent := range trrs {
 		name, _, _ := strings.Cut(torrent.Name, "- AniLibria.TV")
 		seedTime := time.Duration(torrent.SeedingTime) * time.Second
@@ -59,6 +68,16 @@ func (*cmds) statCurrentTorrents() (io.ReadWriter, error) {
 			gDeluge.GetScoreFromInput(float64(torrent.TotalUploaded), seedTime.Hours()/float64(24), float64(torrent.TotalSize)),
 		})
 	}
+
+	tb.SetRowPainter(func(raw table.Row) text.Colors {
+		if raw[6].(float64) >= float64(gCli.Int("torrents-vkscore-line")) {
+			return text.Colors{text.FgGreen}
+		}
+		if raw[3].(float32) < 1 {
+			return text.Colors{text.FgRed}
+		}
+		return text.Colors{text.FgYellow}
+	})
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 2, WidthMax: 60},
