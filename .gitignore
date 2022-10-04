@@ -19,6 +19,7 @@ vendor/
 # Binary data
 bin/
 aniliSeeder
+__debug_bin
 
 # VSCode data
 pkg/.vscode/launch.json
