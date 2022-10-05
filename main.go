@@ -10,6 +10,7 @@ import (
 	application "github.com/MindHunter86/aniliSeeder/app"
 	appcli "github.com/MindHunter86/aniliSeeder/cli"
 	"github.com/MindHunter86/aniliSeeder/deluge"
+	"github.com/MindHunter86/aniliSeeder/swarm"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -219,6 +220,24 @@ func main() {
 			Usage: "",
 			Action: func(c *cli.Context) error {
 				appcli.TestDial(c, "fuckyouunixscoket")
+				return nil
+			},
+		},
+		&cli.Command{
+			Name:  "swarmtest",
+			Usage: "",
+			Action: func(c *cli.Context) error {
+				srv := swarm.NewMinion()
+				srv.Bootstrap()
+				return nil
+			},
+		},
+		&cli.Command{
+			Name:  "swarm",
+			Usage: "",
+			Action: func(c *cli.Context) error {
+				srv := swarm.NewMaster()
+				srv.Bootstrap()
 				return nil
 			},
 		},

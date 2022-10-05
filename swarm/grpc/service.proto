@@ -1,0 +1,20 @@
+syntax = "proto3";
+option go_package = "github.com/MindHunter86/aniliSeeder/swarm/grpc";
+
+package grpc;
+
+service Master {
+    rpc InitialPhase (MasterRequest) returns (MasterReply) {}
+}
+
+message MasterRequest {
+    string Version = 1;
+    string AccessKey = 2;
+    int64 DataPathFreeSpace = 3;
+    string PublicIP = 4;
+}
+
+message MasterReply {
+    string Version = 1;
+    bool RegistrationStatus = 2;
+}
