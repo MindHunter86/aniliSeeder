@@ -4,10 +4,11 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
-	"fmt"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/MindHunter86/aniliSeeder/deluge"
@@ -50,8 +51,11 @@ func NewMinion() *Minion {
 type Worker struct {
 	gConn *grpc.ClientConn
 
-	id string
+	id     string
+	config *WorkerConfig
 }
+
+type WorkerConfig struct{}
 
 func NewWorker(ctx context.Context) Swarm {
 	gCtx = ctx
@@ -79,31 +83,40 @@ func (m *Worker) Bootstrap() (e error) {
 	gLog.Debug().Msg("seems that connection has been established")
 	gLog.Debug().Msg("trying to complete init phase with master")
 
-	gLog.Debug().Msg("DEBUGGING!")
+	c := pb.NewMasterServiceClient(m.gConn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
 	var req = &pb.RegistrationRequest{}
 	if req, e = m.getRegistrationRequest(); e != nil {
 		return
 	}
 
-	fmt.Println(req.Torrent)
+	var rpl *pb.RegistrationReply
+	if rpl, e = c.Register(ctx, req); e != nil {
+		gLog.Warn().Err(e).Msg("there is some errors while proccessing grpc request in registration phase")
 
-	gLog.Debug().Msg("DEBUGGING2!")
+		estatus, _ := status.FromError(e)
+		gLog.Error().Str("error_code", estatus.Code().String()).Str("error_message", estatus.Message()).Msg("")
 
-	// c := pb.NewMasterServiceClient(m.gConn)
-	// ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	// defer cancel()
+		return
+	}
 
-	// var req = &pb.RegistrationRequest{}
+	var cfg *WorkerConfig
+	if cfg, e = m.parseRegistrationReply(rpl); e != nil {
+		return
+	}
 
-	// var rpl *pb.RegistrationReply
-	// if rpl, e = c.Register(ctx, nil); e != nil {
-	// 	return
-	// }
-
-	//
+	if e = m.Setup(cfg); e != nil {
+		return
+	}
 
 	return m.run()
+}
+
+// TODO
+func (*Worker) Setup(cfg *WorkerConfig) (e error) {
+	return
 }
 
 func (m *Worker) run() error {
@@ -143,6 +156,21 @@ func (*Worker) getCACertPool() (*x509.CertPool, error) {
 // 	return
 // }
 
+func (m *Worker) parseRegistrationReply(rpl *pb.RegistrationReply) (_ *WorkerConfig, e error) {
+	var cfg *WorkerConfig
+
+	var buf []byte
+	if buf, e = json.Marshal(rpl); e != nil {
+		return
+	}
+
+	if e = json.Unmarshal(buf, &cfg); e != nil {
+		return
+	}
+
+	return cfg, e
+}
+
 func (m *Worker) getRegistrationRequest() (_ *pb.RegistrationRequest, e error) {
 	m.id = uuid.NewV4().String()
 
@@ -150,10 +178,6 @@ func (m *Worker) getRegistrationRequest() (_ *pb.RegistrationRequest, e error) {
 	if trrs, e = m.getTorrents(); e != nil {
 		return
 	}
-
-	// if _, e = m.CheckGRPCPayload(trrs); e != nil {
-	// 	return
-	// }
 
 	return &pb.RegistrationRequest{
 		WorkerId:      m.id,
