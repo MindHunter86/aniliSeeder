@@ -8,20 +8,26 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"math/big"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
+	"github.com/MindHunter86/aniliSeeder/deluge"
 	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
 	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type Master struct {
@@ -29,6 +35,8 @@ type Master struct {
 
 	ln      net.Listener
 	gserver *grpc.Server
+
+	sync.RWMutex
 	workers map[string]*Worker
 }
 
@@ -175,7 +183,71 @@ func (*Master) createPublicPrivatePair() (_, _ []byte, e error) {
 // 	return err
 // }
 
-func (*Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *pb.RegistrationReply, e error) {
-	//
-	return
+func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *pb.RegistrationReply, e error) {
+	gLog.Info().Str("worker_id", req.WorkerId).Msg("new client has been connected")
+	gLog.Info().Str("worker_id", req.WorkerId).Msg("new client validation phase...")
+
+	switch {
+	case req.GetWorkerId() == "":
+		return nil, status.Errorf(codes.InvalidArgument, "")
+	case m.workers[req.GetWorkerId()] != nil:
+		return nil, status.Errorf(codes.AlreadyExists, "")
+	case req.AccessSecret != gCli.String("swarm-master-secret"):
+		return nil, status.Errorf(codes.Unauthenticated, "")
+	case req.WorkerVersion != gCli.App.Version:
+		gLog.Warn().Str("worker_id", req.WorkerId).Str("worker_ver", req.WorkerVersion).
+			Msg("connected client has higher/lower version")
+	case req.WDFreeSpace == 0:
+		return nil, status.Errorf(codes.InvalidArgument, "")
+	}
+
+	gLog.Info().Str("worker_id", req.WorkerId).Msg("trying parse torrent list from new client...")
+	var trrs []*deluge.Torrent
+
+	var buf []byte
+	if buf, e = json.Marshal(req.Torrent); e != nil {
+		gLog.Error().Err(e).Msg("there is an error while proccessing new client's torrent list")
+		return nil, status.Errorf(codes.Internal, "")
+	}
+
+	if e = json.Unmarshal(buf, &trrs); e != nil {
+		gLog.Error().Err(e).Msg("there is an error while proccessing new client's torrent list")
+		return nil, status.Errorf(codes.Internal, "")
+	}
+
+	gLog.Debug().Str("worker_id", req.WorkerId).Int("torrents_count", len(trrs)).Msg("torrent list parsing from the client has been completed")
+	gLog.Info().Str("worker_id", req.WorkerId).Msg("client validation seems ok; registering new worker...")
+
+	var wtrrs map[string]*deluge.Torrent
+	for _, t := range trrs {
+		wtrrs[t.Hash] = &deluge.Torrent{
+			ActiveTime:    t.ActiveTime,
+			Ratio:         t.Ratio,
+			IsFinished:    t.IsFinished,
+			IsSeed:        t.IsSeed,
+			Name:          t.Name,
+			NumPeers:      t.NumPeers,
+			NumPieces:     t.NumPieces,
+			NumSeeds:      t.NumSeeds,
+			PieceLength:   t.PieceLength,
+			SeedingTime:   t.SeedingTime,
+			State:         t.State,
+			TotalPeers:    t.TotalPeers,
+			TotalSeeds:    t.TotalSeeds,
+			TotalDone:     t.TotalDone,
+			TotalUploaded: t.TotalUploaded,
+			TotalSize:     t.TotalSize,
+		}
+	}
+
+	m.Lock()
+	m.workers[req.WorkerId] = &Worker{
+		Version:     req.WorkerVersion,
+		WDFreeSpace: req.WDFreeSpace,
+		Torrents:    wtrrs,
+	}
+	m.Unlock()
+
+	gLog.Info().Str("worker_id", req.WorkerId).Msg("new client registration has been completed")
+	return &pb.RegistrationReply{Config: &structpb.Struct{}}, e
 }

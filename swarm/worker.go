@@ -49,6 +49,10 @@ func NewMinion() *Minion {
 // =================
 
 type Worker struct {
+	Version     string
+	WDFreeSpace uint64
+	Torrents    map[string]*deluge.Torrent
+
 	gConn *grpc.ClientConn
 
 	id     string
