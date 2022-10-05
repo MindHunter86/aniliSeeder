@@ -175,7 +175,7 @@ func (*Master) createPublicPrivatePair() (_, _ []byte, e error) {
 // 	return err
 // }
 
-func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *pb.RegistrationReply, e error) {
+func (*Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *pb.RegistrationReply, e error) {
 	//
 	return
 }

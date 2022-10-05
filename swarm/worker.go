@@ -156,7 +156,7 @@ func (*Worker) getCACertPool() (*x509.CertPool, error) {
 // 	return
 // }
 
-func (m *Worker) parseRegistrationReply(rpl *pb.RegistrationReply) (_ *WorkerConfig, e error) {
+func (*Worker) parseRegistrationReply(rpl *pb.RegistrationReply) (_ *WorkerConfig, e error) {
 	var cfg *WorkerConfig
 
 	var buf []byte
