@@ -1,20 +1,29 @@
-syntax = "proto3";
+yntax = "proto3";
 option go_package = "github.com/MindHunter86/aniliSeeder/swarm/grpc";
 
 package grpc;
 
-service Master {
-    rpc InitialPhase (MasterRequest) returns (MasterReply) {}
+import "google/protobuf/struct.proto";
+
+service MinionService {
 }
 
-message MasterRequest {
-    string Version = 1;
-    string AccessKey = 2;
-    int64 DataPathFreeSpace = 3;
-    string PublicIP = 4;
+service MasterService {
+    rpc Register (RegistrationRequest) returns (RegistrationReply) {}
 }
 
-message MasterReply {
-    string Version = 1;
-    bool RegistrationStatus = 2;
+message RegistrationRequest {
+    // initial phase
+    string MinionId = 1;
+    string AccessSecret = 2;
+    string MinionVersion = 3;
+    int64 WDFreeSpace = 4;
+
+    // registration phase
+    repeated google.protobuf.Struct Torrent = 5;
+}
+
+message RegistrationReply {
+    // setup phase
+    google.protobuf.Struct Config = 2;
 }
