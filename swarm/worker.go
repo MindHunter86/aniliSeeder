@@ -7,8 +7,11 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/MindHunter86/aniliSeeder/deluge"
 	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
+	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 
@@ -49,8 +52,12 @@ type Worker struct {
 	id string
 }
 
-func NewWorker(c *cli.Context, l *zerolog.Logger, ctx context.Context) Swarm {
-	gCli, gLog, gCtx = c, l, ctx
+func NewWorker(ctx context.Context) Swarm {
+	gCtx = ctx
+	gLog = gCtx.Value(utils.ContextKeyLogger).(*zerolog.Logger)
+	gCli = gCtx.Value(utils.ContextKeyCliContext).(*cli.Context)
+	gDeluge = gCtx.Value(utils.ContextKeyDelugeClient).(*deluge.Client)
+
 	return &Worker{}
 }
 
@@ -127,10 +134,23 @@ func (*Worker) getCACertPool() (*x509.CertPool, error) {
 func (m *Worker) getRegistrationRequest() (_ *pb.RegistrationRequest, e error) {
 	m.id = uuid.NewV4().String()
 
+	var trrs []*structpb.Struct
+	if trrs, e = m.getTorrents(); e != nil {
+		return
+	}
+
 	return &pb.RegistrationRequest{
 		WorkerId:      m.id,
 		WorkerVersion: gCli.App.Version,
 		AccessSecret:  gCli.String("swarm-master-secret"),
-		// !!
+		WDFreeSpace:   deluge.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
+		Torrent:       trrs,
 	}, e
+}
+
+func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
+	var trrs []*deluge.Torrent
+
+	var strmap = make(map[string]interface{}, len(trrs))
+	return
 }

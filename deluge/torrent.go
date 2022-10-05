@@ -8,6 +8,12 @@ import (
 	delugeclient "github.com/MindHunter86/go-libdeluge"
 )
 
+type (
+	Torrent struct {
+		fuck string
+	}
+)
+
 func (m *Client) GetTorrentsStatus() (e error) {
 	var trrs map[string]*delugeclient.TorrentStatus
 	if trrs, e = m.deluge.TorrentsStatus(delugeclient.StateUnspecified, nil); e != nil {
@@ -89,4 +95,8 @@ func (m *Client) GetWeakTorrents() ([]*delugeclient.TorrentStatus, error) {
 	}
 
 	return weakTrrs, e
+}
+
+func (*Client) getTorrentsV2() (_ []*Torrent, e error) {
+	return
 }

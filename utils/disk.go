@@ -1,4 +1,4 @@
-package p2p
+package utils
 
 import (
 	"golang.org/x/sys/unix"
@@ -11,7 +11,7 @@ func CheckDirectoryFreeSpace(dir string) uint64 {
 }
 
 // Input `size` in bytes
-func GetMBytesToBytes(size uint64) uint64 {
+func GetMBytesFromBytes(size uint64) uint64 {
 	return size / 1024 / 1024
 }
 

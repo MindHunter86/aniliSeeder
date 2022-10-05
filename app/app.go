@@ -10,6 +10,7 @@ import (
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
 	"github.com/MindHunter86/aniliSeeder/swarm"
+	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -35,11 +36,6 @@ func NewApp(c *cli.Context, l *zerolog.Logger) *App {
 }
 
 func (m *App) Bootstrap() (e error) {
-	kernSignal := make(chan os.Signal, 1)
-	signal.Notify(kernSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGTERM, syscall.SIGQUIT)
-
-	gCtx, gAbort = context.WithCancel(context.WithValue(context.Background(), contextKeyKernSignal, kernSignal))
-
 	var wg = sync.WaitGroup{}
 	var echan = make(chan error, 32)
 
@@ -48,24 +44,30 @@ func (m *App) Bootstrap() (e error) {
 	defer gLog.Debug().Msg("waiting for opened goroutines")
 	defer gAbort()
 
+	gCtx, gAbort = context.WithCancel(context.Background())
+	gCtx = context.WithValue(gCtx, utils.ContextKeyLogger, gLog)
+	gCtx = context.WithValue(gCtx, utils.ContextKeyCliContext, gCli)
+
 	// main event loop
 	wg.Add(1)
 	go m.loop(echan, wg.Done)
 
 	if gCli.Bool("swarm-is-master") {
-		// deluge RPC client
-		if gDeluge, e = deluge.NewClient(gCli, gLog); e != nil {
-			return
-		}
-
-		gRPC = swarm.NewWorker(gCli, gLog, gCtx)
-	} else {
 		// anilibria API
 		if gAniApi, e = anilibria.NewApiClient(gCli, gLog); e != nil {
 			return
 		}
 
+		gCtx = context.WithValue(gCtx, utils.ContextKeyAnilibriaClient, gAniApi)
 		// gRPC = swarm.NewMaster(gCli, gLog, gCtx)
+	} else {
+		// deluge RPC client
+		if gDeluge, e = deluge.NewClient(gCli, gLog); e != nil {
+			return
+		}
+
+		gCtx = context.WithValue(gCtx, utils.ContextKeyAnilibriaClient, gDeluge)
+		gRPC = swarm.NewWorker(gCtx)
 	}
 
 	// grpc master/worker setup
@@ -95,9 +97,8 @@ func (m *App) Bootstrap() (e error) {
 func (*App) loop(errs chan error, done func()) {
 	defer done()
 
-	// ??
-	// todo : review
-	kernSignal := gCtx.Value(contextKeyKernSignal).(chan os.Signal)
+	kernSignal := make(chan os.Signal, 1)
+	signal.Notify(kernSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGTERM, syscall.SIGQUIT)
 
 	gLog.Debug().Msg("initiate main event loop")
 	defer gLog.Debug().Msg("main event loop has been closed")

@@ -17,7 +17,7 @@ message RegistrationRequest {
     string WorkerId = 1;
     string AccessSecret = 2;
     string WorkerVersion = 3;
-    int64 WDFreeSpace = 4;
+    uint64 WDFreeSpace = 4;
 
     // registration phase
     repeated google.protobuf.Struct Torrent = 5;
