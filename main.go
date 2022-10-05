@@ -106,6 +106,7 @@ func main() {
 		&cli.StringFlag{
 			Name:  "swarm-master-listen",
 			Usage: "",
+			Value: "localhost:8081",
 		},
 		&cli.StringFlag{
 			Name:  "swarm-master-addr",

@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"sync"
@@ -56,7 +55,7 @@ func (m *App) Bootstrap() (e error) {
 		}
 
 		gCtx = context.WithValue(gCtx, utils.ContextKeyAnilibriaClient, gAniApi)
-		// gRPC = swarm.NewMaster(gCli, gLog, gCtx)
+		gRPC = swarm.NewMaster(gCtx)
 	} else {
 		// deluge RPC client
 		if gDeluge, e = deluge.NewClient(gCli, gLog); e != nil {
@@ -68,8 +67,8 @@ func (m *App) Bootstrap() (e error) {
 	}
 
 	// grpc master/worker setup
+	wg.Add(1)
 	go func(errs chan error, done func()) {
-		log.Println("1")
 		if err := gRPC.Bootstrap(); err != nil {
 			errs <- err
 		}

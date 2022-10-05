@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"math/big"
 	"net"
 	"sync"
@@ -25,7 +26,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -46,16 +48,18 @@ func NewMaster(ctx context.Context) *Master {
 	gCli = gCtx.Value(utils.ContextKeyCliContext).(*cli.Context)
 	gAniApi = gCtx.Value(utils.ContextKeyAnilibriaClient).(*anilibria.ApiClient)
 
-	return &Master{}
+	return &Master{
+		workers: make(map[string]*Worker),
+	}
 }
 
 func (m *Master) Bootstrap() (e error) {
 	gLog.Debug().Msg("generating pub\\priv key pair...")
 
-	var crt tls.Certificate
-	if crt, e = m.getTLSCertificate(); e != nil {
-		return
-	}
+	// var crt tls.Certificate
+	// if crt, e = m.getTLSCertificate(); e != nil {
+	// 	return
+	// }
 
 	gLog.Debug().Msg("trying to open grpc socket for master listening...")
 
@@ -65,24 +69,20 @@ func (m *Master) Bootstrap() (e error) {
 
 	gLog.Debug().Msg("grpc socket seems is ok, setuping grpc...")
 
-	var creds = credentials.NewServerTLSFromCert(&crt)
-	m.gserver = grpc.NewServer(grpc.Creds(creds))
+	// var creds = credentials.NewServerTLSFromCert(&crt)
+	// m.gserver = grpc.NewServer(grpc.Creds(creds))
+	m.gserver = grpc.NewServer()
 	pb.RegisterMasterServiceServer(m.gserver, m)
 
 	gLog.Debug().Msg("grpc server has been setuped; starting listening for worker connections...")
 
-	defer func() {
+	go func() {
 		if err := m.close(); err != nil {
-			gLog.Warn().Err(err).Msg("there are somee errors after closing grpc server socket")
+			gLog.Warn().Err(err).Msg("there are some errors after closing grpc server socket")
 		}
 	}()
 
 	gLog.Debug().Msg("grpc master server has been setuped")
-	return
-}
-
-func (m *Master) Serve(done func()) (e error) {
-	defer done()
 
 	gLog.Debug().Msg("starting grpc master server ...")
 	return m.gserver.Serve(m.ln)
@@ -90,7 +90,7 @@ func (m *Master) Serve(done func()) (e error) {
 
 func (m *Master) close() error {
 	<-gCtx.Done()
-	gLog.Warn().Msg("context done() has been caught; closing grpc server socket...")
+	gLog.Info().Msg("context done() has been caught; closing grpc server socket...")
 
 	m.gserver.Stop()
 	return m.ln.Close()
@@ -184,8 +184,12 @@ func (*Master) createPublicPrivatePair() (_, _ []byte, e error) {
 // }
 
 func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *pb.RegistrationReply, e error) {
-	gLog.Info().Str("worker_id", req.WorkerId).Msg("new client has been connected")
-	gLog.Info().Str("worker_id", req.WorkerId).Msg("new client validation phase...")
+	p, _ := peer.FromContext(ctx)
+	md, _ := metadata.FromIncomingContext(ctx)
+
+	gLog.Info().Str("worker_id", req.WorkerId).Str("worker_ip", p.Addr.String()).Strs("client_ua", md.Get("user-agent")).
+		Msg("new client has been connected")
+	gLog.Info().Str("worker_id", req.WorkerId).Msg("new client validation phase running...")
 
 	switch {
 	case req.GetWorkerId() == "":
@@ -218,8 +222,12 @@ func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *
 	gLog.Debug().Str("worker_id", req.WorkerId).Int("torrents_count", len(trrs)).Msg("torrent list parsing from the client has been completed")
 	gLog.Info().Str("worker_id", req.WorkerId).Msg("client validation seems ok; registering new worker...")
 
-	var wtrrs map[string]*deluge.Torrent
+	var wtrrs = make(map[string]*deluge.Torrent)
 	for _, t := range trrs {
+		if t == nil || t.Hash == "" {
+			gLog.Warn().Msg("there is strange torrent in the list from the client")
+		}
+
 		wtrrs[t.Hash] = &deluge.Torrent{
 			ActiveTime:    t.ActiveTime,
 			Ratio:         t.Ratio,
@@ -239,6 +247,10 @@ func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *
 			TotalSize:     t.TotalSize,
 		}
 	}
+
+	log.Println(req.WDFreeSpace)
+	log.Println(req.WorkerVersion)
+	log.Println(wtrrs)
 
 	m.Lock()
 	m.workers[req.WorkerId] = &Worker{

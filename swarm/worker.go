@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -72,15 +72,14 @@ func NewWorker(ctx context.Context) Swarm {
 
 func (m *Worker) Bootstrap() (e error) {
 	gLog.Debug().Msg("trying access to ca...")
-	var cpool *x509.CertPool
-	if cpool, e = m.getCACertPool(); e != nil {
-		return
-	}
+	// var cpool *x509.CertPool
+	// if cpool, e = m.getCACertPool(); e != nil {
+	// 	return
+	// }
 
 	gLog.Debug().Msg("trying to connect to master...")
-	if m.gConn, e = grpc.Dial(gCli.String("swarm-master-addr"), grpc.WithTransportCredentials(
-		credentials.NewClientTLSFromCert(cpool, "")),
-	); e != nil {
+	// credentials.NewClientTLSFromCert(cpool, "")),
+	if m.gConn, e = grpc.Dial(gCli.String("swarm-master-addr"), grpc.WithTransportCredentials(insecure.NewCredentials())); e != nil {
 		return
 	}
 
@@ -106,6 +105,8 @@ func (m *Worker) Bootstrap() (e error) {
 		return
 	}
 
+	gLog.Debug().Msg("registration has been completed; parsing config data from master...")
+
 	var cfg *WorkerConfig
 	if cfg, e = m.parseRegistrationReply(rpl); e != nil {
 		return
@@ -115,6 +116,7 @@ func (m *Worker) Bootstrap() (e error) {
 		return
 	}
 
+	gLog.Debug().Msg("the registration phase finished; waiting for commands from the master")
 	return m.run()
 }
 
