@@ -3,12 +3,10 @@ package swarm
 import (
 	"context"
 	"crypto/x509"
-	"log"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 
 	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
 	"github.com/rs/zerolog"
@@ -23,25 +21,25 @@ func NewMinion() *Minion {
 	return &Minion{}
 }
 
-func (*Minion) Bootstrap() error {
-	conn, err := grpc.Dial("localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
+// func (*Minion) Bootstrap() error {
+// 	conn, err := grpc.Dial("localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()))
+// 	if err != nil {
+// 		log.Fatalf("did not connect: %v", err)
+// 	}
+// 	defer conn.Close()
 
-	c := pb.NewMasterClient(conn)
+// 	c := pb.NewMasterClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+// 	defer cancel()
 
-	r, err := c.InitialPhase(ctx, &pb.MasterRequest{AccessKey: "fuckyounigga"})
-	if err != nil {
-		log.Fatalf("could not greet: %v", err)
-	}
-	log.Printf("Greeting: %s", r.GetVersion())
-	return nil
-}
+// 	r, err := c.InitialPhase(ctx, &pb.MasterRequest{AccessKey: "fuckyounigga"})
+// 	if err != nil {
+// 		log.Fatalf("could not greet: %v", err)
+// 	}
+// 	log.Printf("Greeting: %s", r.GetVersion())
+// 	return nil
+// }
 
 // =================
 
@@ -51,7 +49,7 @@ type Worker struct {
 	id string
 }
 
-func NewWorker(c *cli.Context, l *zerolog.Logger, ctx context.Context) *Worker {
+func NewWorker(c *cli.Context, l *zerolog.Logger, ctx context.Context) Swarm {
 	gCli, gLog, gCtx = c, l, ctx
 	return &Worker{}
 }
@@ -95,7 +93,7 @@ func (m *Worker) run() error {
 }
 
 func (m *Worker) desctruct() error {
-	return m.gClient.Close()
+	return m.gConn.Close()
 }
 
 func (*Worker) getCACertPool() (*x509.CertPool, error) {

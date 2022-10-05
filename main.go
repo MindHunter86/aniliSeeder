@@ -244,8 +244,8 @@ func main() {
 			Name:  "swarm",
 			Usage: "",
 			Action: func(c *cli.Context) error {
-				srv := swarm.NewMaster()
-				srv.Bootstrap()
+				// srv := swarm.NewMaster()
+				// srv.Bootstrap()
 				return nil
 			},
 		},

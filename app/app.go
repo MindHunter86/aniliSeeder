@@ -9,6 +9,7 @@ import (
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
+	"github.com/MindHunter86/aniliSeeder/swarm"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -24,6 +25,7 @@ var (
 
 	gAniApi *anilibria.ApiClient
 	gDeluge *deluge.Client
+	gRPC    swarm.Swarm
 )
 
 func NewApp(c *cli.Context, l *zerolog.Logger) *App {
@@ -39,23 +41,40 @@ func (m *App) Bootstrap() (e error) {
 	gCtx, gAbort = context.WithCancel(context.WithValue(context.Background(), contextKeyKernSignal, kernSignal))
 
 	var wg = sync.WaitGroup{}
+	var echan = make(chan error, 32)
+
+	defer m.checkErrorsBeforeClosing(echan)
 	defer wg.Wait()
 	defer gLog.Debug().Msg("waiting for opened goroutines")
 	defer gAbort()
 
 	// main event loop
 	wg.Add(1)
-	go m.loop(wg.Done)
+	go m.loop(echan, wg.Done)
 
-	// anilibria API
-	if gAniApi, e = anilibria.NewApiClient(gCli, gLog); e != nil {
-		return
+	if gCli.Bool("swarm-is-master") {
+		// deluge RPC client
+		if gDeluge, e = deluge.NewClient(gCli, gLog); e != nil {
+			return
+		}
+
+		gRPC = swarm.NewWorker(gCli, gLog, gCtx)
+	} else {
+		// anilibria API
+		if gAniApi, e = anilibria.NewApiClient(gCli, gLog); e != nil {
+			return
+		}
+
+		// gRPC = swarm.NewMaster(gCli, gLog, gCtx)
 	}
 
-	// deluge RPC client
-	if gDeluge, e = deluge.NewClient(gCli, gLog); e != nil {
-		return
-	}
+	// grpc master/worker setup
+	go func(errs chan error, done func()) {
+		defer done()
+		if err := gRPC.Bootstrap(); err != nil {
+			errs <- err
+		}
+	}(echan, wg.Done)
 
 	// another subsystems
 	// ...
@@ -73,9 +92,11 @@ func (m *App) Bootstrap() (e error) {
 	return
 }
 
-func (*App) loop(done func()) {
+func (*App) loop(errs chan error, done func()) {
 	defer done()
 
+	// ??
+	// todo : review
 	kernSignal := gCtx.Value(contextKeyKernSignal).(chan os.Signal)
 
 	gLog.Debug().Msg("initiate main event loop")
@@ -88,9 +109,20 @@ LOOP:
 			gLog.Info().Msg("kernel signal has been caught; initiate application closing...")
 			gAbort()
 			break LOOP
+		case err := <-errs:
+			gLog.Error().Err(err).Msg("there are internal errors from one of application submodule")
+			gLog.Warn().Msg("calling abort()...")
+			gAbort()
 		case <-gCtx.Done():
+			gLog.Info().Msg("internal abort() has been caught; initiate application closing...")
 			break LOOP
 		}
+	}
+}
+
+func (*App) checkErrorsBeforeClosing(errs chan error) {
+	for err := range errs {
+		gLog.Warn().Err(err).Msg("an error has been detected while application trying close the submodules")
 	}
 }
 
