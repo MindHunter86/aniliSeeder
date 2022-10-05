@@ -104,14 +104,19 @@ func main() {
 			Usage: "",
 		},
 		&cli.StringFlag{
+			Name:  "swarm-master-listen",
+			Usage: "",
+		},
+		&cli.StringFlag{
 			Name:  "swarm-master-addr",
 			Usage: "",
 			Value: "localhost:8081",
 		},
 		&cli.StringFlag{
-			Name:  "swarm-master-secret",
-			Usage: "",
-			Value: "randomsecretkey",
+			Name:    "swarm-master-secret",
+			Usage:   "",
+			Value:   "randomsecretkey",
+			EnvVars: []string{"SWARM_MASTER_SECRETKEY"},
 		},
 
 		// queue settings
@@ -214,7 +219,6 @@ func main() {
 			Name:  "serve",
 			Usage: "",
 			Action: func(c *cli.Context) error {
-				log.Debug().Msg("ready for serving...")
 				a := application.NewApp(c, &log)
 				return a.Bootstrap()
 			},
@@ -223,21 +227,10 @@ func main() {
 			Name:  "test",
 			Usage: "",
 			Action: func(c *cli.Context) error {
-				appcli.TestDial(c, "fuckyouunixscoket")
+				appcli.TestDial(c, "")
 				return nil
 			},
 		},
-		// &cli.Command{
-		// 	Name:  "swarmtest",
-		// 	Usage: "",
-		// 	Action: func(c *cli.Context) error {
-		// 		swarm.NewWorker(c, &log, context.Background())
-		// 		return nil
-		// 		// srv := swarm.NewMinion()
-		// 		// srv.Bootstrap()
-		// 		// return nil
-		// 	},
-		// },
 		&cli.Command{
 			Name:  "swarm",
 			Usage: "",

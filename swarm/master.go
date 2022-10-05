@@ -10,36 +10,73 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"net"
 	"time"
+
+	"github.com/MindHunter86/aniliSeeder/anilibria"
+	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
+	"github.com/MindHunter86/aniliSeeder/utils"
+	"github.com/rs/zerolog"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type Master struct {
-	// pb.UnimplementedMasterServer
+	pb.UnimplementedMasterServiceServer
+
+	ln      net.Listener
+	gserver *grpc.Server
+	workers map[string]*Worker
 }
 
-func NewMaster() *Master {
+func NewMaster(ctx context.Context) *Master {
+	gCtx = ctx
+	gLog = gCtx.Value(utils.ContextKeyLogger).(*zerolog.Logger)
+	gCli = gCtx.Value(utils.ContextKeyCliContext).(*cli.Context)
+	gAniApi = gCtx.Value(utils.ContextKeyAnilibriaClient).(*anilibria.ApiClient)
+
 	return &Master{}
 }
 
-// func (*Master) InitialPhase(ctx context.Context, in *pb.MasterRequest) (*pb.MasterReply, error) {
-// 	log.Printf("Received: %v", in.GetAccessKey())
-// 	return &pb.MasterReply{Version: "Hello " + in.GetAccessKey()}, nil
-// }
+func (m *Master) Bootstrap() (e error) {
+	gLog.Debug().Msg("trying to open grpc socket for master listening...")
 
-// func (*Master) Bootstrap() error {
-// 	lis, err := net.Listen("tcp", "localhost:8081")
-// 	if err != nil {
-// 		log.Fatalf("failed to listen: %v", err)
-// 	}
-// 	s := grpc.NewServer()
-// 	pb.RegisterMasterServer(s, &Master{})
-// 	log.Printf("server listening at %v", lis.Addr())
-// 	if err := s.Serve(lis); err != nil {
-// 		log.Fatalf("failed to serve: %v", err)
-// 	}
+	if m.ln, e = net.Listen("tcp", gCli.String("swarm-master-listen")); e != nil {
+		return
+	}
 
-// 	return err
-// }
+	gLog.Debug().Msg("grpc socket seems is ok, setuping grpc...")
+
+	m.gserver = grpc.NewServer()
+	pb.RegisterMasterServiceServer(m.gserver, m)
+
+	gLog.Debug().Msg("grpc server has been setuped; starting listening for worker connections...")
+
+	defer func() {
+		if err := m.close(); err != nil {
+			gLog.Warn().Err(err).Msg("there are somee errors after closing grpc server socket")
+		}
+	}()
+
+	gLog.Debug().Msg("grpc master server has been setuped")
+	return
+}
+
+func (m *Master) Serve(done func()) (e error) {
+	defer done()
+
+	gLog.Debug().Msg("starting grpc master server ...")
+	return m.gserver.Serve(m.ln)
+}
+
+func (m *Master) close() error {
+	<-gCtx.Done()
+	gLog.Warn().Msg("context done() has been caught; closing grpc server socket...")
+
+	m.gserver.Stop()
+	return m.ln.Close()
+}
 
 func (*Master) createPublicPrivatePair() (_, _ []byte, e error) {
 	cert := &x509.Certificate{
@@ -93,4 +130,29 @@ func (*Master) createPublicPrivatePair() (_, _ []byte, e error) {
 	}
 
 	return cbuf.Bytes(), pbuf.Bytes(), nil
+}
+
+// func (*Master) InitialPhase(ctx context.Context, in *pb.MasterRequest) (*pb.MasterReply, error) {
+// 	log.Printf("Received: %v", in.GetAccessKey())
+// 	return &pb.MasterReply{Version: "Hello " + in.GetAccessKey()}, nil
+// }
+
+// func (*Master) Bootstrap() error {
+// 	lis, err := net.Listen("tcp", "localhost:8081")
+// 	if err != nil {
+// 		log.Fatalf("failed to listen: %v", err)
+// 	}
+// 	s := grpc.NewServer()
+// 	pb.RegisterMasterServer(s, &Master{})
+// 	log.Printf("server listening at %v", lis.Addr())
+// 	if err := s.Serve(lis); err != nil {
+// 		log.Fatalf("failed to serve: %v", err)
+// 	}
+
+// 	return err
+// }
+
+func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *pb.RegistrationReply, e error) {
+	//
+	return
 }

@@ -45,7 +45,7 @@ func (m *App) Bootstrap() (e error) {
 	gCtx = context.WithValue(gCtx, utils.ContextKeyCliContext, gCli)
 
 	defer m.checkErrorsBeforeClosing(echan)
-	defer wg.Wait()
+	defer wg.Wait() // !!
 	defer gLog.Debug().Msg("waiting for opened goroutines")
 	defer gAbort()
 
@@ -66,7 +66,6 @@ func (m *App) Bootstrap() (e error) {
 		gCtx = context.WithValue(gCtx, utils.ContextKeyDelugeClient, gDeluge)
 		gRPC = swarm.NewWorker(gCtx)
 	}
-	log.Println("1")
 
 	// grpc master/worker setup
 	go func(errs chan error, done func()) {
@@ -74,7 +73,6 @@ func (m *App) Bootstrap() (e error) {
 		if err := gRPC.Bootstrap(); err != nil {
 			errs <- err
 		}
-		log.Println("1")
 
 		done()
 	}(echan, wg.Done)
@@ -127,13 +125,13 @@ LOOP:
 }
 
 func (*App) checkErrorsBeforeClosing(errs chan error) {
-	// if len(errs) == 0 {
-	// 	return
-	// }
+	if len(errs) == 0 {
+		return
+	}
 
-	// for err := range errs {
-	// 	gLog.Warn().Err(err).Msg("an error has been detected while application trying close the submodules")
-	// }
+	for err := range errs {
+		gLog.Warn().Err(err).Msg("an error has been detected while application trying close the submodules")
+	}
 }
 
 // todo
