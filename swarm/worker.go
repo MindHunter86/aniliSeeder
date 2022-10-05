@@ -3,7 +3,8 @@ package swarm
 import (
 	"context"
 	"crypto/x509"
-	"time"
+	"encoding/json"
+	"fmt"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -78,16 +79,27 @@ func (m *Worker) Bootstrap() (e error) {
 	gLog.Debug().Msg("seems that connection has been established")
 	gLog.Debug().Msg("trying to complete init phase with master")
 
-	c := pb.NewMasterServiceClient(m.gConn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	gLog.Debug().Msg("DEBUGGING!")
 
 	var req = &pb.RegistrationRequest{}
-
-	var rpl *pb.RegistrationReply
-	if rpl, e = c.Register(ctx, nil); e != nil {
+	if req, e = m.getRegistrationRequest(); e != nil {
 		return
 	}
+
+	fmt.Println(req.Torrent)
+
+	gLog.Debug().Msg("DEBUGGING2!")
+
+	// c := pb.NewMasterServiceClient(m.gConn)
+	// ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	// defer cancel()
+
+	// var req = &pb.RegistrationRequest{}
+
+	// var rpl *pb.RegistrationReply
+	// if rpl, e = c.Register(ctx, nil); e != nil {
+	// 	return
+	// }
 
 	//
 
@@ -143,14 +155,23 @@ func (m *Worker) getRegistrationRequest() (_ *pb.RegistrationRequest, e error) {
 		WorkerId:      m.id,
 		WorkerVersion: gCli.App.Version,
 		AccessSecret:  gCli.String("swarm-master-secret"),
-		WDFreeSpace:   deluge.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
+		WDFreeSpace:   utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
 		Torrent:       trrs,
 	}, e
 }
 
 func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 	var trrs []*deluge.Torrent
+	var strmap = make([]*structpb.Struct, len(trrs))
 
-	var strmap = make(map[string]interface{}, len(trrs))
-	return
+	var buf []byte
+	if buf, e = json.Marshal(trrs); e != nil {
+		return
+	}
+
+	if e = json.Unmarshal(buf, &strmap); e != nil {
+		return
+	}
+
+	return strmap, e
 }

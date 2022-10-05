@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log"
 	"os"
 	"os/signal"
 	"sync"
@@ -39,18 +40,14 @@ func (m *App) Bootstrap() (e error) {
 	var wg = sync.WaitGroup{}
 	var echan = make(chan error, 32)
 
-	defer m.checkErrorsBeforeClosing(echan)
-	defer wg.Wait()
-	defer gLog.Debug().Msg("waiting for opened goroutines")
-	defer gAbort()
-
 	gCtx, gAbort = context.WithCancel(context.Background())
 	gCtx = context.WithValue(gCtx, utils.ContextKeyLogger, gLog)
 	gCtx = context.WithValue(gCtx, utils.ContextKeyCliContext, gCli)
 
-	// main event loop
-	wg.Add(1)
-	go m.loop(echan, wg.Done)
+	defer m.checkErrorsBeforeClosing(echan)
+	defer wg.Wait()
+	defer gLog.Debug().Msg("waiting for opened goroutines")
+	defer gAbort()
 
 	if gCli.Bool("swarm-is-master") {
 		// anilibria API
@@ -66,20 +63,28 @@ func (m *App) Bootstrap() (e error) {
 			return
 		}
 
-		gCtx = context.WithValue(gCtx, utils.ContextKeyAnilibriaClient, gDeluge)
+		gCtx = context.WithValue(gCtx, utils.ContextKeyDelugeClient, gDeluge)
 		gRPC = swarm.NewWorker(gCtx)
 	}
+	log.Println("1")
 
 	// grpc master/worker setup
 	go func(errs chan error, done func()) {
-		defer done()
+		log.Println("1")
 		if err := gRPC.Bootstrap(); err != nil {
 			errs <- err
 		}
+		log.Println("1")
+
+		done()
 	}(echan, wg.Done)
 
 	// another subsystems
 	// ...
+
+	// main event loop
+	wg.Add(1)
+	go m.loop(echan, wg.Done)
 
 	// socket cmds server
 	var sServer = NewSockServer()
@@ -122,9 +127,13 @@ LOOP:
 }
 
 func (*App) checkErrorsBeforeClosing(errs chan error) {
-	for err := range errs {
-		gLog.Warn().Err(err).Msg("an error has been detected while application trying close the submodules")
-	}
+	// if len(errs) == 0 {
+	// 	return
+	// }
+
+	// for err := range errs {
+	// 	gLog.Warn().Err(err).Msg("an error has been detected while application trying close the submodules")
+	// }
 }
 
 // todo
