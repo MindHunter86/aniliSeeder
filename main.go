@@ -99,6 +99,32 @@ func main() {
 			Usage:   "Flag is equivalent to verbose -1",
 		},
 
+		&cli.BoolFlag{
+			Name:  "swarm-is-master",
+			Usage: "",
+		},
+		&cli.StringFlag{
+			Name:  "swarm-master-listen",
+			Usage: "",
+			Value: "localhost:8081",
+		},
+		&cli.StringFlag{
+			Name:  "swarm-master-addr",
+			Usage: "",
+			Value: "localhost:8081",
+		},
+		&cli.StringFlag{
+			Name:  "swarm-custom-ca-path",
+			Usage: "",
+			Value: "",
+		},
+		&cli.StringFlag{
+			Name:    "swarm-master-secret",
+			Usage:   "",
+			Value:   "randomsecretkey",
+			EnvVars: []string{"SWARM_MASTER_SECRETKEY"},
+		},
+
 		// queue settings
 		// application settings
 		&cli.StringFlag{
@@ -199,7 +225,6 @@ func main() {
 			Name:  "serve",
 			Usage: "",
 			Action: func(c *cli.Context) error {
-				log.Debug().Msg("ready for serving...")
 				a := application.NewApp(c, &log)
 				return a.Bootstrap()
 			},
@@ -208,7 +233,16 @@ func main() {
 			Name:  "test",
 			Usage: "",
 			Action: func(c *cli.Context) error {
-				appcli.TestDial(c, "fuckyouunixscoket")
+				appcli.TestDial(c, "")
+				return nil
+			},
+		},
+		&cli.Command{
+			Name:  "swarm",
+			Usage: "",
+			Action: func(c *cli.Context) error {
+				// srv := swarm.NewMaster()
+				// srv.Bootstrap()
 				return nil
 			},
 		},

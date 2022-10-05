@@ -90,3 +90,60 @@ func (m *Client) GetWeakTorrents() ([]*delugeclient.TorrentStatus, error) {
 
 	return weakTrrs, e
 }
+
+type Torrent struct {
+	Hash          string
+	ActiveTime    int64
+	Ratio         float32
+	IsFinished    bool
+	IsSeed        bool
+	Name          string
+	NumPeers      int64
+	NumPieces     int64
+	NumSeeds      int64
+	PieceLength   int64
+	SeedingTime   int64
+	State         string
+	TotalDone     int64
+	TotalPeers    int64
+	TotalSeeds    int64
+	TotalSize     int64
+	TotalUploaded int64
+
+	// Files          []delugeclient.File
+	// Peers          []delugeclient.Peer
+	// FilePriorities []int64
+	// FileProgress   []float32
+}
+
+func (m *Client) GetTorrentsV2() (_ []*Torrent, e error) {
+	var trrs map[string]*delugeclient.TorrentStatus
+	if trrs, e = m.GetTorrents(); e != nil {
+		return
+	}
+
+	var trrs2 []*Torrent
+	for h, t := range trrs {
+		trrs2 = append(trrs2, &Torrent{
+			Hash:          h,
+			ActiveTime:    t.ActiveTime,
+			Ratio:         t.Ratio,
+			IsFinished:    t.IsFinished,
+			IsSeed:        t.IsSeed,
+			Name:          t.Name,
+			NumPeers:      t.NumPeers,
+			NumPieces:     t.NumPieces,
+			NumSeeds:      t.NumSeeds,
+			PieceLength:   t.PieceLength,
+			SeedingTime:   t.SeedingTime,
+			State:         t.State,
+			TotalPeers:    t.TotalPeers,
+			TotalSeeds:    t.TotalSeeds,
+			TotalDone:     t.TotalDone,
+			TotalUploaded: t.TotalUploaded,
+			TotalSize:     t.TotalSize,
+		})
+	}
+
+	return trrs2, e
+}
