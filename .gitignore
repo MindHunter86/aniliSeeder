@@ -33,3 +33,5 @@ pkg/.vscode/launch.json
 data/
 test/
 *.sock
+*.cert
+*.crt
