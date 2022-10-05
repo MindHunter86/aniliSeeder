@@ -107,23 +107,23 @@ func (m *Worker) Bootstrap() (e error) {
 
 	gLog.Debug().Msg("registration has been completed; parsing config data from master...")
 
-	var cfg *WorkerConfig
-	if cfg, e = m.parseRegistrationReply(rpl); e != nil {
+	// var cfg *WorkerConfig
+	if _, e = m.parseRegistrationReply(rpl); e != nil {
 		return
 	}
 
-	if e = m.Setup(cfg); e != nil {
-		return
-	}
+	// if e = m.Setup(cfg); e != nil {
+	// 	return
+	// }
 
 	gLog.Debug().Msg("the registration phase finished; waiting for commands from the master")
 	return m.run()
 }
 
 // TODO
-func (*Worker) Setup(cfg *WorkerConfig) (e error) {
-	return
-}
+// func (*Worker) Setup(cfg *WorkerConfig) (e error) {
+// 	return
+// }
 
 func (m *Worker) run() error {
 	<-gCtx.Done()
