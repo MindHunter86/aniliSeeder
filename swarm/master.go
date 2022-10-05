@@ -43,14 +43,11 @@ func NewMaster(ctx context.Context) *Master {
 
 func (m *Master) Bootstrap() (e error) {
 	gLog.Debug().Msg("generating pub\\priv key pair...")
-	//
+
 	var crt tls.Certificate
 	if crt, e = m.getTLSCertificate(); e != nil {
 		return
 	}
-
-	var creds credentials.TransportCredentials
-	creds = credentials.NewServerTLSFromCert(&crt)
 
 	gLog.Debug().Msg("trying to open grpc socket for master listening...")
 
@@ -60,6 +57,7 @@ func (m *Master) Bootstrap() (e error) {
 
 	gLog.Debug().Msg("grpc socket seems is ok, setuping grpc...")
 
+	var creds = credentials.NewServerTLSFromCert(&crt)
 	m.gserver = grpc.NewServer(grpc.Creds(creds))
 	pb.RegisterMasterServiceServer(m.gserver, m)
 
