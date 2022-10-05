@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -20,6 +21,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type Master struct {
@@ -40,6 +42,16 @@ func NewMaster(ctx context.Context) *Master {
 }
 
 func (m *Master) Bootstrap() (e error) {
+	gLog.Debug().Msg("generating pub\\priv key pair...")
+	//
+	var crt tls.Certificate
+	if crt, e = m.getTLSCertificate(); e != nil {
+		return
+	}
+
+	var creds credentials.TransportCredentials
+	creds = credentials.NewServerTLSFromCert(&crt)
+
 	gLog.Debug().Msg("trying to open grpc socket for master listening...")
 
 	if m.ln, e = net.Listen("tcp", gCli.String("swarm-master-listen")); e != nil {
@@ -48,7 +60,7 @@ func (m *Master) Bootstrap() (e error) {
 
 	gLog.Debug().Msg("grpc socket seems is ok, setuping grpc...")
 
-	m.gserver = grpc.NewServer()
+	m.gserver = grpc.NewServer(grpc.Creds(creds))
 	pb.RegisterMasterServiceServer(m.gserver, m)
 
 	gLog.Debug().Msg("grpc server has been setuped; starting listening for worker connections...")
@@ -76,6 +88,19 @@ func (m *Master) close() error {
 
 	m.gserver.Stop()
 	return m.ln.Close()
+}
+
+func (m *Master) getTLSCertificate() (_ tls.Certificate, e error) {
+	// TODO
+	// if gCli.String("swarm-master-custom-ca") != ""
+	// get key, get pub, return
+
+	var cbytes, kbytes []byte
+	if cbytes, kbytes, e = m.createPublicPrivatePair(); e != nil {
+		return
+	}
+
+	return tls.X509KeyPair(cbytes, kbytes)
 }
 
 func (*Master) createPublicPrivatePair() (_, _ []byte, e error) {

@@ -113,6 +113,11 @@ func main() {
 			Value: "localhost:8081",
 		},
 		&cli.StringFlag{
+			Name:  "swarm-custom-ca-path",
+			Usage: "",
+			Value: "",
+		},
+		&cli.StringFlag{
 			Name:    "swarm-master-secret",
 			Usage:   "",
 			Value:   "randomsecretkey",
