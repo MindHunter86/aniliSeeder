@@ -151,6 +151,10 @@ func (m *Worker) getRegistrationRequest() (_ *pb.RegistrationRequest, e error) {
 		return
 	}
 
+	// if _, e = m.CheckGRPCPayload(trrs); e != nil {
+	// 	return
+	// }
+
 	return &pb.RegistrationRequest{
 		WorkerId:      m.id,
 		WorkerVersion: gCli.App.Version,
@@ -164,6 +168,10 @@ func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 	var trrs []*deluge.Torrent
 	var strmap = make([]*structpb.Struct, len(trrs))
 
+	if trrs, e = gDeluge.GetTorrentsV2(); e != nil {
+		return
+	}
+
 	var buf []byte
 	if buf, e = json.Marshal(trrs); e != nil {
 		return
@@ -175,3 +183,24 @@ func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 
 	return strmap, e
 }
+
+// Debug func
+// func (*Worker) CheckGRPCPayload(payload []*structpb.Struct) (_ bool, e error) {
+
+// 	var trrs = make([]*deluge.Torrent, 100)
+
+// 	var buf []byte
+// 	if buf, e = json.Marshal(payload); e != nil {
+// 		return
+// 	}
+
+// 	if e = json.Unmarshal(buf, &trrs); e != nil {
+// 		return
+// 	}
+
+// 	for _, trr := range trrs {
+// 		log.Println(trr.Name)
+// 	}
+
+// 	return true, e
+// }
