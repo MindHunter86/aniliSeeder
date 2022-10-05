@@ -18,86 +18,135 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// MasterClient is the client API for Master service.
+// MinionServiceClient is the client API for MinionService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type MasterClient interface {
-	InitialPhase(ctx context.Context, in *MasterRequest, opts ...grpc.CallOption) (*MasterReply, error)
+type MinionServiceClient interface {
 }
 
-type masterClient struct {
+type minionServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewMasterClient(cc grpc.ClientConnInterface) MasterClient {
-	return &masterClient{cc}
+func NewMinionServiceClient(cc grpc.ClientConnInterface) MinionServiceClient {
+	return &minionServiceClient{cc}
 }
 
-func (c *masterClient) InitialPhase(ctx context.Context, in *MasterRequest, opts ...grpc.CallOption) (*MasterReply, error) {
-	out := new(MasterReply)
-	err := c.cc.Invoke(ctx, "/grpc.Master/InitialPhase", in, out, opts...)
+// MinionServiceServer is the server API for MinionService service.
+// All implementations must embed UnimplementedMinionServiceServer
+// for forward compatibility
+type MinionServiceServer interface {
+	mustEmbedUnimplementedMinionServiceServer()
+}
+
+// UnimplementedMinionServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedMinionServiceServer struct {
+}
+
+func (UnimplementedMinionServiceServer) mustEmbedUnimplementedMinionServiceServer() {}
+
+// UnsafeMinionServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to MinionServiceServer will
+// result in compilation errors.
+type UnsafeMinionServiceServer interface {
+	mustEmbedUnimplementedMinionServiceServer()
+}
+
+func RegisterMinionServiceServer(s grpc.ServiceRegistrar, srv MinionServiceServer) {
+	s.RegisterService(&MinionService_ServiceDesc, srv)
+}
+
+// MinionService_ServiceDesc is the grpc.ServiceDesc for MinionService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var MinionService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "grpc.MinionService",
+	HandlerType: (*MinionServiceServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams:     []grpc.StreamDesc{},
+	Metadata:    "service.proto",
+}
+
+// MasterServiceClient is the client API for MasterService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type MasterServiceClient interface {
+	Register(ctx context.Context, in *RegistrationRequest, opts ...grpc.CallOption) (*RegistrationReply, error)
+}
+
+type masterServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewMasterServiceClient(cc grpc.ClientConnInterface) MasterServiceClient {
+	return &masterServiceClient{cc}
+}
+
+func (c *masterServiceClient) Register(ctx context.Context, in *RegistrationRequest, opts ...grpc.CallOption) (*RegistrationReply, error) {
+	out := new(RegistrationReply)
+	err := c.cc.Invoke(ctx, "/grpc.MasterService/Register", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// MasterServer is the server API for Master service.
-// All implementations must embed UnimplementedMasterServer
+// MasterServiceServer is the server API for MasterService service.
+// All implementations must embed UnimplementedMasterServiceServer
 // for forward compatibility
-type MasterServer interface {
-	InitialPhase(context.Context, *MasterRequest) (*MasterReply, error)
-	mustEmbedUnimplementedMasterServer()
+type MasterServiceServer interface {
+	Register(context.Context, *RegistrationRequest) (*RegistrationReply, error)
+	mustEmbedUnimplementedMasterServiceServer()
 }
 
-// UnimplementedMasterServer must be embedded to have forward compatible implementations.
-type UnimplementedMasterServer struct {
+// UnimplementedMasterServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedMasterServiceServer struct {
 }
 
-func (UnimplementedMasterServer) InitialPhase(context.Context, *MasterRequest) (*MasterReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InitialPhase not implemented")
+func (UnimplementedMasterServiceServer) Register(context.Context, *RegistrationRequest) (*RegistrationReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
 }
-func (UnimplementedMasterServer) mustEmbedUnimplementedMasterServer() {}
+func (UnimplementedMasterServiceServer) mustEmbedUnimplementedMasterServiceServer() {}
 
-// UnsafeMasterServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to MasterServer will
+// UnsafeMasterServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to MasterServiceServer will
 // result in compilation errors.
-type UnsafeMasterServer interface {
-	mustEmbedUnimplementedMasterServer()
+type UnsafeMasterServiceServer interface {
+	mustEmbedUnimplementedMasterServiceServer()
 }
 
-func RegisterMasterServer(s grpc.ServiceRegistrar, srv MasterServer) {
-	s.RegisterService(&Master_ServiceDesc, srv)
+func RegisterMasterServiceServer(s grpc.ServiceRegistrar, srv MasterServiceServer) {
+	s.RegisterService(&MasterService_ServiceDesc, srv)
 }
 
-func _Master_InitialPhase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MasterRequest)
+func _MasterService_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegistrationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MasterServer).InitialPhase(ctx, in)
+		return srv.(MasterServiceServer).Register(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.Master/InitialPhase",
+		FullMethod: "/grpc.MasterService/Register",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).InitialPhase(ctx, req.(*MasterRequest))
+		return srv.(MasterServiceServer).Register(ctx, req.(*RegistrationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Master_ServiceDesc is the grpc.ServiceDesc for Master service.
+// MasterService_ServiceDesc is the grpc.ServiceDesc for MasterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Master_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "grpc.Master",
-	HandlerType: (*MasterServer)(nil),
+var MasterService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "grpc.MasterService",
+	HandlerType: (*MasterServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "InitialPhase",
-			Handler:    _Master_InitialPhase_Handler,
+			MethodName: "Register",
+			Handler:    _MasterService_Register_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

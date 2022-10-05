@@ -12,6 +12,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/rs/zerolog v1.28.0
+	github.com/satori/go.uuid v1.2.0
 	github.com/urfave/cli/v2 v2.17.1
 	golang.org/x/net v0.0.0-20221002022538-bcab6841153b
 	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec

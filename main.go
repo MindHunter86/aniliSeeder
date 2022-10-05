@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"runtime"
 	"sort"
@@ -105,9 +106,14 @@ func main() {
 			Usage: "",
 		},
 		&cli.StringFlag{
-			Name:  "swarm-master-addrs",
+			Name:  "swarm-master-addr",
 			Usage: "",
 			Value: "localhost:8081",
+		},
+		&cli.StringFlag{
+			Name:  "swarm-master-secret",
+			Usage: "",
+			Value: "randomsecretkey",
 		},
 
 		// queue settings
@@ -227,9 +233,11 @@ func main() {
 			Name:  "swarmtest",
 			Usage: "",
 			Action: func(c *cli.Context) error {
-				srv := swarm.NewMinion()
-				srv.Bootstrap()
+				swarm.NewWorker(c, &log, context.Background())
 				return nil
+				// srv := swarm.NewMinion()
+				// srv.Bootstrap()
+				// return nil
 			},
 		},
 		&cli.Command{

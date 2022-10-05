@@ -1,4 +1,4 @@
-yntax = "proto3";
+syntax = "proto3";
 option go_package = "github.com/MindHunter86/aniliSeeder/swarm/grpc";
 
 package grpc;
@@ -14,9 +14,9 @@ service MasterService {
 
 message RegistrationRequest {
     // initial phase
-    string MinionId = 1;
+    string WorkerId = 1;
     string AccessSecret = 2;
-    string MinionVersion = 3;
+    string WorkerVersion = 3;
     int64 WDFreeSpace = 4;
 
     // registration phase
