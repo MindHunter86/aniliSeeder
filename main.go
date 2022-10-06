@@ -9,7 +9,6 @@ import (
 
 	application "github.com/MindHunter86/aniliSeeder/app"
 	appcli "github.com/MindHunter86/aniliSeeder/cli"
-	"github.com/MindHunter86/aniliSeeder/deluge"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -99,6 +98,7 @@ func main() {
 			Usage:   "Flag is equivalent to verbose -1",
 		},
 
+		// swarm settings
 		&cli.BoolFlag{
 			Name:  "swarm-is-master",
 			Usage: "",
@@ -125,8 +125,26 @@ func main() {
 			EnvVars: []string{"SWARM_MASTER_SECRETKEY"},
 		},
 
+		// gRPC settings
+		&cli.DurationFlag{
+			Name:  "grpc-ping-interval",
+			Usage: "",
+			Value: time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "grpc-ping-timeout",
+			Usage: "",
+			Value: 300 * time.Millisecond,
+		},
+		&cli.DurationFlag{
+			Name:  "grpc-insecure",
+			Usage: "",
+		},
+
 		// queue settings
-		// application settings
+		// ...
+
+		// anilibria settings
 		&cli.StringFlag{
 			Name:  "anilibria-api-baseurl",
 			Usage: "",
@@ -148,6 +166,7 @@ func main() {
 			EnvVars: []string{"ANILIBRIA_PASSWORD"},
 		},
 
+		// deluge settings
 		&cli.StringFlag{
 			Name:  "deluge-addr",
 			Usage: "",
@@ -166,6 +185,7 @@ func main() {
 			EnvVars: []string{"DELUGE_PASSWORD"},
 		},
 
+		// common settings
 		&cli.StringFlag{
 			Name:  "torrentfiles-dir",
 			Usage: "",
@@ -199,8 +219,6 @@ func main() {
 
 		// return p2p.NewP2PClient(&log).Bootstrap()
 
-		os.Exit(1)
-
 		// ====================
 
 		// api, err := anilibria.NewApiClient(c, &log)
@@ -212,12 +230,15 @@ func main() {
 		// 	return err
 		// }
 
-		dClient, err := deluge.NewClient(c, &log)
-		if err != nil {
-			return err
-		}
+		// dClient, err := deluge.NewClient(c, &log)
+		// if err != nil {
+		// 	return err
+		// }
 
-		return dClient.GetTorrentsStatus()
+		// return dClient.GetTorrentsStatus()
+		// ===========
+
+		return os.ErrInvalid
 	}
 
 	app.Commands = []*cli.Command{
@@ -234,15 +255,6 @@ func main() {
 			Usage: "",
 			Action: func(c *cli.Context) error {
 				return appcli.TestDial(c, "")
-			},
-		},
-		&cli.Command{
-			Name:  "swarm",
-			Usage: "",
-			Action: func(c *cli.Context) error {
-				// srv := swarm.NewMaster()
-				// srv.Bootstrap()
-				return nil
 			},
 		},
 	}

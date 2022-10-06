@@ -4,11 +4,16 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"fmt"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	md "google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/MindHunter86/aniliSeeder/deluge"
@@ -53,10 +58,14 @@ type Worker struct {
 	WDFreeSpace uint64
 	Torrents    map[string]*deluge.Torrent
 
-	gConn *grpc.ClientConn
+	gConn        *grpc.ClientConn
+	masterClient pb.MasterServiceClient
 
 	id     string
 	config *WorkerConfig
+
+	sync.RWMutex
+	tickerPinging bool
 }
 
 type WorkerConfig struct{}
@@ -86,7 +95,7 @@ func (m *Worker) Bootstrap() (e error) {
 	gLog.Debug().Msg("seems that connection has been established")
 	gLog.Debug().Msg("trying to complete init phase with master")
 
-	c := pb.NewMasterServiceClient(m.gConn)
+	m.masterClient = pb.NewMasterServiceClient(m.gConn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
@@ -96,12 +105,8 @@ func (m *Worker) Bootstrap() (e error) {
 	}
 
 	var rpl *pb.RegistrationReply
-	if rpl, e = c.Register(ctx, req); e != nil {
+	if rpl, e = m.masterClient.Register(ctx, req); m.getRPCErrors(ctx, e) != nil {
 		gLog.Warn().Err(e).Msg("there is some errors while proccessing grpc request in registration phase")
-
-		estatus, _ := status.FromError(e)
-		gLog.Error().Str("error_code", estatus.Code().String()).Str("error_message", estatus.Message()).Msg("")
-
 		return
 	}
 
@@ -126,7 +131,28 @@ func (m *Worker) Bootstrap() (e error) {
 // }
 
 func (m *Worker) run() error {
-	<-gCtx.Done()
+	ticker := time.NewTicker(gCli.Duration("grpc-ping-interval"))
+
+LOOP:
+	for {
+		select {
+		case <-gCtx.Done():
+			break LOOP
+		case <-ticker.C:
+			m.RLock()
+			if m.tickerPinging {
+				gLog.Debug().Msg("skipping ping call because of the last call is not completed yet")
+				continue
+			}
+			m.RUnlock()
+
+			if e := m.ping(); e != nil {
+				gLog.Warn().Err(e).Msg("grpc ping has been failed")
+			}
+		}
+	}
+
+	ticker.Stop()
 	return m.desctruct()
 }
 
@@ -212,6 +238,38 @@ func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 	}
 
 	return strmap, e
+}
+
+func (m *Worker) ping() (e error) {
+	timer := time.Now()
+
+	var ctx, cancel = context.WithTimeout(context.Background(), gCli.Duration("grpc-ping-timeout"))
+	defer cancel()
+
+	if _, e = m.masterClient.Ping(ctx, &emptypb.Empty{}); m.getRPCErrors(ctx, e) != nil {
+		return
+	}
+
+	gLog.Debug().Str("ping_time", time.Since(timer).String()).Msg("ping/pong method completed")
+	return
+}
+
+func (*Worker) getRPCErrors(ctx context.Context, err error) error {
+	m, _ := md.FromOutgoingContext(ctx)
+
+	fmt.Println(m)
+
+	estatus, _ := status.FromError(err)
+
+	switch estatus.Code() {
+	case codes.OK:
+		return nil
+	default:
+		gLog.Warn().Str("error_code", estatus.Code().String()).Str("error_message", estatus.Message()).
+			Msg("abnormal response from master server")
+	}
+
+	return err
 }
 
 // Debug func
