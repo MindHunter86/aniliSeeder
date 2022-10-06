@@ -128,7 +128,7 @@ func main() {
 		// gRPC settings
 		&cli.DurationFlag{
 			Name:  "grpc-ping-interval",
-			Usage: "",
+			Usage: "0 for disabling",
 			Value: time.Second,
 		},
 		&cli.DurationFlag{

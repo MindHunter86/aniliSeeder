@@ -131,7 +131,13 @@ func (m *Worker) Bootstrap() (e error) {
 // }
 
 func (m *Worker) run() error {
-	ticker := time.NewTicker(gCli.Duration("grpc-ping-interval"))
+	ticker := time.NewTicker(time.Second)
+	ticker.Stop() // !!
+	// todo refactor ?
+
+	if gCli.Duration("grpc-ping-interval") != 0*time.Second {
+		ticker.Reset(gCli.Duration("grpc-ping-interval"))
+	}
 
 LOOP:
 	for {
@@ -243,12 +249,20 @@ func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 func (m *Worker) ping() (e error) {
 	timer := time.Now()
 
+	m.Lock()
+	m.tickerPinging = true
+	m.Unlock()
+
 	var ctx, cancel = context.WithTimeout(context.Background(), gCli.Duration("grpc-ping-timeout"))
 	defer cancel()
 
 	if _, e = m.masterClient.Ping(ctx, &emptypb.Empty{}); m.getRPCErrors(ctx, e) != nil {
 		return
 	}
+
+	m.Lock()
+	m.tickerPinging = false
+	m.Unlock()
 
 	gLog.Debug().Str("ping_time", time.Since(timer).String()).Msg("ping/pong method completed")
 	return
