@@ -10,7 +10,9 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	md "google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -80,15 +82,33 @@ func NewWorker(ctx context.Context) Swarm {
 }
 
 func (m *Worker) Bootstrap() (e error) {
-	gLog.Debug().Msg("trying access to ca...")
-	// var cpool *x509.CertPool
-	// if cpool, e = m.getCACertPool(); e != nil {
-	// 	return
-	// }
+	var opts []grpc.DialOption
+
+	if !gCli.Bool("grpc-insecure") {
+		gLog.Debug().Msg("trying access to ca...")
+
+		var cpool *x509.CertPool
+		if cpool, e = m.getCACertPool(); e != nil {
+			return
+		}
+
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(cpool, "")))
+	} else {
+		gLog.Warn().Msg("ATTENTION! gRPC connection is unsecure! do at your own risk")
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	opts = append(opts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time:                gCli.Duration("http2-ping-time"),
+		Timeout:             gCli.Duration("http2-ping-timeout"),
+		PermitWithoutStream: true,
+	}))
+	opts = append(opts, grpc.WithBlock())
+
+	// opts = append(opts, grpc.WithTimeout(gCli.Duration("grpc-connect-timeout")))
 
 	gLog.Debug().Msg("trying to connect to master...")
-	// credentials.NewClientTLSFromCert(cpool, "")),
-	if m.gConn, e = grpc.Dial(gCli.String("swarm-master-addr"), grpc.WithTransportCredentials(insecure.NewCredentials())); e != nil {
+	if m.gConn, e = grpc.Dial(gCli.String("swarm-master-addr"), opts...); e != nil {
 		return
 	}
 
@@ -131,7 +151,13 @@ func (m *Worker) Bootstrap() (e error) {
 // }
 
 func (m *Worker) run() error {
-	ticker := time.NewTicker(gCli.Duration("grpc-ping-interval"))
+	ticker := time.NewTicker(time.Second)
+	ticker.Stop() // !!
+	// todo refactor ?
+
+	if gCli.Duration("grpc-ping-interval") != 0*time.Second {
+		ticker.Reset(gCli.Duration("grpc-ping-interval"))
+	}
 
 LOOP:
 	for {
@@ -243,12 +269,20 @@ func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 func (m *Worker) ping() (e error) {
 	timer := time.Now()
 
+	m.Lock()
+	m.tickerPinging = true
+	m.Unlock()
+
 	var ctx, cancel = context.WithTimeout(context.Background(), gCli.Duration("grpc-ping-timeout"))
 	defer cancel()
 
 	if _, e = m.masterClient.Ping(ctx, &emptypb.Empty{}); m.getRPCErrors(ctx, e) != nil {
 		return
 	}
+
+	m.Lock()
+	m.tickerPinging = false
+	m.Unlock()
 
 	gLog.Debug().Str("ping_time", time.Since(timer).String()).Msg("ping/pong method completed")
 	return
