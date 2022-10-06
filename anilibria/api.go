@@ -284,10 +284,9 @@ func (*ApiClient) parseFileFromResponse(rsp *io.ReadCloser, filename string) (e 
 	var n int64
 	if n, e = io.Copy(fd, *rsp); e != nil {
 		return
-	} else {
-		gLog.Info().Int64("bytes", n).Msg("the torrnet file has been successfully saved")
 	}
 
+	gLog.Info().Int64("bytes", n).Msg("the torrnet file has been successfully saved")
 	return fd.Sync()
 }
 
