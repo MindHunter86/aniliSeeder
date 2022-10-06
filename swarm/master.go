@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -182,6 +183,17 @@ func (*Master) createPublicPrivatePair() (_, _ []byte, e error) {
 
 // 	return err
 // }
+
+func (*Master) Ping(ctx context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, _ error) {
+	p, _ := peer.FromContext(ctx)
+	md, _ := metadata.FromIncomingContext(ctx)
+
+	gLog.Info().Str("worker_ip", p.Addr.String()).Strs("client_ua", md.Get("user-agent")).
+		Msg("new client has been connected")
+	gLog.Info().Msg("received ping from a client...")
+
+	return &emptypb.Empty{}, nil
+}
 
 func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *pb.RegistrationReply, e error) {
 	p, _ := peer.FromContext(ctx)

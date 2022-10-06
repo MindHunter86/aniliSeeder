@@ -13,12 +13,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	md "google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/MindHunter86/aniliSeeder/deluge"
 	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
 	"github.com/MindHunter86/aniliSeeder/utils"
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 
@@ -151,6 +151,8 @@ LOOP:
 			}
 		}
 	}
+
+	ticker.Stop()
 	return m.desctruct()
 }
 
@@ -240,7 +242,7 @@ func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 
 func (m *Worker) ping() (e error) {
 	var ctx, _ = context.WithTimeout(context.Background(), gCli.Duration("grpc-ping-timeout"))
-	if _, e = m.masterClient.Ping(ctx, &empty.Empty{}); m.getRPCErrors(ctx, e) != nil {
+	if _, e = m.masterClient.Ping(ctx, &emptypb.Empty{}); m.getRPCErrors(ctx, e) != nil {
 		return
 	}
 
