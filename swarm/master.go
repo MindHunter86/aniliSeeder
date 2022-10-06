@@ -26,6 +26,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
@@ -55,27 +57,48 @@ func NewMaster(ctx context.Context) *Master {
 }
 
 func (m *Master) Bootstrap() (e error) {
-	gLog.Debug().Msg("generating pub\\priv key pair...")
-
-	// var crt tls.Certificate
-	// if crt, e = m.getTLSCertificate(); e != nil {
-	// 	return
-	// }
 
 	gLog.Debug().Msg("trying to open grpc socket for master listening...")
-
 	if m.ln, e = net.Listen("tcp", gCli.String("swarm-master-listen")); e != nil {
 		return
 	}
 
 	gLog.Debug().Msg("grpc socket seems is ok, setuping grpc...")
 
-	// var creds = credentials.NewServerTLSFromCert(&crt)
-	// m.gserver = grpc.NewServer(grpc.Creds(creds))
-	m.gserver = grpc.NewServer()
-	pb.RegisterMasterServiceServer(m.gserver, m)
+	var opts []grpc.ServerOption
 
-	gLog.Debug().Msg("grpc server has been setuped; starting listening for worker connections...")
+	if !gCli.Bool("grpc-insecure") {
+		gLog.Debug().Msg("generating pub\\priv key pair...")
+
+		var crt tls.Certificate
+		if crt, e = m.getTLSCertificate(); e != nil {
+			return
+		}
+
+		var creds = credentials.NewServerTLSFromCert(&crt)
+		opts = append(opts, grpc.Creds(creds))
+
+	} else {
+		gLog.Warn().Msg("ATTENTION! gRPC connection is unsecure! do at your own risk")
+	}
+
+	if gCli.Duration("http2-conn-max-age") != 0*time.Second {
+		gLog.Debug().Msg("set keepalive for the master server...")
+
+		enforcement := keepalive.EnforcementPolicy{
+			MinTime:             5 * time.Second,
+			PermitWithoutStream: true,
+		}
+
+		opts = append(opts, grpc.KeepaliveEnforcementPolicy(enforcement))
+		opts = append(opts, grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionAge:      gCli.Duration("http2-conn-max-age"),
+			MaxConnectionAgeGrace: gCli.Duration("http2-conn-max-age") + 10*time.Second,
+		}))
+	}
+
+	m.gserver = grpc.NewServer(opts...)
+	pb.RegisterMasterServiceServer(m.gserver, m)
 
 	go func() {
 		if err := m.close(); err != nil {

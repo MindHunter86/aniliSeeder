@@ -126,6 +126,15 @@ func main() {
 		},
 
 		// gRPC settings
+		&cli.BoolFlag{
+			Name:  "grpc-insecure",
+			Usage: "",
+		},
+		&cli.DurationFlag{
+			Name:  "grpc-connect-timeout",
+			Usage: "for worker",
+			Value: 3 * time.Second,
+		},
 		&cli.DurationFlag{
 			Name:  "grpc-ping-interval",
 			Usage: "0 for disabling",
@@ -136,9 +145,22 @@ func main() {
 			Usage: "",
 			Value: 300 * time.Millisecond,
 		},
+
+		// http2 settings
 		&cli.DurationFlag{
-			Name:  "grpc-insecure",
-			Usage: "",
+			Name:  "http2-ping-time",
+			Usage: "for worker",
+			Value: 3 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "http2-ping-timeout",
+			Usage: "for worker",
+			Value: time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "http2-conn-max-age",
+			Usage: "for master; 0 for disable",
+			Value: 600 * time.Second,
 		},
 
 		// queue settings
