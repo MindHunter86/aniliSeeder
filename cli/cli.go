@@ -12,12 +12,12 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func TestDial(c *cli.Context, _ string) {
+func TestDial(c *cli.Context, _ string) (err error) {
 	log.Println("trying to connect via unix socket")
 
 	conn, err := net.Dial("unix", c.String("socket-path"))
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 	defer conn.Close()
 
@@ -54,13 +54,15 @@ func TestDial(c *cli.Context, _ string) {
 			},
 			AllowEdit: true,
 		}
-		data, err := pr.Run()
+
+		var data string
+		data, err = pr.Run()
 
 		// reader := bufio.NewReader(os.Stdin)
 		// fmt.Print(":> ")
 		// data, err := reader.ReadString('\n')
 		if err != nil {
-			log.Fatal(err)
+			return
 		}
 
 		// log.Println("readed input")
@@ -68,7 +70,7 @@ func TestDial(c *cli.Context, _ string) {
 		buf.WriteString(data + "\n")
 		_, err = io.Copy(conn, buf)
 		if err != nil {
-			log.Fatal(err)
+			return
 		}
 
 		// log.Println("sent input")
@@ -88,7 +90,7 @@ func TestDial(c *cli.Context, _ string) {
 		}
 
 		if scanner.Err() != nil {
-			log.Fatal(scanner.Err())
+			return
 		}
 
 		// log.Println("received response")

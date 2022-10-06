@@ -233,8 +233,7 @@ func main() {
 			Name:  "test",
 			Usage: "",
 			Action: func(c *cli.Context) error {
-				appcli.TestDial(c, "")
-				return nil
+				return appcli.TestDial(c, "")
 			},
 		},
 		&cli.Command{
