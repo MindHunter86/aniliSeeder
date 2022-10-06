@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.21.0
-// source: service.proto
+// source: swarm/grpc/service.proto
 
 package grpc
 
@@ -65,7 +65,7 @@ var MinionService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MinionServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams:     []grpc.StreamDesc{},
-	Metadata:    "service.proto",
+	Metadata:    "swarm/grpc/service.proto",
 }
 
 // MasterServiceClient is the client API for MasterService service.
@@ -187,5 +187,5 @@ var MasterService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "service.proto",
+	Metadata: "swarm/grpc/service.proto",
 }

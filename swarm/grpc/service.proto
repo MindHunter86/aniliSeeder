@@ -4,11 +4,13 @@ option go_package = "github.com/MindHunter86/aniliSeeder/swarm/grpc";
 package grpc;
 
 import "google/protobuf/struct.proto";
+import "google/protobuf/empty.proto";
 
 service MinionService {
 }
 
 service MasterService {
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     rpc Register (RegistrationRequest) returns (RegistrationReply) {}
 }
 
