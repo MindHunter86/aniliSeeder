@@ -134,7 +134,7 @@ func main() {
 		&cli.DurationFlag{
 			Name:  "grpc-ping-timeout",
 			Usage: "",
-			Value: 300 * time.Microsecond,
+			Value: 300 * time.Millisecond,
 		},
 		&cli.DurationFlag{
 			Name:  "grpc-insecure",

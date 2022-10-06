@@ -241,11 +241,16 @@ func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 }
 
 func (m *Worker) ping() (e error) {
-	var ctx, _ = context.WithTimeout(context.Background(), gCli.Duration("grpc-ping-timeout"))
+	timer := time.Now()
+
+	var ctx, cancel = context.WithTimeout(context.Background(), gCli.Duration("grpc-ping-timeout"))
+	defer cancel()
+
 	if _, e = m.masterClient.Ping(ctx, &emptypb.Empty{}); m.getRPCErrors(ctx, e) != nil {
 		return
 	}
 
+	gLog.Debug().Str("ping_time", time.Since(timer).String()).Msg("ping/pong method completed")
 	return
 }
 
