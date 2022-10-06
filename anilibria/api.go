@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
@@ -330,7 +329,7 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 }
 
 func (*ApiClient) parseResponse(rsp *io.ReadCloser, schema interface{}) error {
-	if data, err := ioutil.ReadAll(*rsp); err == nil {
+	if data, err := io.ReadAll(*rsp); err == nil {
 		return json.Unmarshal(data, &schema)
 	} else {
 		return err
