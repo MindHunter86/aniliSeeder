@@ -108,10 +108,11 @@ func (m *Worker) Bootstrap() (e error) {
 	}))
 	opts = append(opts, grpc.WithBlock())
 
-	opts = append(opts, grpc.WithTimeout(gCli.Duration("grpc-connect-timeout")))
-
 	gLog.Debug().Msg("trying to connect to master...")
-	if m.gConn, e = grpc.Dial(gCli.String("swarm-master-addr"), opts...); e != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), gCli.Duration("grpc-connect-timeout"))
+	defer cancel()
+
+	if m.gConn, e = grpc.DialContext(ctx, gCli.String("swarm-master-addr"), opts...); e != nil {
 		return
 	}
 
