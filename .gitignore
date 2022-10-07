@@ -17,7 +17,7 @@
 vendor/
 
 # gRPC generated code
-swarm/grpc/*.pb.go
+# swarm/grpc/*.pb.go
 
 # Binary data
 bin/
