@@ -6,13 +6,17 @@ package grpc;
 import "google/protobuf/struct.proto";
 import "google/protobuf/empty.proto";
 
-service MinionService {
+service WorkerService {
+    rpc GetTorrents(google.protobuf.Empty) returns (TorrentsReply) {}
+    rpc GetTorrentScore(TorrentScoreRequest) returns (TorrentScoreReply) {}
+    rpc DropTorrent(TorrentDropRequest) returns (TFileSaveReply) {}
+    rpc SaveTorrentFile(TFileSaveRequest) returns (TFileSaveReply) {}
+    rpc GetSystemFreeSpace(google.protobuf.Empty) returns (SystemSpaceReply) {}
 }
 
 service MasterService {
     rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     rpc Register (RegistrationRequest) returns (RegistrationReply) {}
-    rpc GetTasks(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 message RegistrationRequest {
@@ -27,4 +31,38 @@ message RegistrationRequest {
 message RegistrationReply {
     // setup phase
     google.protobuf.Struct Config = 2;
+}
+
+message TorrentsReply {
+    repeated google.protobuf.Struct Torrent = 1;
+}
+
+message TorrentScoreRequest {
+    string Hash = 1;
+    string Name = 2;
+}
+message TorrentScoreReply {
+    float Ratio = 1;
+    float Score = 2;
+}
+
+message TorrentDropRequest {
+    string Hash = 1;
+    string Name = 2;
+    string Reason = 3;
+}
+message TorrentDropReply {
+    uint64 FreedSpace = 1;
+    uint64 FreeSpace = 2;
+}
+
+message TFileSaveRequest {
+    bytes payload = 1;
+}
+message TFileSaveReply {
+    uint64 FilePayload = 1;
+}
+
+message SystemSpaceReply {
+    uint64 FreeSpace = 1;
 }
