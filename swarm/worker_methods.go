@@ -16,7 +16,17 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func (*Worker) authorizeMasterRequest(ctx context.Context) (string, error) {
+type WorkerService struct {
+	pb.UnimplementedMasterServiceServer
+
+	w *Worker
+}
+
+func NewWorkerService(w *Worker) *WorkerService {
+	return &WorkerService{w: w}
+}
+
+func (*WorkerService) authorizeMasterRequest(ctx context.Context) (string, error) {
 	p, ok := peer.FromContext(ctx)
 	if !ok {
 		return "", status.Errorf(codes.DataLoss, "")
@@ -56,7 +66,7 @@ func (*Worker) authorizeMasterRequest(ctx context.Context) (string, error) {
 	return id[0], nil
 }
 
-func (m *Worker) GetTorrents(ctx context.Context, _ *emptypb.Empty) (_ *pb.TorrentsReply, _ error) {
+func (m *WorkerService) GetTorrents(ctx context.Context, _ *emptypb.Empty) (_ *pb.TorrentsReply, _ error) {
 	mid, e := m.authorizeMasterRequest(ctx)
 	if e != nil {
 		return nil, e
@@ -65,7 +75,7 @@ func (m *Worker) GetTorrents(ctx context.Context, _ *emptypb.Empty) (_ *pb.Torre
 	gLog.Debug().Str("master_id", mid).Msg("processing master request...")
 
 	var trrs []*structpb.Struct
-	if trrs, e = m.getTorrents(); e != nil {
+	if trrs, e = m.w.getTorrents(); e != nil {
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
@@ -74,7 +84,7 @@ func (m *Worker) GetTorrents(ctx context.Context, _ *emptypb.Empty) (_ *pb.Torre
 	}, e
 }
 
-func (m *Worker) GetTorrentScore(ctx context.Context, req *pb.TorrentScoreRequest) (_ *pb.TorrentScoreReply, _ error) {
+func (m *WorkerService) GetTorrentScore(ctx context.Context, req *pb.TorrentScoreRequest) (_ *pb.TorrentScoreReply, _ error) {
 	mid, e := m.authorizeMasterRequest(ctx)
 	if e != nil {
 		return nil, e
@@ -101,7 +111,7 @@ func (m *Worker) GetTorrentScore(ctx context.Context, req *pb.TorrentScoreReques
 	}, e
 }
 
-func (m *Worker) DropTorrent(ctx context.Context, req *pb.TorrentDropRequest) (_ *pb.TorrentDropReply, _ error) {
+func (m *WorkerService) DropTorrent(ctx context.Context, req *pb.TorrentDropRequest) (_ *pb.TorrentDropReply, _ error) {
 	mid, e := m.authorizeMasterRequest(ctx)
 	if e != nil {
 		return nil, e
@@ -128,7 +138,7 @@ func (m *Worker) DropTorrent(ctx context.Context, req *pb.TorrentDropRequest) (_
 	}, e
 }
 
-func (m *Worker) SaveTorrentFile(ctx context.Context, req *pb.TFileSaveRequest) (_ *pb.TFileSaveReply, _ error) {
+func (m *WorkerService) SaveTorrentFile(ctx context.Context, req *pb.TFileSaveRequest) (_ *pb.TFileSaveReply, _ error) {
 	mid, e := m.authorizeMasterRequest(ctx)
 	if e != nil {
 		return nil, e
@@ -148,7 +158,7 @@ func (m *Worker) SaveTorrentFile(ctx context.Context, req *pb.TFileSaveRequest) 
 	}, e
 }
 
-func (m *Worker) GetSystemFreeSpace(ctx context.Context, _ *emptypb.Empty) (_ *pb.SystemSpaceReply, _ error) {
+func (m *WorkerService) GetSystemFreeSpace(ctx context.Context, _ *emptypb.Empty) (_ *pb.SystemSpaceReply, _ error) {
 	mid, e := m.authorizeMasterRequest(ctx)
 	if e != nil {
 		return nil, e
