@@ -12,17 +12,16 @@ service MinionService {
 service MasterService {
     rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     rpc Register (RegistrationRequest) returns (RegistrationReply) {}
+    rpc GetTasks(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 message RegistrationRequest {
     // initial phase
-    string WorkerId = 1;
-    string AccessSecret = 2;
-    string WorkerVersion = 3;
-    uint64 WDFreeSpace = 4;
+    string WorkerVersion = 1;
+    uint64 WDFreeSpace = 2;
 
     // registration phase
-    repeated google.protobuf.Struct Torrent = 5;
+    repeated google.protobuf.Struct Torrent = 3;
 }
 
 message RegistrationReply {

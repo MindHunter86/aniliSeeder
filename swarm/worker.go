@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
-	md "google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -64,6 +63,7 @@ type Worker struct {
 	masterClient pb.MasterServiceClient
 
 	id     string
+	token  string
 	config *WorkerConfig
 
 	sync.RWMutex
@@ -78,7 +78,10 @@ func NewWorker(ctx context.Context) Swarm {
 	gCli = gCtx.Value(utils.ContextKeyCliContext).(*cli.Context)
 	gDeluge = gCtx.Value(utils.ContextKeyDelugeClient).(*deluge.Client)
 
-	return &Worker{}
+	return &Worker{
+		id:    uuid.NewV4().String(),
+		token: gCli.String("swarm-master-secret"),
+	}
 }
 
 func (m *Worker) Bootstrap() (e error) {
@@ -105,7 +108,7 @@ func (m *Worker) Bootstrap() (e error) {
 	}))
 	opts = append(opts, grpc.WithBlock())
 
-	// opts = append(opts, grpc.WithTimeout(gCli.Duration("grpc-connect-timeout")))
+	opts = append(opts, grpc.WithTimeout(gCli.Duration("grpc-connect-timeout")))
 
 	gLog.Debug().Msg("trying to connect to master...")
 	if m.gConn, e = grpc.Dial(gCli.String("swarm-master-addr"), opts...); e != nil {
@@ -116,7 +119,7 @@ func (m *Worker) Bootstrap() (e error) {
 	gLog.Debug().Msg("trying to complete init phase with master")
 
 	m.masterClient = pb.NewMasterServiceClient(m.gConn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := m.getNewRPCContext(time.Second)
 	defer cancel()
 
 	var req = &pb.RegistrationRequest{}
@@ -125,8 +128,8 @@ func (m *Worker) Bootstrap() (e error) {
 	}
 
 	var rpl *pb.RegistrationReply
-	if rpl, e = m.masterClient.Register(ctx, req); m.getRPCErrors(ctx, e) != nil {
-		gLog.Warn().Err(e).Msg("there is some errors while proccessing grpc request in registration phase")
+	if rpl, e = m.masterClient.Register(ctx, req); m.getRPCErrors(e) != nil {
+		gLog.Warn().Err(e).Msg("there is some errors while processing grpc request in registration phase")
 		return
 	}
 
@@ -214,6 +217,18 @@ func (*Worker) getCACertPool() (*x509.CertPool, error) {
 // 	return
 // }
 
+func (m *Worker) getNewRPCContext(d time.Duration) (context.Context, context.CancelFunc) {
+	md := metadata.New(map[string]string{
+		"x-worker-id":    m.id,
+		"x-access-token": m.token,
+	})
+
+	return context.WithTimeout(
+		metadata.NewOutgoingContext(context.Background(), md),
+		d,
+	)
+}
+
 func (*Worker) parseRegistrationReply(rpl *pb.RegistrationReply) (_ *WorkerConfig, e error) {
 	var cfg *WorkerConfig
 
@@ -230,17 +245,13 @@ func (*Worker) parseRegistrationReply(rpl *pb.RegistrationReply) (_ *WorkerConfi
 }
 
 func (m *Worker) getRegistrationRequest() (_ *pb.RegistrationRequest, e error) {
-	m.id = uuid.NewV4().String()
-
 	var trrs []*structpb.Struct
 	if trrs, e = m.getTorrents(); e != nil {
 		return
 	}
 
 	return &pb.RegistrationRequest{
-		WorkerId:      m.id,
 		WorkerVersion: gCli.App.Version,
-		AccessSecret:  gCli.String("swarm-master-secret"),
 		WDFreeSpace:   utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
 		Torrent:       trrs,
 	}, e
@@ -273,31 +284,35 @@ func (m *Worker) ping() (e error) {
 	m.tickerPinging = true
 	m.Unlock()
 
-	var ctx, cancel = context.WithTimeout(context.Background(), gCli.Duration("grpc-ping-timeout"))
+	defer func() {
+		m.Lock()
+		m.tickerPinging = false
+		m.Unlock()
+	}()
+
+	ctx, cancel := m.getNewRPCContext(gCli.Duration("grpc-ping-timeout"))
 	defer cancel()
 
-	if _, e = m.masterClient.Ping(ctx, &emptypb.Empty{}); m.getRPCErrors(ctx, e) != nil {
+	if _, e = m.masterClient.Ping(ctx, &emptypb.Empty{}); m.getRPCErrors(e) != nil {
 		return
 	}
-
-	m.Lock()
-	m.tickerPinging = false
-	m.Unlock()
 
 	gLog.Debug().Str("ping_time", time.Since(timer).String()).Msg("ping/pong method completed")
 	return
 }
 
-func (*Worker) getRPCErrors(ctx context.Context, err error) error {
-	m, _ := md.FromOutgoingContext(ctx)
-
-	fmt.Println(m)
-
+func (m *Worker) getRPCErrors(err error) error {
 	estatus, _ := status.FromError(err)
 
 	switch estatus.Code() {
 	case codes.OK:
 		return nil
+
+	// !! EXPERIMENTAL
+	case codes.Unavailable:
+		gLog.Warn().Msg("trying to reconnect to the master server...")
+		m.gConn.ResetConnectBackoff()
+
 	default:
 		gLog.Warn().Str("error_code", estatus.Code().String()).Str("error_message", estatus.Message()).
 			Msg("abnormal response from master server")

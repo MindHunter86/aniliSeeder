@@ -95,7 +95,7 @@ const (
 )
 
 var (
-	errApiAuthorizationFailed = errors.New("there is some problems with the authorization proccess")
+	errApiAuthorizationFailed = errors.New("there is some problems with the authorization process")
 	errApiAbnormalResponse    = errors.New("there is some problems with anilibria servers communication")
 )
 
@@ -154,7 +154,7 @@ func (m *ApiClient) apiAuthorize(authBody io.Reader) (e error) {
 		cookies := m.http.Jar.Cookies(m.siteBaseUrl)
 		for _, cookie := range cookies {
 			if cookie.Name == "PHPSESSID" && cookie.Value != "" {
-				gLog.Info().Str("session", cookie.Value).Msg("authentication proccess has been completed successfully")
+				gLog.Info().Str("session", cookie.Value).Msg("authentication process has been completed successfully")
 				return nil
 			}
 		}
@@ -193,7 +193,7 @@ func (m *ApiClient) checkApiAuthorization(rrl *url.URL) error {
 	}
 
 	if m.http.Jar == nil || len(m.http.Jar.Cookies(rrl)) == 0 {
-		gLog.Info().Msg("unauthorized request detected; initiate the authentication proccess...")
+		gLog.Info().Msg("unauthorized request detected; initiate the authentication process...")
 		return m.GetApiAuthorization()
 	}
 
@@ -203,7 +203,7 @@ func (m *ApiClient) checkApiAuthorization(rrl *url.URL) error {
 		}
 	}
 
-	gLog.Warn().Msg("there is no PHPSESSID cookie found; initiate the authentication proccess...")
+	gLog.Warn().Msg("there is no PHPSESSID cookie found; initiate the authentication process...")
 	return m.GetApiAuthorization()
 }
 
@@ -346,7 +346,7 @@ func (m *ApiClient) GetApiAuthorization() (e error) {
 		"csrf":    {"1"},
 	}
 
-	gLog.Debug().Str("username", gCli.String("anilibria-login-username")).Msg("trying to complete authentication proccess on anilibria")
+	gLog.Debug().Str("username", gCli.String("anilibria-login-username")).Msg("trying to complete authentication process on anilibria")
 	return m.apiAuthorize(strings.NewReader(authForm.Encode()))
 }
 
