@@ -191,7 +191,7 @@ func (m *Master) isWorkerRegistered(id string) bool {
 	return m.workers[id] != nil
 }
 
-func (m *Master) authorizeWorker(ctx context.Context) (string, error) {
+func (*Master) authorizeWorker(ctx context.Context) (string, error) {
 	p, ok := peer.FromContext(ctx)
 	if !ok {
 		return "", status.Errorf(codes.DataLoss, "")
