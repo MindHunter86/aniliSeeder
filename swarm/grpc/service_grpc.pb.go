@@ -26,6 +26,8 @@ type WorkerServiceClient interface {
 	GetTorrents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TorrentsReply, error)
 	GetTorrentScore(ctx context.Context, in *TorrentScoreRequest, opts ...grpc.CallOption) (*TorrentScoreReply, error)
 	DropTorrent(ctx context.Context, in *TorrentDropRequest, opts ...grpc.CallOption) (*TFileSaveReply, error)
+	// TODO
+	UpdateTorrent(ctx context.Context, in *TorrentUpdateRequest, opts ...grpc.CallOption) (*TorrentUpdateReply, error)
 	SaveTorrentFile(ctx context.Context, in *TFileSaveRequest, opts ...grpc.CallOption) (*TFileSaveReply, error)
 	GetSystemFreeSpace(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SystemSpaceReply, error)
 }
@@ -65,6 +67,15 @@ func (c *workerServiceClient) DropTorrent(ctx context.Context, in *TorrentDropRe
 	return out, nil
 }
 
+func (c *workerServiceClient) UpdateTorrent(ctx context.Context, in *TorrentUpdateRequest, opts ...grpc.CallOption) (*TorrentUpdateReply, error) {
+	out := new(TorrentUpdateReply)
+	err := c.cc.Invoke(ctx, "/grpc.WorkerService/UpdateTorrent", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *workerServiceClient) SaveTorrentFile(ctx context.Context, in *TFileSaveRequest, opts ...grpc.CallOption) (*TFileSaveReply, error) {
 	out := new(TFileSaveReply)
 	err := c.cc.Invoke(ctx, "/grpc.WorkerService/SaveTorrentFile", in, out, opts...)
@@ -90,6 +101,8 @@ type WorkerServiceServer interface {
 	GetTorrents(context.Context, *emptypb.Empty) (*TorrentsReply, error)
 	GetTorrentScore(context.Context, *TorrentScoreRequest) (*TorrentScoreReply, error)
 	DropTorrent(context.Context, *TorrentDropRequest) (*TFileSaveReply, error)
+	// TODO
+	UpdateTorrent(context.Context, *TorrentUpdateRequest) (*TorrentUpdateReply, error)
 	SaveTorrentFile(context.Context, *TFileSaveRequest) (*TFileSaveReply, error)
 	GetSystemFreeSpace(context.Context, *emptypb.Empty) (*SystemSpaceReply, error)
 	mustEmbedUnimplementedWorkerServiceServer()
@@ -107,6 +120,9 @@ func (UnimplementedWorkerServiceServer) GetTorrentScore(context.Context, *Torren
 }
 func (UnimplementedWorkerServiceServer) DropTorrent(context.Context, *TorrentDropRequest) (*TFileSaveReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropTorrent not implemented")
+}
+func (UnimplementedWorkerServiceServer) UpdateTorrent(context.Context, *TorrentUpdateRequest) (*TorrentUpdateReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateTorrent not implemented")
 }
 func (UnimplementedWorkerServiceServer) SaveTorrentFile(context.Context, *TFileSaveRequest) (*TFileSaveReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SaveTorrentFile not implemented")
@@ -181,6 +197,24 @@ func _WorkerService_DropTorrent_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkerService_UpdateTorrent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TorrentUpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).UpdateTorrent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.WorkerService/UpdateTorrent",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).UpdateTorrent(ctx, req.(*TorrentUpdateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WorkerService_SaveTorrentFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TFileSaveRequest)
 	if err := dec(in); err != nil {
@@ -237,6 +271,10 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WorkerService_DropTorrent_Handler,
 		},
 		{
+			MethodName: "UpdateTorrent",
+			Handler:    _WorkerService_UpdateTorrent_Handler,
+		},
+		{
 			MethodName: "SaveTorrentFile",
 			Handler:    _WorkerService_SaveTorrentFile_Handler,
 		},
@@ -254,7 +292,7 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MasterServiceClient interface {
 	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Register(ctx context.Context, in *RegistrationRequest, opts ...grpc.CallOption) (*RegistrationReply, error)
+	Register(ctx context.Context, in *RegistrationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type masterServiceClient struct {
@@ -274,8 +312,8 @@ func (c *masterServiceClient) Ping(ctx context.Context, in *emptypb.Empty, opts 
 	return out, nil
 }
 
-func (c *masterServiceClient) Register(ctx context.Context, in *RegistrationRequest, opts ...grpc.CallOption) (*RegistrationReply, error) {
-	out := new(RegistrationReply)
+func (c *masterServiceClient) Register(ctx context.Context, in *RegistrationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/grpc.MasterService/Register", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -288,7 +326,7 @@ func (c *masterServiceClient) Register(ctx context.Context, in *RegistrationRequ
 // for forward compatibility
 type MasterServiceServer interface {
 	Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
-	Register(context.Context, *RegistrationRequest) (*RegistrationReply, error)
+	Register(context.Context, *RegistrationRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMasterServiceServer()
 }
 
@@ -299,7 +337,7 @@ type UnimplementedMasterServiceServer struct {
 func (UnimplementedMasterServiceServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
-func (UnimplementedMasterServiceServer) Register(context.Context, *RegistrationRequest) (*RegistrationReply, error) {
+func (UnimplementedMasterServiceServer) Register(context.Context, *RegistrationRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
 }
 func (UnimplementedMasterServiceServer) mustEmbedUnimplementedMasterServiceServer() {}

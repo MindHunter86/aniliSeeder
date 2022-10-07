@@ -1,8 +1,10 @@
 package swarm
 
 import (
+	"bytes"
 	"strings"
 
+	"github.com/MindHunter86/aniliSeeder/deluge"
 	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
 	"github.com/MindHunter86/aniliSeeder/utils"
 	"golang.org/x/net/context"
@@ -80,7 +82,24 @@ func (m *Worker) DropTorrent(ctx context.Context, req *pb.TorrentDropRequest) (_
 	}
 
 	gLog.Debug().Str("master_id", mid).Msg("processing master request...")
-	return
+
+	if req.GetHash() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "incorrect hash")
+	}
+
+	var trr *deluge.Torrent
+	if trr, e = gDeluge.TorrentStatus(req.GetHash()); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
+	if req.GetName() != trr.Name {
+		return nil, status.Errorf(codes.InvalidArgument, "given name is not equal torrent name")
+	}
+
+	return &pb.TorrentDropReply{
+		FreedSpace: uint64(trr.TotalSize),
+		FreeSpace:  utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
+	}, e
 }
 
 func (m *Worker) SaveTorrentFile(ctx context.Context, req *pb.TFileSaveRequest) (_ *pb.TFileSaveReply, _ error) {
@@ -90,7 +109,17 @@ func (m *Worker) SaveTorrentFile(ctx context.Context, req *pb.TFileSaveRequest) 
 	}
 
 	gLog.Debug().Str("master_id", mid).Msg("processing master request...")
-	return
+
+	buf := bytes.NewBuffer(req.GetPayload())
+	n, e := gDeluge.SaveTorrentFile(req.GetFilename(), buf)
+	if e != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, e.Error())
+	}
+
+	gLog.Debug().Str("master_id", mid).Int64("written_bytes", n).Msg("the requested method has been processed")
+	return &pb.TFileSaveReply{
+		WrittenBytes: n,
+	}, e
 }
 
 func (m *Worker) GetSystemFreeSpace(ctx context.Context, _ *emptypb.Empty) (_ *pb.SystemSpaceReply, _ error) {

@@ -2,6 +2,7 @@ package deluge
 
 import (
 	"encoding/json"
+	"io"
 	"math"
 	"os"
 
@@ -116,6 +117,28 @@ type Torrent struct {
 	// FileProgress   []float32
 }
 
+func (*Client) newTorrentFromStatus(hash string, t *delugeclient.TorrentStatus) *Torrent {
+	return &Torrent{
+		Hash:          hash,
+		ActiveTime:    t.ActiveTime,
+		Ratio:         t.Ratio,
+		IsFinished:    t.IsFinished,
+		IsSeed:        t.IsSeed,
+		Name:          t.Name,
+		NumPeers:      t.NumPeers,
+		NumPieces:     t.NumPieces,
+		NumSeeds:      t.NumSeeds,
+		PieceLength:   t.PieceLength,
+		SeedingTime:   t.SeedingTime,
+		State:         t.State,
+		TotalPeers:    t.TotalPeers,
+		TotalSeeds:    t.TotalSeeds,
+		TotalDone:     t.TotalDone,
+		TotalUploaded: t.TotalUploaded,
+		TotalSize:     t.TotalSize,
+	}
+}
+
 func (m *Client) GetTorrentsV2() (_ []*Torrent, e error) {
 	var trrs map[string]*delugeclient.TorrentStatus
 	if trrs, e = m.GetTorrents(); e != nil {
@@ -124,26 +147,42 @@ func (m *Client) GetTorrentsV2() (_ []*Torrent, e error) {
 
 	var trrs2 []*Torrent
 	for h, t := range trrs {
-		trrs2 = append(trrs2, &Torrent{
-			Hash:          h,
-			ActiveTime:    t.ActiveTime,
-			Ratio:         t.Ratio,
-			IsFinished:    t.IsFinished,
-			IsSeed:        t.IsSeed,
-			Name:          t.Name,
-			NumPeers:      t.NumPeers,
-			NumPieces:     t.NumPieces,
-			NumSeeds:      t.NumSeeds,
-			PieceLength:   t.PieceLength,
-			SeedingTime:   t.SeedingTime,
-			State:         t.State,
-			TotalPeers:    t.TotalPeers,
-			TotalSeeds:    t.TotalSeeds,
-			TotalDone:     t.TotalDone,
-			TotalUploaded: t.TotalUploaded,
-			TotalSize:     t.TotalSize,
-		})
+		trrs2 = append(trrs2, m.newTorrentFromStatus(h, t))
 	}
 
 	return trrs2, e
+}
+
+func (*Client) SaveTorrentFile(fname string, buf io.Reader) (_ int64, e error) {
+	path := gCli.String("deluge-torrentfiles-path") + "/" + fname
+
+	if _, e = os.Stat(path); e != nil {
+		if !os.IsNotExist(e) {
+			gLog.Debug().Err(e).Str("path", path).Msg("given path is already exists; drop request")
+			return
+		}
+
+		gLog.Debug().Err(e).Str("path", path).Msg("given path was not found; continue ...")
+	}
+
+	var fd *os.File
+	if fd, e = os.Create(path); e != nil {
+		return
+	}
+	defer fd.Close()
+
+	return io.Copy(fd, buf)
+}
+
+func (m *Client) RemoveTorrent(hash string, withData bool) (bool, error) {
+	return m.deluge.RemoveTorrent(hash, withData)
+}
+
+func (m *Client) TorrentStatus(hash string) (_ *Torrent, e error) {
+	var tstatus *delugeclient.TorrentStatus
+	if tstatus, e = m.deluge.TorrentStatus(hash); e != nil {
+		return
+	}
+
+	return m.newTorrentFromStatus(hash, tstatus), e
 }

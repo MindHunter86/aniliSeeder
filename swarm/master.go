@@ -33,7 +33,6 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type Master struct {
@@ -267,7 +266,7 @@ func (m *Master) Ping(ctx context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, 
 	return &emptypb.Empty{}, nil
 }
 
-func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *pb.RegistrationReply, e error) {
+func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *emptypb.Empty, e error) {
 	var wid string
 	if wid, e = m.authorizeWorker(ctx); e != nil {
 		return
@@ -343,5 +342,5 @@ func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *
 	m.Unlock()
 
 	gLog.Info().Str("worker_id", wid).Msg("new client registration has been completed")
-	return &pb.RegistrationReply{Config: &structpb.Struct{}}, e
+	return &emptypb.Empty{}, e
 }

@@ -217,21 +217,6 @@ func (m *Worker) getNewRPCContext(d time.Duration) (context.Context, context.Can
 	)
 }
 
-func (*Worker) parseRegistrationReply(rpl *pb.RegistrationReply) (_ *WorkerConfig, e error) {
-	var cfg *WorkerConfig
-
-	var buf []byte
-	if buf, e = json.Marshal(rpl); e != nil {
-		return
-	}
-
-	if e = json.Unmarshal(buf, &cfg); e != nil {
-		return
-	}
-
-	return cfg, e
-}
-
 func (m *Worker) getRegistrationRequest() (_ *pb.RegistrationRequest, e error) {
 	var trrs []*structpb.Struct
 	if trrs, e = m.getTorrents(); e != nil {

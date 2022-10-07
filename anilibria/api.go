@@ -266,12 +266,12 @@ func (*ApiClient) parseFileFromResponse(rsp *io.ReadCloser, filename string) (e 
 		}
 
 		gLog.Debug().Str("path", gCli.String("torrentfiles-dir")+"/"+filename).
-			Msg("given filepath is not found; continue...")
+			Msg("given filepath was not found; continue...")
 	}
 
 	if fi != nil {
 		gLog.Warn().Str("path", gCli.String("torrentfiles-dir")+"/"+filename).
-			Msg("destination file isa already exists; skipping downloading...")
+			Msg("destination file is already exists; skipping downloading...")
 		return
 	}
 

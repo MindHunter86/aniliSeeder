@@ -10,7 +10,12 @@ service WorkerService {
     rpc GetTorrents(google.protobuf.Empty) returns (TorrentsReply) {}
     rpc GetTorrentScore(TorrentScoreRequest) returns (TorrentScoreReply) {}
     rpc DropTorrent(TorrentDropRequest) returns (TFileSaveReply) {}
+
+    // TODO
+    rpc UpdateTorrent(TorrentUpdateRequest) returns (TorrentUpdateReply) {}
+
     rpc SaveTorrentFile(TFileSaveRequest) returns (TFileSaveReply) {}
+
     rpc GetSystemFreeSpace(google.protobuf.Empty) returns (SystemSpaceReply) {}
 }
 
@@ -44,18 +49,30 @@ message TorrentScoreReply {
 message TorrentDropRequest {
     string Hash = 1;
     string Name = 2;
-    string Reason = 3;
 }
 message TorrentDropReply {
     uint64 FreedSpace = 1;
     uint64 FreeSpace = 2;
 }
 
+message TorrentUpdateRequest {
+    string Name = 1;
+    string Hash = 2;
+    string NewHash = 3;
+    bytes TFile = 4;
+}
+message TorrentUpdateReply {
+    string Name = 1;
+    string NewHash = 2;
+    repeated string NewFiles = 3;
+}
+
 message TFileSaveRequest {
-    bytes payload = 1;
+    string Filename = 1;
+    bytes Payload = 2;
 }
 message TFileSaveReply {
-    uint64 FilePayload = 1;
+    int64 WrittenBytes = 1;
 }
 
 message SystemSpaceReply {
