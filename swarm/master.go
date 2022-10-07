@@ -211,7 +211,7 @@ func (m *Master) authorizeWorker(ctx context.Context) (string, error) {
 		return "", status.Errorf(codes.InvalidArgument, "")
 	}
 
-	gLog.Debug().Str("worker_ip", p.Addr.String()).Str("worker_id", md.Get("x-worker-id")[0]).
+	gLog.Debug().Str("worker_ip", p.Addr.String()).Str("worker_id", id[0]).
 		Str("worker_ua", md.Get("user-agent")[0]).Msg("worker connect accepted, authorizing...")
 
 	ak := md.Get("x-access-token")
