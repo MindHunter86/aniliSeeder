@@ -258,6 +258,11 @@ func (m *Master) Ping(ctx context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, 
 		return &emptypb.Empty{}, e
 	}
 
+	if !m.isWorkerRegistered(wid) {
+		gLog.Info().Str("worker_id", wid).Msg("worker is not registered, returning 403...")
+		return nil, status.Errorf(codes.PermissionDenied, "")
+	}
+
 	gLog.Info().Str("worker_id", wid).Msg("received ping from worker")
 	return &emptypb.Empty{}, nil
 }

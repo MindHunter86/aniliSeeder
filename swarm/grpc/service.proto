@@ -16,7 +16,7 @@ service WorkerService {
 
 service MasterService {
     rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
-    rpc Register (RegistrationRequest) returns (RegistrationReply) {}
+    rpc Register (RegistrationRequest) returns (google.protobuf.Empty) {}
 }
 
 message RegistrationRequest {
@@ -26,11 +26,6 @@ message RegistrationRequest {
 
     // registration phase
     repeated google.protobuf.Struct Torrent = 3;
-}
-
-message RegistrationReply {
-    // setup phase
-    google.protobuf.Struct Config = 2;
 }
 
 message TorrentsReply {
