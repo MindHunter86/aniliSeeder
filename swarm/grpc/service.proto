@@ -43,7 +43,7 @@ message TorrentScoreRequest {
 }
 message TorrentScoreReply {
     float Ratio = 1;
-    float Score = 2;
+    double Score = 2;
 }
 
 message TorrentDropRequest {

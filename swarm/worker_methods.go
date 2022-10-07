@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func (*Worker) authorizeMasterRequest(ctx context.Context) (string, error) {
@@ -62,17 +63,42 @@ func (m *Worker) GetTorrents(ctx context.Context, _ *emptypb.Empty) (_ *pb.Torre
 	}
 
 	gLog.Debug().Str("master_id", mid).Msg("processing master request...")
-	return
+
+	var trrs []*structpb.Struct
+	if trrs, e = m.getTorrents(); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
+	return &pb.TorrentsReply{
+		Torrent: trrs,
+	}, e
 }
 
-func (m *Worker) GetTorrentScore(ctx context.Context, req *pb.TorrentScoreReply) (_ *pb.TorrentScoreReply, _ error) {
+func (m *Worker) GetTorrentScore(ctx context.Context, req *pb.TorrentScoreRequest) (_ *pb.TorrentScoreReply, _ error) {
 	mid, e := m.authorizeMasterRequest(ctx)
 	if e != nil {
 		return nil, e
 	}
 
 	gLog.Debug().Str("master_id", mid).Msg("processing master request...")
-	return
+
+	if req.GetHash() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "incorrect hash")
+	}
+
+	var trr *deluge.Torrent
+	if trr, e = gDeluge.TorrentStatus(req.GetHash()); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
+	if req.GetName() != trr.Name {
+		return nil, status.Errorf(codes.InvalidArgument, "given name is not equal torrent name")
+	}
+
+	return &pb.TorrentScoreReply{
+		Score: trr.GetVKScore(),
+		Ratio: trr.Ratio,
+	}, e
 }
 
 func (m *Worker) DropTorrent(ctx context.Context, req *pb.TorrentDropRequest) (_ *pb.TorrentDropReply, _ error) {

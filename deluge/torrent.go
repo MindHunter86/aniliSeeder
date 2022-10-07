@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"time"
 
 	delugeclient "github.com/MindHunter86/go-libdeluge"
 )
@@ -185,4 +186,15 @@ func (m *Client) TorrentStatus(hash string) (_ *Torrent, e error) {
 	}
 
 	return m.newTorrentFromStatus(hash, tstatus), e
+}
+
+func (m *Torrent) GetVKScore() (_ float64) {
+	seedtime := time.Duration(m.SeedingTime) * time.Second
+	seeddays := seedtime.Hours() / float64(24)
+	return m.roundGivenScore(float64(m.TotalUploaded)/seeddays*100/float64(m.TotalSize), 3)
+}
+
+func (*Torrent) roundGivenScore(val float64, precision uint) float64 {
+	ratio := math.Pow(10, float64(precision))
+	return math.Round(val*ratio) / ratio
 }
