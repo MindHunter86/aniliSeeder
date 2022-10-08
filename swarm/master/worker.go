@@ -128,7 +128,7 @@ func (m *worker) getId() string {
 	return m.id
 }
 
-func (m *worker) newServiceRequest(d time.Duration) (context.Context, context.CancelFunc) {
+func (*worker) newServiceRequest(d time.Duration) (context.Context, context.CancelFunc) {
 	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
 	io.WriteString(mac, gMasterId)
 
@@ -143,7 +143,7 @@ func (m *worker) newServiceRequest(d time.Duration) (context.Context, context.Ca
 	)
 }
 
-func (m *worker) authorizeSerivceReply(ctx context.Context, md *metadata.MD) (_ string, e error) {
+func (*worker) authorizeSerivceReply(ctx context.Context, md *metadata.MD) (_ string, e error) {
 	id := md.Get("x-worker-id")
 	if len(id) != 1 {
 		return "", status.Errorf(codes.InvalidArgument, "")
