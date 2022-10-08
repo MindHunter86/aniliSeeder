@@ -113,16 +113,16 @@ func (m *worker) reconnect() (e error) {
 	return
 }
 
-func (m *worker) disconnect() (e error) {
-	if e = m.gconn.Close(); e != nil {
-		gLog.Warn().Err(e).Msg("")
-	}
-	if e = m.msess.Close(); e != nil {
-		gLog.Warn().Err(e).Msg("")
-	}
+// func (m *worker) disconnect() (e error) {
+// 	if e = m.gconn.Close(); e != nil {
+// 		gLog.Warn().Err(e).Msg("")
+// 	}
+// 	if e = m.msess.Close(); e != nil {
+// 		gLog.Warn().Err(e).Msg("")
+// 	}
 
-	return
-}
+// 	return
+// }
 
 func (m *worker) getId() string {
 	return m.id
