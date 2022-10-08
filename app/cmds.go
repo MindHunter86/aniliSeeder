@@ -50,6 +50,14 @@ func (*cmds) statCurrentTorrents() (io.ReadWriter, error) {
 		return nil, e
 	}
 
+	// colorize := func(data float64) string {
+	// 	if data > float64(gCli.Int("torrents-vkscore-line")) {
+	// 		return text.FgGreen.Sprintf("%f", data)
+	// 	} else {
+	// 		return text.FgYellow.Sprintf("%f", data)
+	// 	}
+	// }
+
 	for hash, torrent := range trrs {
 		name, _, _ := strings.Cut(torrent.Name, "- AniLibria.TV")
 		seedTime := time.Duration(torrent.SeedingTime) * time.Second

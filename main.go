@@ -83,7 +83,7 @@ func main() {
 		&cli.StringFlag{
 			Name:  "socket-path",
 			Usage: "",
-			Value: "aniliSeeder.sock",
+			Value: "/tmp/aniliSeeder.sock",
 		},
 
 		&cli.IntFlag{
