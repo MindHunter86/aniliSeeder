@@ -37,7 +37,7 @@ type Worker struct {
 	id string
 
 	sync.RWMutex
-	pingerDisable bool
+	pingblock bool
 }
 
 var (
@@ -76,17 +76,6 @@ func (m *Worker) Bootstrap() (e error) {
 
 	gLog.Debug().Msg("starting grpc master server ...")
 	return m.gserver.Serve(m.msession)
-}
-
-func (m *Worker) ping() (e error) {
-	if _, e = m.msession.Ping(); e != nil {
-		if e = m.connect(); e != nil {
-			return
-		}
-	}
-
-	// TODO
-	return
 }
 
 func (m *Worker) connect() (e error) {
@@ -153,14 +142,33 @@ func (m *Worker) reconnect() (e error) {
 		gLog.Warn().Err(e).Msg("")
 	}
 
-	return
+	return m.connect()
 }
 
 func (m *Worker) run(done func()) {
 	defer done()
 
-	<-gCtx.Done()
-	gLog.Info().Msg("context done() has been caught; closing grpc server, mux session, tcp conn...")
+	ticker := time.NewTicker(time.Second)
+
+LOOP:
+	for {
+		select {
+		case <-gCtx.Done():
+			gLog.Info().Msg("context done() has been caught; closing grpc server, mux session, tcp conn...")
+			break LOOP
+		case <-ticker.C:
+			if m.isPingBlocked() {
+				gLog.Debug().Msg("skipping ping because of the last ping is not completed yet")
+			}
+
+			m.blockPing()
+			if e := m.ping(); e != nil {
+				gLog.Warn().Err(e).Msg("aborting application because of ping fails and reconnection failure")
+				break LOOP
+			}
+			m.unblockPing()
+		}
+	}
 
 	m.gserver.Stop()
 
@@ -173,39 +181,33 @@ func (m *Worker) run(done func()) {
 	}
 }
 
-// func (m *Worker) run2() (e error) {
-// 	ticker := time.NewTicker(time.Second)
-// 	ticker.Stop() // !!
-// 	// todo refactor ?
+func (m *Worker) ping() (e error) {
+	if _, e = m.msession.Ping(); e != nil {
+		gLog.Debug().Err(e).Msg("got an error while pinging the mux session")
 
-// 	if gCli.Duration("grpc-ping-interval") != 0*time.Second {
-// 		ticker.Reset(gCli.Duration("grpc-ping-interval"))
-// 	}
+		if e = m.reconnect(); e != nil {
+			gLog.Debug().Err(e).Msg("got an error while reconnecting to the master server")
+			return
+		}
+	}
 
-// 	defer ticker.Stop()
+	// TODO
+	return
+}
 
-// LOOP:
-// 	for {
-// 		select {
-// 		case <-gCtx.Done():
-// 			break LOOP
-// 		case <-ticker.C:
-// 			m.RLock()
-// 			if m.pingerDisable {
-// 				gLog.Debug().Msg("skipping ping call because of the last call is not completed yet")
-// 				continue
-// 			}
-// 			m.RUnlock()
-
-// 			// if e = m.ping(); e != nil {
-// 			// 	gLog.Warn().Err(e).Msg("grpc ping has been failed; close application...")
-// 			// 	return
-// 			// }
-// 		}
-// 	}
-
-// 	return
-// }
+func (m *Worker) isPingBlocked() bool {
+	return m.pingblock
+}
+func (m *Worker) unblockPing() {
+	m.Lock()
+	m.pingblock = false
+	m.Unlock()
+}
+func (m *Worker) blockPing() {
+	m.Lock()
+	m.pingblock = true
+	m.Unlock()
+}
 
 func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 	var trrs []*deluge.Torrent
