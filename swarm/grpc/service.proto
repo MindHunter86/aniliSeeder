@@ -7,9 +7,12 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/empty.proto";
 
 service WorkerService {
+    rpc Init(google.protobuf.Empty) returns (InitReply) {}
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+
     rpc GetTorrents(google.protobuf.Empty) returns (TorrentsReply) {}
     rpc GetTorrentScore(TorrentScoreRequest) returns (TorrentScoreReply) {}
-    rpc DropTorrent(TorrentDropRequest) returns (TFileSaveReply) {}
+    rpc DropTorrent(TorrentDropRequest) returns (TorrentDropReply) {}
 
     // TODO
     rpc UpdateTorrent(TorrentUpdateRequest) returns (TorrentUpdateReply) {}
@@ -19,18 +22,14 @@ service WorkerService {
     rpc GetSystemFreeSpace(google.protobuf.Empty) returns (SystemSpaceReply) {}
 }
 
-service MasterService {
-    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
-    rpc Register (RegistrationRequest) returns (google.protobuf.Empty) {}
-}
-
-message RegistrationRequest {
-    // initial phase
-    string WorkerVersion = 1;
-    uint64 WDFreeSpace = 2;
+message InitReply {
+    // auth phase
+    string WorkerId = 1;
 
     // registration phase
-    repeated google.protobuf.Struct Torrent = 3;
+    string WorkerVersion = 2;
+    uint64 WDFreeSpace = 3;
+    repeated google.protobuf.Struct Torrent = 4;
 }
 
 message TorrentsReply {
@@ -77,4 +76,15 @@ message TFileSaveReply {
 
 message SystemSpaceReply {
     uint64 FreeSpace = 1;
+}
+
+// 2delete
+
+message RegistrationRequest {
+    // initial phase
+    string WorkerVersion = 1;
+    uint64 WDFreeSpace = 2;
+
+    // registration phase
+    repeated google.protobuf.Struct Torrent = 3;
 }

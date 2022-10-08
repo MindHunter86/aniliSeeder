@@ -23,9 +23,11 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkerServiceClient interface {
+	Init(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*InitReply, error)
+	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetTorrents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TorrentsReply, error)
 	GetTorrentScore(ctx context.Context, in *TorrentScoreRequest, opts ...grpc.CallOption) (*TorrentScoreReply, error)
-	DropTorrent(ctx context.Context, in *TorrentDropRequest, opts ...grpc.CallOption) (*TFileSaveReply, error)
+	DropTorrent(ctx context.Context, in *TorrentDropRequest, opts ...grpc.CallOption) (*TorrentDropReply, error)
 	// TODO
 	UpdateTorrent(ctx context.Context, in *TorrentUpdateRequest, opts ...grpc.CallOption) (*TorrentUpdateReply, error)
 	SaveTorrentFile(ctx context.Context, in *TFileSaveRequest, opts ...grpc.CallOption) (*TFileSaveReply, error)
@@ -38,6 +40,24 @@ type workerServiceClient struct {
 
 func NewWorkerServiceClient(cc grpc.ClientConnInterface) WorkerServiceClient {
 	return &workerServiceClient{cc}
+}
+
+func (c *workerServiceClient) Init(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*InitReply, error) {
+	out := new(InitReply)
+	err := c.cc.Invoke(ctx, "/grpc.WorkerService/Init", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workerServiceClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/grpc.WorkerService/Ping", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *workerServiceClient) GetTorrents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TorrentsReply, error) {
@@ -58,8 +78,8 @@ func (c *workerServiceClient) GetTorrentScore(ctx context.Context, in *TorrentSc
 	return out, nil
 }
 
-func (c *workerServiceClient) DropTorrent(ctx context.Context, in *TorrentDropRequest, opts ...grpc.CallOption) (*TFileSaveReply, error) {
-	out := new(TFileSaveReply)
+func (c *workerServiceClient) DropTorrent(ctx context.Context, in *TorrentDropRequest, opts ...grpc.CallOption) (*TorrentDropReply, error) {
+	out := new(TorrentDropReply)
 	err := c.cc.Invoke(ctx, "/grpc.WorkerService/DropTorrent", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -98,9 +118,11 @@ func (c *workerServiceClient) GetSystemFreeSpace(ctx context.Context, in *emptyp
 // All implementations must embed UnimplementedWorkerServiceServer
 // for forward compatibility
 type WorkerServiceServer interface {
+	Init(context.Context, *emptypb.Empty) (*InitReply, error)
+	Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	GetTorrents(context.Context, *emptypb.Empty) (*TorrentsReply, error)
 	GetTorrentScore(context.Context, *TorrentScoreRequest) (*TorrentScoreReply, error)
-	DropTorrent(context.Context, *TorrentDropRequest) (*TFileSaveReply, error)
+	DropTorrent(context.Context, *TorrentDropRequest) (*TorrentDropReply, error)
 	// TODO
 	UpdateTorrent(context.Context, *TorrentUpdateRequest) (*TorrentUpdateReply, error)
 	SaveTorrentFile(context.Context, *TFileSaveRequest) (*TFileSaveReply, error)
@@ -112,13 +134,19 @@ type WorkerServiceServer interface {
 type UnimplementedWorkerServiceServer struct {
 }
 
+func (UnimplementedWorkerServiceServer) Init(context.Context, *emptypb.Empty) (*InitReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Init not implemented")
+}
+func (UnimplementedWorkerServiceServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
 func (UnimplementedWorkerServiceServer) GetTorrents(context.Context, *emptypb.Empty) (*TorrentsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTorrents not implemented")
 }
 func (UnimplementedWorkerServiceServer) GetTorrentScore(context.Context, *TorrentScoreRequest) (*TorrentScoreReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTorrentScore not implemented")
 }
-func (UnimplementedWorkerServiceServer) DropTorrent(context.Context, *TorrentDropRequest) (*TFileSaveReply, error) {
+func (UnimplementedWorkerServiceServer) DropTorrent(context.Context, *TorrentDropRequest) (*TorrentDropReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropTorrent not implemented")
 }
 func (UnimplementedWorkerServiceServer) UpdateTorrent(context.Context, *TorrentUpdateRequest) (*TorrentUpdateReply, error) {
@@ -141,6 +169,42 @@ type UnsafeWorkerServiceServer interface {
 
 func RegisterWorkerServiceServer(s grpc.ServiceRegistrar, srv WorkerServiceServer) {
 	s.RegisterService(&WorkerService_ServiceDesc, srv)
+}
+
+func _WorkerService_Init_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).Init(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.WorkerService/Init",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).Init(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkerService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.WorkerService/Ping",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).Ping(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _WorkerService_GetTorrents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -259,6 +323,14 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*WorkerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "Init",
+			Handler:    _WorkerService_Init_Handler,
+		},
+		{
+			MethodName: "Ping",
+			Handler:    _WorkerService_Ping_Handler,
+		},
+		{
 			MethodName: "GetTorrents",
 			Handler:    _WorkerService_GetTorrents_Handler,
 		},
@@ -281,128 +353,6 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSystemFreeSpace",
 			Handler:    _WorkerService_GetSystemFreeSpace_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "swarm/grpc/service.proto",
-}
-
-// MasterServiceClient is the client API for MasterService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type MasterServiceClient interface {
-	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Register(ctx context.Context, in *RegistrationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-}
-
-type masterServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewMasterServiceClient(cc grpc.ClientConnInterface) MasterServiceClient {
-	return &masterServiceClient{cc}
-}
-
-func (c *masterServiceClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/grpc.MasterService/Ping", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *masterServiceClient) Register(ctx context.Context, in *RegistrationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/grpc.MasterService/Register", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// MasterServiceServer is the server API for MasterService service.
-// All implementations must embed UnimplementedMasterServiceServer
-// for forward compatibility
-type MasterServiceServer interface {
-	Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
-	Register(context.Context, *RegistrationRequest) (*emptypb.Empty, error)
-	mustEmbedUnimplementedMasterServiceServer()
-}
-
-// UnimplementedMasterServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedMasterServiceServer struct {
-}
-
-func (UnimplementedMasterServiceServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
-}
-func (UnimplementedMasterServiceServer) Register(context.Context, *RegistrationRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
-}
-func (UnimplementedMasterServiceServer) mustEmbedUnimplementedMasterServiceServer() {}
-
-// UnsafeMasterServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to MasterServiceServer will
-// result in compilation errors.
-type UnsafeMasterServiceServer interface {
-	mustEmbedUnimplementedMasterServiceServer()
-}
-
-func RegisterMasterServiceServer(s grpc.ServiceRegistrar, srv MasterServiceServer) {
-	s.RegisterService(&MasterService_ServiceDesc, srv)
-}
-
-func _MasterService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MasterServiceServer).Ping(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/grpc.MasterService/Ping",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServiceServer).Ping(ctx, req.(*emptypb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MasterService_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegistrationRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MasterServiceServer).Register(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/grpc.MasterService/Register",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServiceServer).Register(ctx, req.(*RegistrationRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// MasterService_ServiceDesc is the grpc.ServiceDesc for MasterService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var MasterService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "grpc.MasterService",
-	HandlerType: (*MasterServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Ping",
-			Handler:    _MasterService_Ping_Handler,
-		},
-		{
-			MethodName: "Register",
-			Handler:    _MasterService_Register_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

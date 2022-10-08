@@ -145,6 +145,11 @@ func main() {
 			Usage: "",
 			Value: 300 * time.Millisecond,
 		},
+		&cli.DurationFlag{
+			Name:  "grpc-request-timeout",
+			Usage: "",
+			Value: time.Second,
+		},
 
 		// http2 settings
 		&cli.DurationFlag{
@@ -302,7 +307,7 @@ func main() {
 type SeverityHook struct{}
 
 func (SeverityHook) Run(e *zerolog.Event, level zerolog.Level, _ string) {
-	if level != zerolog.DebugLevel {
+	if level != zerolog.DebugLevel && version != "devel" {
 		return
 	}
 

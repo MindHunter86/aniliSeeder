@@ -10,6 +10,8 @@ import (
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
 	"github.com/MindHunter86/aniliSeeder/swarm"
+	"github.com/MindHunter86/aniliSeeder/swarm/master"
+	"github.com/MindHunter86/aniliSeeder/swarm/worker"
 	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
@@ -42,6 +44,7 @@ func (m *App) Bootstrap() (e error) {
 	gCtx, gAbort = context.WithCancel(context.Background())
 	gCtx = context.WithValue(gCtx, utils.ContextKeyLogger, gLog)
 	gCtx = context.WithValue(gCtx, utils.ContextKeyCliContext, gCli)
+	gCtx = context.WithValue(gCtx, utils.ContextKeyAbortFunc, gAbort)
 
 	defer m.checkErrorsBeforeClosing(echan)
 	defer wg.Wait() // !!
@@ -55,7 +58,7 @@ func (m *App) Bootstrap() (e error) {
 		}
 
 		gCtx = context.WithValue(gCtx, utils.ContextKeyAnilibriaClient, gAniApi)
-		gRPC = swarm.NewMaster(gCtx)
+		gRPC = master.NewMaster(gCtx)
 	} else {
 		// deluge RPC client
 		if gDeluge, e = deluge.NewClient(gCli, gLog); e != nil {
@@ -63,7 +66,7 @@ func (m *App) Bootstrap() (e error) {
 		}
 
 		gCtx = context.WithValue(gCtx, utils.ContextKeyDelugeClient, gDeluge)
-		gRPC = swarm.NewWorker(gCtx)
+		gRPC = worker.NewWorker(gCtx)
 	}
 
 	// grpc master/worker setup
@@ -132,6 +135,7 @@ func (*App) checkErrorsBeforeClosing(errs chan error) {
 		return
 	}
 
+	close(errs)
 	for err := range errs {
 		gLog.Warn().Err(err).Msg("an error has been detected while application trying close the submodules")
 	}
