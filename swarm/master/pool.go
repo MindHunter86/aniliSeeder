@@ -66,7 +66,7 @@ func (m *workerPool) isWorkerExists(wid string) bool {
 
 func (m *workerPool) getWorkerIds() []string {
 	m.RLock()
-	defer m.Unlock()
+	defer m.RUnlock()
 
 	var ids []string
 	for id, _ := range m.workers {
@@ -78,7 +78,7 @@ func (m *workerPool) getWorkerIds() []string {
 
 func (m *workerPool) getWorker(id string) *worker {
 	m.RLock()
-	defer m.Unlock()
+	defer m.RUnlock()
 
 	return m.workers[id]
 }

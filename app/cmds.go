@@ -103,5 +103,5 @@ func (*cmds) listWorkers() (_ io.ReadWriter, e error) {
 		{Name: "ID", Mode: table.Dsc},
 	})
 
-	return
+	return buf, e
 }
