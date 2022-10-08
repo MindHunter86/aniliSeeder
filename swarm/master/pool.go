@@ -69,16 +69,16 @@ func (m *workerPool) getWorkerIds() []string {
 	defer m.RUnlock()
 
 	var ids []string
-	for id, _ := range m.workers {
+	for id := range m.workers {
 		ids = append(ids, id)
 	}
 
 	return ids
 }
 
-func (m *workerPool) getWorker(id string) *worker {
+func (m *workerPool) getWorker(wid string) *worker {
 	m.RLock()
 	defer m.RUnlock()
 
-	return m.workers[id]
+	return m.workers[wid]
 }

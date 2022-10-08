@@ -214,7 +214,7 @@ func main() {
 		&cli.StringFlag{
 			Name:  "deluge-data-path",
 			Usage: "",
-			Value: "/mnt/deluge",
+			Value: "./data",
 		},
 		&cli.StringFlag{
 			Name:  "deluge-torrentfiles-path",

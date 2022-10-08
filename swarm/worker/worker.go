@@ -225,6 +225,10 @@ func (*Worker) GetConnectedWorkers() (_ map[string]*swarm.SwarmWorker) {
 	return nil
 }
 
+func (*Worker) IsMaster() bool {
+	return false
+}
+
 // todo
 // ? refactor
 // func (m *Worker) ping() (e error) {

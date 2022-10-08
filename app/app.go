@@ -90,13 +90,15 @@ func (m *App) Bootstrap() (e error) {
 	go m.loop(echan, wg.Done)
 
 	// socket cmds server
-	var sServer = NewSockServer()
-	if e = sServer.Bootstrap(); e != nil {
-		return
-	}
+	if gSwarm.IsMaster() {
+		var sServer = NewSockServer()
+		if e = sServer.Bootstrap(); e != nil {
+			return
+		}
 
-	wg.Add(1)
-	go sServer.Serve(wg.Done)
+		wg.Add(1)
+		go sServer.Serve(wg.Done)
+	}
 
 	wg.Wait()
 	return

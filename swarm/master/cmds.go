@@ -9,6 +9,7 @@ func (m *Master) GetConnectedWorkers() (_ map[string]*swarm.SwarmWorker) {
 
 	for _, id := range m.workerPool.getWorkerIds() {
 		wrk := m.workerPool.getWorker(id)
+
 		wrks[id] = &swarm.SwarmWorker{
 			Id:             wrk.id,
 			Version:        wrk.version,
@@ -17,5 +18,5 @@ func (m *Master) GetConnectedWorkers() (_ map[string]*swarm.SwarmWorker) {
 		}
 	}
 
-	return
+	return wrks
 }

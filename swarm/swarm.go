@@ -26,6 +26,7 @@ type SwarmWorker struct {
 }
 
 type Swarm interface {
+	IsMaster() bool
 	Bootstrap() error
 	GetConnectedWorkers() map[string]*SwarmWorker
 }
