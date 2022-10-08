@@ -45,7 +45,7 @@ func (m *workerPool) newWorker(msess *yamux.Session) (wrk *worker, e error) {
 
 func (m *workerPool) isWorkerExists(wid string) bool {
 	m.RLock()
-	m.RUnlock()
+	defer m.RUnlock()
 
 	return m.workers[wid] != nil
 }
