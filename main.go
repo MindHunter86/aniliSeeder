@@ -145,6 +145,11 @@ func main() {
 			Usage: "",
 			Value: 300 * time.Millisecond,
 		},
+		&cli.DurationFlag{
+			Name:  "grpc-request-timeout",
+			Usage: "",
+			Value: time.Second,
+		},
 
 		// http2 settings
 		&cli.DurationFlag{

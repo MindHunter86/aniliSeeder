@@ -1,4 +1,4 @@
-package swarm
+package master
 
 import (
 	"bytes"
@@ -22,6 +22,7 @@ import (
 	"github.com/MindHunter86/aniliSeeder/deluge"
 	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
 	"github.com/MindHunter86/aniliSeeder/utils"
+	"github.com/hashicorp/yamux"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
@@ -35,14 +36,28 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+var (
+	gCli    *cli.Context
+	gLog    *zerolog.Logger
+	gCtx    context.Context
+	gDeluge *deluge.Client
+	gAniApi *anilibria.ApiClient
+
+	gMasterId string
+)
+
+// gRPC bypass picture
+// https://camo.githubusercontent.com/79dbaaa1fb7d239f1d21d4be23985b831babfc4b95538413298dce1c5c2600e1/68747470733a2f2f6c68332e676f6f676c6575736572636f6e74656e742e636f6d2f2d544c51596b4975396a49412f57664c61644c4a357a55492f41414141414141415967382f3745716c72613754764b38676f736b44465142637777394c6e584369794a387977434c63424741732f73313630302f494d475f383032372e6a7067
+
 type Master struct {
 	pb.UnimplementedMasterServiceServer
+
+	rawListener net.Listener
 
 	ln      net.Listener
 	gserver *grpc.Server
 
-	sync.RWMutex
-	workers map[string]*Worker
+	workerPool *workerPool
 }
 
 func NewMaster(ctx context.Context) *Master {
@@ -52,11 +67,87 @@ func NewMaster(ctx context.Context) *Master {
 	gAniApi = gCtx.Value(utils.ContextKeyAnilibriaClient).(*anilibria.ApiClient)
 
 	return &Master{
-		workers: make(map[string]*Worker),
+		workerPool: newWorkerPool(),
 	}
 }
 
+func (m *Master) runTCPAcceptor() (e error) {
+	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+		Msg("initializing net acceptor; starting listening for incoming TCP connections...")
+
+	var wg sync.WaitGroup
+
+	var clock sync.RWMutex
+	var conns []net.Conn
+
+LOOP:
+	for {
+		select {
+		case <-gCtx.Done():
+			gLog.Warn().Msg("")
+			break LOOP
+		default:
+			conn, e := m.rawListener.Accept()
+			if e != nil {
+				gLog.Error().Err(e).Msg("got some error with processing a new tcp client")
+			}
+
+			gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).Str("client_addr", conn.RemoteAddr().String()).
+				Msg("new incoming connection; processing...")
+
+			go func() {
+				//
+			}()
+		}
+	}
+
+	clock.Lock()
+	defer clock.Unlock()
+
+	for _, conn := range conns {
+		gLog.Debug().Str("client_addr", conn.RemoteAddr().String()).Msg("trying to close the accepted client connection")
+		if e = conn.Close(); e != nil {
+			gLog.Warn().Str("client_addr", conn.RemoteAddr().String()).Err(e).
+				Msg("got some errors while closing client connection")
+		}
+	}
+
+	gLog.Debug().Msg("waiting for closing all accepted connection...")
+	wg.Wait()
+
+	return
+}
+
+func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
+	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+		Msg("trying to initialize mux session...")
+
+	var muxsess *yamux.Session
+	if muxsess, e = yamux.Client(conn, yamux.DefaultConfig()); e != nil {
+		return
+	}
+
+	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+		Msg("trying to initialize gRPC client...")
+
+	if _, e = m.workerPool.newWorker(muxsess); e != nil {
+		return
+	}
+
+	return
+}
+
 func (m *Master) Bootstrap() (e error) {
+	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+		Msg("initializing the tcp server for further muxing")
+
+	if m.rawListener, e = net.Listen("tcp", gCli.String("swarm-master-addr")); e != nil {
+		return
+	}
+
+	//
+
+	//
 
 	gLog.Debug().Msg("trying to open grpc socket for master listening...")
 	if m.ln, e = net.Listen("tcp", gCli.String("swarm-master-listen")); e != nil {
@@ -188,7 +279,8 @@ func (*Master) createPublicPrivatePair() (_, _ []byte, e error) {
 }
 
 func (m *Master) isWorkerRegistered(id string) bool {
-	return m.workers[id] != nil
+	// return m.workers[id] != nil
+	return false
 }
 
 func (*Master) authorizeWorker(ctx context.Context) (string, error) {
@@ -275,8 +367,8 @@ func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *
 	gLog.Info().Str("worker_id", wid).Msg("new client validation phase running...")
 
 	switch {
-	case m.workers[wid] != nil:
-		return nil, status.Errorf(codes.AlreadyExists, "")
+	// case m.workers[wid] != nil:
+	// 	return nil, status.Errorf(codes.AlreadyExists, "")
 	case req.WorkerVersion != gCli.App.Version:
 		gLog.Warn().Str("worker_id", wid).Str("worker_ver", req.WorkerVersion).
 			Msg("connected client has higher/lower version")
@@ -333,13 +425,13 @@ func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *
 		log.Println(wtrrs)
 	}
 
-	m.Lock()
-	m.workers[wid] = &Worker{
-		Version:     req.WorkerVersion,
-		WDFreeSpace: req.WDFreeSpace,
-		Torrents:    wtrrs,
-	}
-	m.Unlock()
+	// m.Lock()
+	// m.workers[wid] = &worker.Worker{
+	// 	Version:     req.WorkerVersion,
+	// 	WDFreeSpace: req.WDFreeSpace,
+	// 	Torrents:    wtrrs,
+	// }
+	// m.Unlock()
 
 	gLog.Info().Str("worker_id", wid).Msg("new client registration has been completed")
 	return &emptypb.Empty{}, e

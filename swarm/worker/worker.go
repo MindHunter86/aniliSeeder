@@ -1,9 +1,10 @@
-package swarm
+package worker
 
 import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"net"
 	"sync"
 	"time"
 
@@ -17,62 +18,45 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
+	"github.com/MindHunter86/aniliSeeder/swarm"
 	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
 	"github.com/MindHunter86/aniliSeeder/utils"
+	"github.com/hashicorp/yamux"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 
 	uuid "github.com/satori/go.uuid"
 )
 
-type Minion struct{}
-
-func NewMinion() *Minion {
-	return &Minion{}
-}
-
-// func (*Minion) Bootstrap() error {
-// 	conn, err := grpc.Dial("localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()))
-// 	if err != nil {
-// 		log.Fatalf("did not connect: %v", err)
-// 	}
-// 	defer conn.Close()
-
-// 	c := pb.NewMasterClient(conn)
-
-// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-// 	defer cancel()
-
-// 	r, err := c.InitialPhase(ctx, &pb.MasterRequest{AccessKey: "fuckyounigga"})
-// 	if err != nil {
-// 		log.Fatalf("could not greet: %v", err)
-// 	}
-// 	log.Printf("Greeting: %s", r.GetVersion())
-// 	return nil
-// }
-
-// =================
-
 type Worker struct {
 	Version     string
 	WDFreeSpace uint64
 	Torrents    map[string]*deluge.Torrent
 
+	rawConn    net.Conn
+	muxSession *yamux.Session
+
 	gConn        *grpc.ClientConn
 	masterClient pb.MasterServiceClient
 
-	id     string
-	token  string
-	config *WorkerConfig
+	id    string
+	token string
 
 	sync.RWMutex
 	pingerDisable bool
 }
 
-type WorkerConfig struct{}
+var (
+	gCli    *cli.Context
+	gLog    *zerolog.Logger
+	gCtx    context.Context
+	gDeluge *deluge.Client
+	gAniApi *anilibria.ApiClient
+)
 
-func NewWorker(ctx context.Context) Swarm {
+func NewWorker(ctx context.Context) swarm.Swarm {
 	gCtx = ctx
 	gLog = gCtx.Value(utils.ContextKeyLogger).(*zerolog.Logger)
 	gCli = gCtx.Value(utils.ContextKeyCliContext).(*cli.Context)
@@ -85,6 +69,19 @@ func NewWorker(ctx context.Context) Swarm {
 }
 
 func (m *Worker) Bootstrap() (e error) {
+	gLog.Debug().Str("master_addr", gCli.String("swarm-master-addr")).
+		Msg("trying to establish raw tcp connection with the master server")
+
+	if m.rawConn, e = net.DialTimeout("tcp", gCli.String("swarm-master-addr"), gCli.Duration("grpc-connect-timeout")); e != nil {
+		return
+	}
+
+	gLog.Debug().Str("master_addr", gCli.String("swarm-master-addr")).Msg("trying to initialize mux session...")
+	if m.muxSession, e = yamux.Server(m.rawConn, yamux.DefaultConfig()); e != nil {
+		return
+	}
+
+	gLog.Debug().Str("master_addr", gCli.String("swarm-master-addr")).Msg("trying to initialize gRPC server...")
 	var opts []grpc.DialOption
 
 	if !gCli.Bool("grpc-insecure") {

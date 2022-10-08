@@ -9,7 +9,7 @@ exclude github.com/gdm85/go-libdeluge v0.5.6
 require (
 	github.com/MindHunter86/go-libdeluge v0.0.0-20221002035026-4eeeac7cd2bf
 	github.com/anacrolix/torrent v1.47.0
-	github.com/golang/protobuf v1.5.2
+	github.com/hashicorp/yamux v0.1.1
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/rs/zerolog v1.28.0
@@ -53,6 +53,7 @@ require (
 	github.com/gdm85/go-rencode v0.1.8 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
