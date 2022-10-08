@@ -29,3 +29,26 @@ func getCACertPool() (*x509.CertPool, error) {
 
 // 	return
 // }
+
+//
+
+// Debug func
+// func (*Worker) CheckGRPCPayload(payload []*structpb.Struct) (_ bool, e error) {
+
+// 	var trrs = make([]*deluge.Torrent, 100)
+
+// 	var buf []byte
+// 	if buf, e = json.Marshal(payload); e != nil {
+// 		return
+// 	}
+
+// 	if e = json.Unmarshal(buf, &trrs); e != nil {
+// 		return
+// 	}
+
+// 	for _, trr := range trrs {
+// 		log.Println(trr.Name)
+// 	}
+
+// 	return true, e
+// }

@@ -2,20 +2,16 @@ package worker
 
 import (
 	"context"
-	"crypto/x509"
+	"crypto/tls"
 	"encoding/json"
 	"net"
 	"sync"
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
@@ -35,14 +31,11 @@ type Worker struct {
 	WDFreeSpace uint64
 	Torrents    map[string]*deluge.Torrent
 
-	rawConn    net.Conn
-	muxSession *yamux.Session
+	rawconn  net.Conn
+	msession *yamux.Session
+	gserver  *grpc.Server
 
-	gConn        *grpc.ClientConn
-	masterClient pb.MasterServiceClient
-
-	id    string
-	token string
+	id string
 
 	sync.RWMutex
 	pingerDisable bool
@@ -63,8 +56,7 @@ func NewWorker(ctx context.Context) swarm.Swarm {
 	gDeluge = gCtx.Value(utils.ContextKeyDelugeClient).(*deluge.Client)
 
 	return &Worker{
-		id:    uuid.NewV4().String(),
-		token: gCli.String("swarm-master-secret"),
+		id: uuid.NewV4().String(),
 	}
 }
 
@@ -72,70 +64,84 @@ func (m *Worker) Bootstrap() (e error) {
 	gLog.Debug().Str("master_addr", gCli.String("swarm-master-addr")).
 		Msg("trying to establish raw tcp connection with the master server")
 
-	if m.rawConn, e = net.DialTimeout("tcp", gCli.String("swarm-master-addr"), gCli.Duration("grpc-connect-timeout")); e != nil {
+	if m.rawconn, e = net.DialTimeout("tcp", gCli.String("swarm-master-addr"), gCli.Duration("grpc-connect-timeout")); e != nil {
 		return
 	}
 
 	gLog.Debug().Str("master_addr", gCli.String("swarm-master-addr")).Msg("trying to initialize mux session...")
-	if m.muxSession, e = yamux.Server(m.rawConn, yamux.DefaultConfig()); e != nil {
+	if m.msession, e = yamux.Server(m.rawconn, yamux.DefaultConfig()); e != nil {
 		return
 	}
 
-	gLog.Debug().Str("master_addr", gCli.String("swarm-master-addr")).Msg("trying to initialize gRPC server...")
-	var opts []grpc.DialOption
+	gLog.Debug().Msg("grpc socket seems is ok, setuping grpc...")
+
+	var opts []grpc.ServerOption
 
 	if !gCli.Bool("grpc-insecure") {
-		gLog.Debug().Msg("trying access to ca...")
+		gLog.Debug().Msg("generating pub\\priv key pair...")
 
-		var cpool *x509.CertPool
-		if cpool, e = m.getCACertPool(); e != nil {
+		var crt tls.Certificate
+		if crt, e = m.getTLSCertificate(); e != nil {
 			return
 		}
 
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(cpool, "")))
+		var creds = credentials.NewServerTLSFromCert(&crt)
+		opts = append(opts, grpc.Creds(creds))
+
 	} else {
 		gLog.Warn().Msg("ATTENTION! gRPC connection is unsecure! do at your own risk")
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	opts = append(opts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
-		Time:                gCli.Duration("http2-ping-time"),
-		Timeout:             gCli.Duration("http2-ping-timeout"),
-		PermitWithoutStream: true,
-	}))
-	opts = append(opts, grpc.WithBlock())
+	if gCli.Duration("http2-conn-max-age") != 0*time.Second {
+		gLog.Debug().Msg("set keepalive for the master server...")
 
-	gLog.Debug().Msg("trying to connect to master...")
-	ctx, cancel := context.WithTimeout(context.Background(), gCli.Duration("grpc-connect-timeout"))
-	defer cancel()
+		enforcement := keepalive.EnforcementPolicy{
+			MinTime:             5 * time.Second,
+			PermitWithoutStream: true,
+		}
 
-	if m.gConn, e = grpc.DialContext(ctx, gCli.String("swarm-master-addr"), opts...); e != nil {
-		return
+		opts = append(opts, grpc.KeepaliveEnforcementPolicy(enforcement))
+		opts = append(opts, grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionAge:      gCli.Duration("http2-conn-max-age"),
+			MaxConnectionAgeGrace: gCli.Duration("http2-conn-max-age") + 10*time.Second,
+		}))
 	}
 
-	gLog.Debug().Msg("connection with the master server has been established")
+	var wservice = NewWorkerService(m)
 
-	m.masterClient = pb.NewMasterServiceClient(m.gConn)
+	m.gserver = grpc.NewServer(opts...)
+	pb.RegisterWorkerServiceServer(m.gserver, wservice)
 
-	return m.run()
+	gLog.Debug().Msg("grpc master server has been setuped; initialize destructor")
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	defer wg.Wait()
+
+	defer gLog.Debug().Msg("waiting for destructor...")
+	go m.run()
+
+	gLog.Debug().Msg("starting grpc master server ...")
+	return m.gserver.Serve(m.msession)
 }
 
-func (m *Worker) registerInMaster() (e error) {
-	ctx, cancel := m.getNewRPCContext(time.Second)
-	defer cancel()
+func (m *Worker) run() {
+	<-gCtx.Done()
+	gLog.Info().Msg("context done() has been caught; closing grpc server, mux session, tcp conn...")
 
-	var req = &pb.RegistrationRequest{}
-	if req, e = m.getRegistrationRequest(); e != nil {
-		return
+	m.gserver.Stop()
+
+	var e error
+	if e = m.msession.Close(); e != nil {
+		gLog.Warn().Err(e).Msg("")
 	}
-
-	_, e = m.masterClient.Register(ctx, req)
-	return m.getRPCErrors(e)
+	if e = m.rawconn.Close(); e != nil {
+		gLog.Warn().Err(e).Msg("")
+	}
 }
 
-func (m *Worker) run() (e error) {
-	defer m.destruct()
-
+func (m *Worker) run2() (e error) {
 	ticker := time.NewTicker(time.Second)
 	ticker.Stop() // !!
 	// todo refactor ?
@@ -159,54 +165,21 @@ LOOP:
 			}
 			m.RUnlock()
 
-			if e = m.ping(); e != nil {
-				gLog.Warn().Err(e).Msg("grpc ping has been failed; close application...")
-				return
-			}
+			// if e = m.ping(); e != nil {
+			// 	gLog.Warn().Err(e).Msg("grpc ping has been failed; close application...")
+			// 	return
+			// }
 		}
 	}
 
 	return
 }
 
-func (m *Worker) destruct() {
-	if e := m.gConn.Close(); e != nil {
-		gLog.Warn().Err(e).Msg("there are some errors while closing net.Conn")
-	}
-}
-
-func (*Worker) getCACertPool() (*x509.CertPool, error) {
-	// TODO
-	// if gCli.String(CA-PATH) != "" -->> loadCAFromFS()
-	return x509.SystemCertPool()
-}
-
-// TODO
-// if gCli.String(CA-PATH) != "" -->> loadCAFromFS()
-//--------------------------------------------------
-// func (*Worker) loadTLSCertificate(path string) (_ io.Reader, e error) {
-// 	var fInfo os.FileInfo
-
-// 	if fInfo, e = os.Stat(path); e != nil {
-// 		if os.IsNotExist(e) {
-// 			gLog.Error().Err(e).Msg("could not load ca because of invalid given file path")
-// 			return
-// 		}
-
-// 		return
-// 	}
-
-// 	if fInfo.IsDir() {
-// 		gLog.Error().Msg("could not load ca because of give file path is a directory")
-// 	}
-
-// 	return
-// }
+//
 
 func (m *Worker) getNewRPCContext(d time.Duration) (context.Context, context.CancelFunc) {
 	md := metadata.New(map[string]string{
-		"x-worker-id":    m.id,
-		"x-access-token": m.token,
+		"x-worker-id": m.id,
 	})
 
 	return context.WithTimeout(
@@ -250,84 +223,43 @@ func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 
 // todo
 // ? refactor
-func (m *Worker) ping() (e error) {
-	timer := time.Now()
+// func (m *Worker) ping() (e error) {
+// 	timer := time.Now()
 
-	m.disablePing()
+// 	m.disablePing()
 
-	ctx, cancel := m.getNewRPCContext(gCli.Duration("grpc-ping-timeout"))
-	defer cancel()
+// 	ctx, cancel := m.getNewRPCContext(gCli.Duration("grpc-ping-timeout"))
+// 	defer cancel()
 
-	if _, e = m.masterClient.Ping(ctx, &emptypb.Empty{}); m.getRPCErrors(e) == nil {
-		gLog.Debug().Str("ping_time", time.Since(timer).String()).Msg("ping/pong method completed")
+// 	if _, e = m.masterClient.Ping(ctx, &emptypb.Empty{}); m.getRPCErrors(e) == nil {
+// 		gLog.Debug().Str("ping_time", time.Since(timer).String()).Msg("ping/pong method completed")
 
-		m.enablePing()
-		return
-	}
-
-	if code, ok := status.FromError(e); !ok || code.Code() == codes.PermissionDenied {
-		gLog.Warn().Msg("the master says that worker isn't registered")
-
-		if e := m.registerInMaster(); e != nil {
-			gLog.Error().Err(e).Msg("reregistration has been failed")
-			return e
-		}
-
-		gLog.Warn().Msg("registraion has been completed")
-	}
-
-	m.enablePing()
-	return nil
-}
-
-func (m *Worker) disablePing() {
-	m.Lock()
-	m.pingerDisable = true
-	m.Unlock()
-}
-func (m *Worker) enablePing() {
-	m.Lock()
-	m.pingerDisable = false
-	m.Unlock()
-}
-
-func (m *Worker) getRPCErrors(err error) error {
-	estatus, _ := status.FromError(err)
-
-	switch estatus.Code() {
-	case codes.OK:
-		return nil
-
-	// !! EXPERIMENTAL
-	case codes.Unavailable:
-		gLog.Warn().Msg("trying to reconnect to the master server...")
-		m.gConn.ResetConnectBackoff()
-
-	default:
-		gLog.Warn().Str("error_code", estatus.Code().String()).Str("error_message", estatus.Message()).
-			Msg("abnormal response from master server")
-	}
-
-	return err
-}
-
-// Debug func
-// func (*Worker) CheckGRPCPayload(payload []*structpb.Struct) (_ bool, e error) {
-
-// 	var trrs = make([]*deluge.Torrent, 100)
-
-// 	var buf []byte
-// 	if buf, e = json.Marshal(payload); e != nil {
+// 		m.enablePing()
 // 		return
 // 	}
 
-// 	if e = json.Unmarshal(buf, &trrs); e != nil {
-// 		return
+// 	if code, ok := status.FromError(e); !ok || code.Code() == codes.PermissionDenied {
+// 		gLog.Warn().Msg("the master says that worker isn't registered")
+
+// 		// if e := m.registerInMaster(); e != nil {
+// 		// 	gLog.Error().Err(e).Msg("reregistration has been failed")
+// 		// 	return e
+// 		// }
+
+// 		gLog.Warn().Msg("registraion has been completed")
 // 	}
 
-// 	for _, trr := range trrs {
-// 		log.Println(trr.Name)
-// 	}
+// 	m.enablePing()
+// 	return nil
+// }
 
-// 	return true, e
+// func (m *Worker) disablePing() {
+// 	m.Lock()
+// 	m.pingerDisable = true
+// 	m.Unlock()
+// }
+// func (m *Worker) enablePing() {
+// 	m.Lock()
+// 	m.pingerDisable = false
+// 	m.Unlock()
 // }

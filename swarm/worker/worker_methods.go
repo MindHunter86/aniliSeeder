@@ -2,6 +2,8 @@ package worker
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"strings"
 
 	"github.com/MindHunter86/aniliSeeder/deluge"
@@ -17,7 +19,7 @@ import (
 )
 
 type WorkerService struct {
-	pb.UnimplementedMasterServiceServer
+	pb.UnimplementedWorkerServiceServer
 
 	w *Worker
 }
@@ -46,24 +48,55 @@ func (*WorkerService) authorizeMasterRequest(ctx context.Context) (string, error
 	}
 
 	gLog.Debug().Str("master_ip", p.Addr.String()).Str("master_id", id[0]).
-		Str("master_ua", md.Get("user-agent")[0]).Msg("master connect accepted, authorizing...")
+		Str("master_ua", md.Get("user-agent")[0]).Msg("master request accepted, authorizing...")
 
-	ak := md.Get("x-access-token")
-	if len(ak) != 1 {
+	ah := md.Get("x-authentication-hash")
+	if len(ah) != 1 {
 		gLog.Info().Str("master_id", id[0]).Msg("master authorization failed")
 		return "", status.Errorf(codes.InvalidArgument, "")
 	}
-	if strings.TrimSpace(ak[0]) == "" {
+	if strings.TrimSpace(ah[0]) == "" {
 		gLog.Info().Str("master_id", id[0]).Msg("master authorization failed")
 		return "", status.Errorf(codes.InvalidArgument, "")
 	}
-	if ak[0] != gCli.String("swarm-master-secret") {
+
+	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
+	mac.Write([]byte(id[0]))
+	expectedMAC := mac.Sum(nil)
+	if !hmac.Equal([]byte(ah[0]), expectedMAC) {
 		gLog.Info().Str("master_id", id[0]).Msg("master authorization failed")
 		return "", status.Errorf(codes.Unauthenticated, "")
 	}
 
-	gLog.Debug().Str("master_id", md.Get("x-master-id")[0]).Msg("the master's connect has been authorized")
+	gLog.Debug().Str("master_id", id[0]).Msg("the master's request has been authorized")
 	return id[0], nil
+}
+
+func (m *WorkerService) Init(ctx context.Context, _ *emptypb.Empty) (*pb.InitReply, error) {
+	mid, e := m.authorizeMasterRequest(ctx)
+	if e != nil {
+		return nil, e
+	}
+
+	gLog.Debug().Str("master_id", mid).Msg("processing master request...")
+	return &pb.InitReply{
+		WorkerId: m.w.id,
+	}, e
+}
+
+func (m *WorkerService) Ping(ctx context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, _ error) {
+	// wid, e := m.authorizeWorker(ctx)
+	// if e != nil {
+	// 	return &emptypb.Empty{}, e
+	// }
+
+	// if !m.isWorkerRegistered(wid) {
+	// 	gLog.Info().Str("worker_id", wid).Msg("worker is not registered, returning 403...")
+	// 	return nil, status.Errorf(codes.PermissionDenied, "")
+	// }
+
+	// gLog.Info().Str("worker_id", wid).Msg("received ping from worker")
+	return &emptypb.Empty{}, nil
 }
 
 func (m *WorkerService) GetTorrents(ctx context.Context, _ *emptypb.Empty) (_ *pb.TorrentsReply, _ error) {

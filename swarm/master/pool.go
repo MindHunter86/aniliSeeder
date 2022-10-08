@@ -84,11 +84,11 @@ func (m *worker) authorizeSerivceReply(ctx context.Context) (_ string, e error) 
 
 	ah := md.Get("x-authentication-hash")
 	if len(ah) != 1 {
-		gLog.Info().Str("worker_id", id[0]).Msg("master authorization failed")
+		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
 		return "", status.Errorf(codes.InvalidArgument, "")
 	}
 	if strings.TrimSpace(ah[0]) == "" {
-		gLog.Info().Str("worker_id", id[0]).Msg("master authorization failed")
+		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
 		return "", status.Errorf(codes.InvalidArgument, "")
 	}
 
@@ -96,7 +96,7 @@ func (m *worker) authorizeSerivceReply(ctx context.Context) (_ string, e error) 
 	mac.Write([]byte(id[0]))
 	expectedMAC := mac.Sum(nil)
 	if !hmac.Equal([]byte(ah[0]), expectedMAC) {
-		gLog.Info().Str("worker_id", id[0]).Msg("master authorization failed")
+		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
 		return "", status.Errorf(codes.Unauthenticated, "")
 	}
 
@@ -111,10 +111,10 @@ func (m *worker) getRPCErrors(err error) error {
 	case codes.OK:
 		return nil
 
-	// !! EXPERIMENTAL
-	case codes.Unavailable:
-		gLog.Warn().Msg("trying to reconnect to the master server...")
-		m.gconn.ResetConnectBackoff()
+	// // !! EXPERIMENTAL
+	// case codes.Unavailable:
+	// 	gLog.Warn().Msg("trying to reconnect to the master server...")
+	// 	m.gconn.ResetConnectBackoff()
 
 	default:
 		gLog.Warn().Str("error_code", estatus.Code().String()).Str("error_message", estatus.Message()).

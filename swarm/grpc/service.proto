@@ -8,10 +8,11 @@ import "google/protobuf/empty.proto";
 
 service WorkerService {
     rpc Init(google.protobuf.Empty) returns (InitReply) {}
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 
     rpc GetTorrents(google.protobuf.Empty) returns (TorrentsReply) {}
     rpc GetTorrentScore(TorrentScoreRequest) returns (TorrentScoreReply) {}
-    rpc DropTorrent(TorrentDropRequest) returns (TFileSaveReply) {}
+    rpc DropTorrent(TorrentDropRequest) returns (TorrentDropReply) {}
 
     // TODO
     rpc UpdateTorrent(TorrentUpdateRequest) returns (TorrentUpdateReply) {}

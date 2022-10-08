@@ -24,9 +24,10 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkerServiceClient interface {
 	Init(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*InitReply, error)
+	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetTorrents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TorrentsReply, error)
 	GetTorrentScore(ctx context.Context, in *TorrentScoreRequest, opts ...grpc.CallOption) (*TorrentScoreReply, error)
-	DropTorrent(ctx context.Context, in *TorrentDropRequest, opts ...grpc.CallOption) (*TFileSaveReply, error)
+	DropTorrent(ctx context.Context, in *TorrentDropRequest, opts ...grpc.CallOption) (*TorrentDropReply, error)
 	// TODO
 	UpdateTorrent(ctx context.Context, in *TorrentUpdateRequest, opts ...grpc.CallOption) (*TorrentUpdateReply, error)
 	SaveTorrentFile(ctx context.Context, in *TFileSaveRequest, opts ...grpc.CallOption) (*TFileSaveReply, error)
@@ -44,6 +45,15 @@ func NewWorkerServiceClient(cc grpc.ClientConnInterface) WorkerServiceClient {
 func (c *workerServiceClient) Init(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*InitReply, error) {
 	out := new(InitReply)
 	err := c.cc.Invoke(ctx, "/grpc.WorkerService/Init", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workerServiceClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/grpc.WorkerService/Ping", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +78,8 @@ func (c *workerServiceClient) GetTorrentScore(ctx context.Context, in *TorrentSc
 	return out, nil
 }
 
-func (c *workerServiceClient) DropTorrent(ctx context.Context, in *TorrentDropRequest, opts ...grpc.CallOption) (*TFileSaveReply, error) {
-	out := new(TFileSaveReply)
+func (c *workerServiceClient) DropTorrent(ctx context.Context, in *TorrentDropRequest, opts ...grpc.CallOption) (*TorrentDropReply, error) {
+	out := new(TorrentDropReply)
 	err := c.cc.Invoke(ctx, "/grpc.WorkerService/DropTorrent", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -109,9 +119,10 @@ func (c *workerServiceClient) GetSystemFreeSpace(ctx context.Context, in *emptyp
 // for forward compatibility
 type WorkerServiceServer interface {
 	Init(context.Context, *emptypb.Empty) (*InitReply, error)
+	Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	GetTorrents(context.Context, *emptypb.Empty) (*TorrentsReply, error)
 	GetTorrentScore(context.Context, *TorrentScoreRequest) (*TorrentScoreReply, error)
-	DropTorrent(context.Context, *TorrentDropRequest) (*TFileSaveReply, error)
+	DropTorrent(context.Context, *TorrentDropRequest) (*TorrentDropReply, error)
 	// TODO
 	UpdateTorrent(context.Context, *TorrentUpdateRequest) (*TorrentUpdateReply, error)
 	SaveTorrentFile(context.Context, *TFileSaveRequest) (*TFileSaveReply, error)
@@ -126,13 +137,16 @@ type UnimplementedWorkerServiceServer struct {
 func (UnimplementedWorkerServiceServer) Init(context.Context, *emptypb.Empty) (*InitReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Init not implemented")
 }
+func (UnimplementedWorkerServiceServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
 func (UnimplementedWorkerServiceServer) GetTorrents(context.Context, *emptypb.Empty) (*TorrentsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTorrents not implemented")
 }
 func (UnimplementedWorkerServiceServer) GetTorrentScore(context.Context, *TorrentScoreRequest) (*TorrentScoreReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTorrentScore not implemented")
 }
-func (UnimplementedWorkerServiceServer) DropTorrent(context.Context, *TorrentDropRequest) (*TFileSaveReply, error) {
+func (UnimplementedWorkerServiceServer) DropTorrent(context.Context, *TorrentDropRequest) (*TorrentDropReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropTorrent not implemented")
 }
 func (UnimplementedWorkerServiceServer) UpdateTorrent(context.Context, *TorrentUpdateRequest) (*TorrentUpdateReply, error) {
@@ -171,6 +185,24 @@ func _WorkerService_Init_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WorkerServiceServer).Init(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkerService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.WorkerService/Ping",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).Ping(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -293,6 +325,10 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Init",
 			Handler:    _WorkerService_Init_Handler,
+		},
+		{
+			MethodName: "Ping",
+			Handler:    _WorkerService_Ping_Handler,
 		},
 		{
 			MethodName: "GetTorrents",

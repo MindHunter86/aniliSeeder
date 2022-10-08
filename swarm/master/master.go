@@ -1,22 +1,11 @@
 package master
 
 import (
-	"bytes"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/json"
-	"encoding/pem"
-	"fmt"
 	"log"
-	"math/big"
 	"net"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
@@ -28,8 +17,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
@@ -71,7 +58,86 @@ func NewMaster(ctx context.Context) *Master {
 	}
 }
 
-func (m *Master) runTCPAcceptor() (e error) {
+func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
+	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+		Msg("trying to initialize mux session...")
+
+	var muxsess *yamux.Session
+	if muxsess, e = yamux.Client(conn, yamux.DefaultConfig()); e != nil {
+		return
+	}
+
+	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+		Msg("trying to initialize gRPC client...")
+
+	if _, e = m.workerPool.newWorker(muxsess); e != nil {
+		return
+	}
+
+	return
+}
+
+func (m *Master) Bootstrap() (e error) {
+	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+		Msg("initializing the tcp server for further muxing")
+
+	if m.rawListener, e = net.Listen("tcp", gCli.String("swarm-master-addr")); e != nil {
+		return
+	}
+
+	return m.run()
+
+	//
+
+	// gLog.Debug().Msg("trying to open grpc socket for master listening...")
+	// if m.ln, e = net.Listen("tcp", gCli.String("swarm-master-listen")); e != nil {
+	// 	return
+	// }
+
+	// gLog.Debug().Msg("grpc socket seems is ok, setuping grpc...")
+
+	// var opts []grpc.ServerOption
+
+	// if !gCli.Bool("grpc-insecure") {
+	// 	gLog.Debug().Msg("generating pub\\priv key pair...")
+
+	// 	var crt tls.Certificate
+	// 	if crt, e = m.getTLSCertificate(); e != nil {
+	// 		return
+	// 	}
+
+	// 	var creds = credentials.NewServerTLSFromCert(&crt)
+	// 	opts = append(opts, grpc.Creds(creds))
+
+	// } else {
+	// 	gLog.Warn().Msg("ATTENTION! gRPC connection is unsecure! do at your own risk")
+	// }
+
+	// if gCli.Duration("http2-conn-max-age") != 0*time.Second {
+	// 	gLog.Debug().Msg("set keepalive for the master server...")
+
+	// 	enforcement := keepalive.EnforcementPolicy{
+	// 		MinTime:             5 * time.Second,
+	// 		PermitWithoutStream: true,
+	// 	}
+
+	// 	opts = append(opts, grpc.KeepaliveEnforcementPolicy(enforcement))
+	// 	opts = append(opts, grpc.KeepaliveParams(keepalive.ServerParameters{
+	// 		MaxConnectionAge:      gCli.Duration("http2-conn-max-age"),
+	// 		MaxConnectionAgeGrace: gCli.Duration("http2-conn-max-age") + 10*time.Second,
+	// 	}))
+	// }
+
+	// m.gserver = grpc.NewServer(opts...)
+	// pb.RegisterMasterServiceServer(m.gserver, m)
+
+	// gLog.Debug().Msg("grpc master server has been setuped")
+
+	// gLog.Debug().Msg("starting grpc master server ...")
+	// return m.gserver.Serve(m.ln)
+}
+
+func (m *Master) run() (e error) {
 	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
 		Msg("initializing net acceptor; starting listening for incoming TCP connections...")
 
@@ -84,7 +150,7 @@ LOOP:
 	for {
 		select {
 		case <-gCtx.Done():
-			gLog.Warn().Msg("")
+			gLog.Warn().Msg("context done() has been caught; closing grpc server socket...")
 			break LOOP
 		default:
 			conn, e := m.rawListener.Accept()
@@ -116,171 +182,6 @@ LOOP:
 	wg.Wait()
 
 	return
-}
-
-func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
-	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
-		Msg("trying to initialize mux session...")
-
-	var muxsess *yamux.Session
-	if muxsess, e = yamux.Client(conn, yamux.DefaultConfig()); e != nil {
-		return
-	}
-
-	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
-		Msg("trying to initialize gRPC client...")
-
-	if _, e = m.workerPool.newWorker(muxsess); e != nil {
-		return
-	}
-
-	return
-}
-
-func (m *Master) Bootstrap() (e error) {
-	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
-		Msg("initializing the tcp server for further muxing")
-
-	if m.rawListener, e = net.Listen("tcp", gCli.String("swarm-master-addr")); e != nil {
-		return
-	}
-
-	//
-
-	//
-
-	gLog.Debug().Msg("trying to open grpc socket for master listening...")
-	if m.ln, e = net.Listen("tcp", gCli.String("swarm-master-listen")); e != nil {
-		return
-	}
-
-	gLog.Debug().Msg("grpc socket seems is ok, setuping grpc...")
-
-	var opts []grpc.ServerOption
-
-	if !gCli.Bool("grpc-insecure") {
-		gLog.Debug().Msg("generating pub\\priv key pair...")
-
-		var crt tls.Certificate
-		if crt, e = m.getTLSCertificate(); e != nil {
-			return
-		}
-
-		var creds = credentials.NewServerTLSFromCert(&crt)
-		opts = append(opts, grpc.Creds(creds))
-
-	} else {
-		gLog.Warn().Msg("ATTENTION! gRPC connection is unsecure! do at your own risk")
-	}
-
-	if gCli.Duration("http2-conn-max-age") != 0*time.Second {
-		gLog.Debug().Msg("set keepalive for the master server...")
-
-		enforcement := keepalive.EnforcementPolicy{
-			MinTime:             5 * time.Second,
-			PermitWithoutStream: true,
-		}
-
-		opts = append(opts, grpc.KeepaliveEnforcementPolicy(enforcement))
-		opts = append(opts, grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionAge:      gCli.Duration("http2-conn-max-age"),
-			MaxConnectionAgeGrace: gCli.Duration("http2-conn-max-age") + 10*time.Second,
-		}))
-	}
-
-	m.gserver = grpc.NewServer(opts...)
-	pb.RegisterMasterServiceServer(m.gserver, m)
-
-	go func() {
-		if err := m.close(); err != nil {
-			gLog.Warn().Err(err).Msg("there are some errors after closing grpc server socket")
-		}
-	}()
-
-	gLog.Debug().Msg("grpc master server has been setuped")
-
-	gLog.Debug().Msg("starting grpc master server ...")
-	return m.gserver.Serve(m.ln)
-}
-
-func (m *Master) close() error {
-	<-gCtx.Done()
-	gLog.Info().Msg("context done() has been caught; closing grpc server socket...")
-
-	m.gserver.Stop()
-	return m.ln.Close()
-}
-
-func (m *Master) getTLSCertificate() (_ tls.Certificate, e error) {
-	// TODO
-	// if gCli.String("swarm-master-custom-ca") != ""
-	// get key, get pub, return
-
-	var cbytes, kbytes []byte
-	if cbytes, kbytes, e = m.createPublicPrivatePair(); e != nil {
-		return
-	}
-
-	return tls.X509KeyPair(cbytes, kbytes)
-}
-
-func (*Master) createPublicPrivatePair() (_, _ []byte, e error) {
-	cert := &x509.Certificate{
-		SerialNumber: big.NewInt(2019),
-		Subject: pkix.Name{
-			Organization:  []string{"Company, INC."},
-			Country:       []string{"US"},
-			Province:      []string{""},
-			Locality:      []string{"San Francisco"},
-			StreetAddress: []string{"Golden Gate Bridge"},
-			PostalCode:    []string{"94016"},
-		},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(10, 0, 0),
-		IsCA:                  true,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		BasicConstraintsValid: true,
-	}
-
-	priv, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if e != nil {
-		return
-	}
-
-	certBytes, e := x509.CreateCertificate(rand.Reader, cert, cert, &priv.PublicKey, priv)
-	if e != nil {
-		return
-	}
-
-	var cbuf = new(bytes.Buffer)
-	pem.Encode(cbuf, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certBytes,
-	})
-
-	var p []byte
-	if p, e = x509.MarshalECPrivateKey(priv); e != nil {
-		return
-	}
-
-	var pbuf = new(bytes.Buffer)
-	pem.Encode(pbuf, &pem.Block{
-		Type:  "EC PRIVATE KEY",
-		Bytes: p,
-	})
-
-	if gCli.Bool("http-debug") {
-		fmt.Println("\n" + cbuf.String())
-		fmt.Println("\n" + pbuf.String())
-	}
-
-	return cbuf.Bytes(), pbuf.Bytes(), nil
-}
-
-func (m *Master) isWorkerRegistered(id string) bool {
-	// return m.workers[id] != nil
-	return false
 }
 
 func (*Master) authorizeWorker(ctx context.Context) (string, error) {
@@ -323,40 +224,6 @@ func (*Master) authorizeWorker(ctx context.Context) (string, error) {
 	return id[0], nil
 }
 
-// func (*Master) InitialPhase(ctx context.Context, in *pb.MasterRequest) (*pb.MasterReply, error) {
-// 	log.Printf("Received: %v", in.GetAccessKey())
-// 	return &pb.MasterReply{Version: "Hello " + in.GetAccessKey()}, nil
-// }
-
-// func (*Master) Bootstrap() error {
-// 	lis, err := net.Listen("tcp", "localhost:8081")
-// 	if err != nil {
-// 		log.Fatalf("failed to listen: %v", err)
-// 	}
-// 	s := grpc.NewServer()
-// 	pb.RegisterMasterServer(s, &Master{})
-// 	log.Printf("server listening at %v", lis.Addr())
-// 	if err := s.Serve(lis); err != nil {
-// 		log.Fatalf("failed to serve: %v", err)
-// 	}
-
-// 	return err
-// }
-
-func (m *Master) Ping(ctx context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, _ error) {
-	wid, e := m.authorizeWorker(ctx)
-	if e != nil {
-		return &emptypb.Empty{}, e
-	}
-
-	if !m.isWorkerRegistered(wid) {
-		gLog.Info().Str("worker_id", wid).Msg("worker is not registered, returning 403...")
-		return nil, status.Errorf(codes.PermissionDenied, "")
-	}
-
-	gLog.Info().Str("worker_id", wid).Msg("received ping from worker")
-	return &emptypb.Empty{}, nil
-}
 
 func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *emptypb.Empty, e error) {
 	var wid string
