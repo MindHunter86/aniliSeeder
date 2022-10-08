@@ -76,7 +76,7 @@ func (*cmds) statCurrentTorrents() (io.ReadWriter, error) {
 	})
 
 	tb.SortBy([]table.SortBy{
-		{Name: "Ratio", Mode: table.Dsc},
+		{Name: "VKScore", Mode: table.DscNumeric},
 	})
 
 	return buf, nil
