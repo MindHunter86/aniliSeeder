@@ -46,6 +46,7 @@ var (
 	gCtx    context.Context
 	gDeluge *deluge.Client
 	gAniApi *anilibria.ApiClient
+	gAbort  context.CancelFunc
 )
 
 func NewWorker(ctx context.Context) swarm.Swarm {
@@ -53,6 +54,7 @@ func NewWorker(ctx context.Context) swarm.Swarm {
 	gLog = gCtx.Value(utils.ContextKeyLogger).(*zerolog.Logger)
 	gCli = gCtx.Value(utils.ContextKeyCliContext).(*cli.Context)
 	gDeluge = gCtx.Value(utils.ContextKeyDelugeClient).(*deluge.Client)
+	gAbort = gCtx.Value(utils.ContextKeyAbortFunc).(context.CancelFunc)
 
 	return &Worker{
 		id: uuid.NewV4().String(),
@@ -70,7 +72,7 @@ func (m *Worker) Bootstrap() (e error) {
 	defer wg.Wait()
 
 	defer gLog.Debug().Msg("waiting for destructor...")
-	go m.run()
+	go m.run(wg.Done)
 
 	gLog.Debug().Msg("starting grpc master server ...")
 	return m.gserver.Serve(m.msession)
@@ -154,7 +156,9 @@ func (m *Worker) reconnect() (e error) {
 	return
 }
 
-func (m *Worker) run() {
+func (m *Worker) run(done func()) {
+	defer done()
+
 	<-gCtx.Done()
 	gLog.Info().Msg("context done() has been caught; closing grpc server, mux session, tcp conn...")
 

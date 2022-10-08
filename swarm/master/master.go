@@ -13,6 +13,7 @@ import (
 	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/hashicorp/yamux"
 	"github.com/rs/zerolog"
+	uuid "github.com/satori/go.uuid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -50,6 +51,7 @@ func NewMaster(ctx context.Context) *Master {
 	gLog = gCtx.Value(utils.ContextKeyLogger).(*zerolog.Logger)
 	gCli = gCtx.Value(utils.ContextKeyCliContext).(*cli.Context)
 	gAniApi = gCtx.Value(utils.ContextKeyAnilibriaClient).(*anilibria.ApiClient)
+	gMasterId = uuid.NewV4().String()
 
 	return &Master{
 		workerPool: newWorkerPool(),
@@ -69,6 +71,7 @@ func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
 		Msg("trying to initialize gRPC client...")
 
 	if _, e = m.workerPool.newWorker(muxsess); e != nil {
+		muxsess.Close()
 		return
 	}
 
@@ -113,6 +116,7 @@ LOOP:
 			go func(cn net.Conn) {
 				if err := m.handleIncomingConnection(cn); e != nil {
 					gLog.Warn().Err(err).Msg("got error while handling the workers connection")
+					cn.Close()
 				}
 			}(conn)
 		}

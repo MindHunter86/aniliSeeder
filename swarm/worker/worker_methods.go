@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
 	"strings"
 
 	"github.com/MindHunter86/aniliSeeder/deluge"
@@ -60,10 +61,15 @@ func (*WorkerService) authorizeMasterRequest(ctx context.Context) (string, error
 		return "", status.Errorf(codes.InvalidArgument, "")
 	}
 
+	wmac, e := hex.DecodeString(ah[0])
+	if e != nil {
+		return "", status.Errorf(codes.Internal, e.Error())
+	}
+
 	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
 	mac.Write([]byte(id[0]))
 	expectedMAC := mac.Sum(nil)
-	if !hmac.Equal([]byte(ah[0]), expectedMAC) {
+	if !hmac.Equal(wmac, expectedMAC) {
 		gLog.Info().Str("master_id", id[0]).Msg("master authorization failed")
 		return "", status.Errorf(codes.Unauthenticated, "")
 	}
@@ -75,6 +81,9 @@ func (*WorkerService) authorizeMasterRequest(ctx context.Context) (string, error
 func (m *WorkerService) Init(ctx context.Context, _ *emptypb.Empty) (*pb.InitReply, error) {
 	mid, e := m.authorizeMasterRequest(ctx)
 	if e != nil {
+		// !!!
+		gLog.Warn().Msg("aborting application because of inital phase is failed")
+		gAbort()
 		return nil, e
 	}
 
@@ -82,6 +91,10 @@ func (m *WorkerService) Init(ctx context.Context, _ *emptypb.Empty) (*pb.InitRep
 
 	var trrs []*structpb.Struct
 	if trrs, e = m.w.getTorrents(); e != nil {
+		// TODO: may be remove it...
+		gLog.Warn().Msg("aborting application because of inital phase is failed")
+		gAbort()
+
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 

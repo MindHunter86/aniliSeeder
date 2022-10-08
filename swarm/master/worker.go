@@ -4,8 +4,10 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"strings"
 	"time"
@@ -128,11 +130,11 @@ func (m *worker) getId() string {
 
 func (m *worker) newServiceRequest(d time.Duration) (context.Context, context.CancelFunc) {
 	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
-	mac.Write([]byte(gMasterId))
+	io.WriteString(mac, gMasterId)
 
 	md := metadata.New(map[string]string{
 		"x-master-id":           gMasterId,
-		"x-authentication-hash": string(mac.Sum(nil)),
+		"x-authentication-hash": hex.EncodeToString(mac.Sum(nil)),
 	})
 
 	return context.WithTimeout(
@@ -173,10 +175,15 @@ func (m *worker) authorizeSerivceReply(ctx context.Context) (_ string, e error) 
 		return "", status.Errorf(codes.InvalidArgument, "")
 	}
 
+	mmac, e := hex.DecodeString(ah[0])
+	if e != nil {
+		return "", status.Errorf(codes.Internal, e.Error())
+	}
+
 	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
 	mac.Write([]byte(id[0]))
 	expectedMAC := mac.Sum(nil)
-	if !hmac.Equal([]byte(ah[0]), expectedMAC) {
+	if !hmac.Equal(mmac, expectedMAC) {
 		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
 		return "", status.Errorf(codes.Unauthenticated, "")
 	}

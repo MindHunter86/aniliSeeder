@@ -44,6 +44,7 @@ func (m *App) Bootstrap() (e error) {
 	gCtx, gAbort = context.WithCancel(context.Background())
 	gCtx = context.WithValue(gCtx, utils.ContextKeyLogger, gLog)
 	gCtx = context.WithValue(gCtx, utils.ContextKeyCliContext, gCli)
+	gCtx = context.WithValue(gCtx, utils.ContextKeyAbortFunc, gAbort)
 
 	defer m.checkErrorsBeforeClosing(echan)
 	defer wg.Wait() // !!
@@ -134,6 +135,7 @@ func (*App) checkErrorsBeforeClosing(errs chan error) {
 		return
 	}
 
+	close(errs)
 	for err := range errs {
 		gLog.Warn().Err(err).Msg("an error has been detected while application trying close the submodules")
 	}
