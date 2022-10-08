@@ -70,9 +70,11 @@ func (m *App) Bootstrap() (e error) {
 	wg.Add(1)
 	go func(errs chan error, done func()) {
 		if err := gRPC.Bootstrap(); err != nil {
+			gLog.Debug().Err(err).Msg("grpc service has been failed; sending error to main loop")
 			errs <- err
 		}
 
+		gLog.Debug().Msg("drop grpc service goroutine")
 		done()
 	}(echan, wg.Done)
 
@@ -114,7 +116,7 @@ LOOP:
 			break LOOP
 		case err := <-errs:
 			gLog.Error().Err(err).Msg("there are internal errors from one of application submodule")
-			gLog.Warn().Msg("calling abort()...")
+			gLog.Info().Msg("calling abort()...")
 			gAbort()
 		case <-gCtx.Done():
 			gLog.Info().Msg("internal abort() has been caught; initiate application closing...")
@@ -124,7 +126,9 @@ LOOP:
 }
 
 func (*App) checkErrorsBeforeClosing(errs chan error) {
+	gLog.Debug().Msg("pre-exit error chan checking for errors...")
 	if len(errs) == 0 {
+		gLog.Debug().Msg("error chan is empty, cool")
 		return
 	}
 

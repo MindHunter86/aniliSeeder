@@ -6,26 +6,75 @@ package grpc;
 import "google/protobuf/struct.proto";
 import "google/protobuf/empty.proto";
 
-service MinionService {
+service WorkerService {
+    rpc GetTorrents(google.protobuf.Empty) returns (TorrentsReply) {}
+    rpc GetTorrentScore(TorrentScoreRequest) returns (TorrentScoreReply) {}
+    rpc DropTorrent(TorrentDropRequest) returns (TFileSaveReply) {}
+
+    // TODO
+    rpc UpdateTorrent(TorrentUpdateRequest) returns (TorrentUpdateReply) {}
+
+    rpc SaveTorrentFile(TFileSaveRequest) returns (TFileSaveReply) {}
+
+    rpc GetSystemFreeSpace(google.protobuf.Empty) returns (SystemSpaceReply) {}
 }
 
 service MasterService {
     rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
-    rpc Register (RegistrationRequest) returns (RegistrationReply) {}
+    rpc Register (RegistrationRequest) returns (google.protobuf.Empty) {}
 }
 
 message RegistrationRequest {
     // initial phase
-    string WorkerId = 1;
-    string AccessSecret = 2;
-    string WorkerVersion = 3;
-    uint64 WDFreeSpace = 4;
+    string WorkerVersion = 1;
+    uint64 WDFreeSpace = 2;
 
     // registration phase
-    repeated google.protobuf.Struct Torrent = 5;
+    repeated google.protobuf.Struct Torrent = 3;
 }
 
-message RegistrationReply {
-    // setup phase
-    google.protobuf.Struct Config = 2;
+message TorrentsReply {
+    repeated google.protobuf.Struct Torrent = 1;
+}
+
+message TorrentScoreRequest {
+    string Hash = 1;
+    string Name = 2;
+}
+message TorrentScoreReply {
+    float Ratio = 1;
+    double Score = 2;
+}
+
+message TorrentDropRequest {
+    string Hash = 1;
+    string Name = 2;
+}
+message TorrentDropReply {
+    uint64 FreedSpace = 1;
+    uint64 FreeSpace = 2;
+}
+
+message TorrentUpdateRequest {
+    string Name = 1;
+    string Hash = 2;
+    string NewHash = 3;
+    bytes TFile = 4;
+}
+message TorrentUpdateReply {
+    string Name = 1;
+    string NewHash = 2;
+    repeated string NewFiles = 3;
+}
+
+message TFileSaveRequest {
+    string Filename = 1;
+    bytes Payload = 2;
+}
+message TFileSaveReply {
+    int64 WrittenBytes = 1;
+}
+
+message SystemSpaceReply {
+    uint64 FreeSpace = 1;
 }

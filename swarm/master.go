@@ -14,6 +14,7 @@ import (
 	"log"
 	"math/big"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,7 +33,6 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type Master struct {
@@ -187,6 +187,50 @@ func (*Master) createPublicPrivatePair() (_, _ []byte, e error) {
 	return cbuf.Bytes(), pbuf.Bytes(), nil
 }
 
+func (m *Master) isWorkerRegistered(id string) bool {
+	return m.workers[id] != nil
+}
+
+func (*Master) authorizeWorker(ctx context.Context) (string, error) {
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return "", status.Errorf(codes.DataLoss, "")
+	}
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", status.Errorf(codes.DataLoss, "")
+	}
+
+	id := md.Get("x-worker-id")
+	if len(id) != 1 {
+		return "", status.Errorf(codes.InvalidArgument, "")
+	}
+	if strings.TrimSpace(id[0]) == "" {
+		return "", status.Errorf(codes.InvalidArgument, "")
+	}
+
+	gLog.Debug().Str("worker_ip", p.Addr.String()).Str("worker_id", id[0]).
+		Str("worker_ua", md.Get("user-agent")[0]).Msg("worker connect accepted, authorizing...")
+
+	ak := md.Get("x-access-token")
+	if len(ak) != 1 {
+		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
+		return "", status.Errorf(codes.InvalidArgument, "")
+	}
+	if strings.TrimSpace(ak[0]) == "" {
+		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
+		return "", status.Errorf(codes.InvalidArgument, "")
+	}
+	if ak[0] != gCli.String("swarm-master-secret") {
+		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
+		return "", status.Errorf(codes.Unauthenticated, "")
+	}
+
+	gLog.Debug().Str("worker_id", md.Get("x-worker-id")[0]).Msg("the worker's connect has been authorized")
+	return id[0], nil
+}
+
 // func (*Master) InitialPhase(ctx context.Context, in *pb.MasterRequest) (*pb.MasterReply, error) {
 // 	log.Printf("Received: %v", in.GetAccessKey())
 // 	return &pb.MasterReply{Version: "Hello " + in.GetAccessKey()}, nil
@@ -207,55 +251,55 @@ func (*Master) createPublicPrivatePair() (_, _ []byte, e error) {
 // 	return err
 // }
 
-func (*Master) Ping(ctx context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, _ error) {
-	p, _ := peer.FromContext(ctx)
-	md, _ := metadata.FromIncomingContext(ctx)
+func (m *Master) Ping(ctx context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, _ error) {
+	wid, e := m.authorizeWorker(ctx)
+	if e != nil {
+		return &emptypb.Empty{}, e
+	}
 
-	gLog.Info().Str("worker_ip", p.Addr.String()).Strs("client_ua", md.Get("user-agent")).
-		Msg("new client has been connected")
-	gLog.Info().Msg("received ping from a client...")
+	if !m.isWorkerRegistered(wid) {
+		gLog.Info().Str("worker_id", wid).Msg("worker is not registered, returning 403...")
+		return nil, status.Errorf(codes.PermissionDenied, "")
+	}
 
+	gLog.Info().Str("worker_id", wid).Msg("received ping from worker")
 	return &emptypb.Empty{}, nil
 }
 
-func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *pb.RegistrationReply, e error) {
-	p, _ := peer.FromContext(ctx)
-	md, _ := metadata.FromIncomingContext(ctx)
+func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *emptypb.Empty, e error) {
+	var wid string
+	if wid, e = m.authorizeWorker(ctx); e != nil {
+		return
+	}
 
-	gLog.Info().Str("worker_id", req.WorkerId).Str("worker_ip", p.Addr.String()).Strs("client_ua", md.Get("user-agent")).
-		Msg("new client has been connected")
-	gLog.Info().Str("worker_id", req.WorkerId).Msg("new client validation phase running...")
+	gLog.Info().Str("worker_id", wid).Msg("new client validation phase running...")
 
 	switch {
-	case req.GetWorkerId() == "":
-		return nil, status.Errorf(codes.InvalidArgument, "")
-	case m.workers[req.GetWorkerId()] != nil:
+	case m.workers[wid] != nil:
 		return nil, status.Errorf(codes.AlreadyExists, "")
-	case req.AccessSecret != gCli.String("swarm-master-secret"):
-		return nil, status.Errorf(codes.Unauthenticated, "")
 	case req.WorkerVersion != gCli.App.Version:
-		gLog.Warn().Str("worker_id", req.WorkerId).Str("worker_ver", req.WorkerVersion).
+		gLog.Warn().Str("worker_id", wid).Str("worker_ver", req.WorkerVersion).
 			Msg("connected client has higher/lower version")
 	case req.WDFreeSpace == 0:
 		return nil, status.Errorf(codes.InvalidArgument, "")
 	}
 
-	gLog.Info().Str("worker_id", req.WorkerId).Msg("trying parse torrent list from new client...")
+	gLog.Info().Str("worker_id", wid).Msg("trying parse torrent list from new client...")
 	var trrs []*deluge.Torrent
 
 	var buf []byte
 	if buf, e = json.Marshal(req.Torrent); e != nil {
-		gLog.Error().Err(e).Msg("there is an error while proccessing new client's torrent list")
+		gLog.Error().Err(e).Msg("there is an error while processing new client's torrent list")
 		return nil, status.Errorf(codes.Internal, "")
 	}
 
 	if e = json.Unmarshal(buf, &trrs); e != nil {
-		gLog.Error().Err(e).Msg("there is an error while proccessing new client's torrent list")
+		gLog.Error().Err(e).Msg("there is an error while processing new client's torrent list")
 		return nil, status.Errorf(codes.Internal, "")
 	}
 
-	gLog.Debug().Str("worker_id", req.WorkerId).Int("torrents_count", len(trrs)).Msg("torrent list parsing from the client has been completed")
-	gLog.Info().Str("worker_id", req.WorkerId).Msg("client validation seems ok; registering new worker...")
+	gLog.Debug().Str("worker_id", wid).Int("torrents_count", len(trrs)).Msg("torrent list parsing from the client has been completed")
+	gLog.Info().Str("worker_id", wid).Msg("client validation seems ok; registering new worker...")
 
 	var wtrrs = make(map[string]*deluge.Torrent)
 	for _, t := range trrs {
@@ -283,18 +327,20 @@ func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *
 		}
 	}
 
-	log.Println(req.WDFreeSpace)
-	log.Println(req.WorkerVersion)
-	log.Println(wtrrs)
+	if gCli.Bool("http-debug") {
+		log.Println(req.WDFreeSpace)
+		log.Println(req.WorkerVersion)
+		log.Println(wtrrs)
+	}
 
 	m.Lock()
-	m.workers[req.WorkerId] = &Worker{
+	m.workers[wid] = &Worker{
 		Version:     req.WorkerVersion,
 		WDFreeSpace: req.WDFreeSpace,
 		Torrents:    wtrrs,
 	}
 	m.Unlock()
 
-	gLog.Info().Str("worker_id", req.WorkerId).Msg("new client registration has been completed")
-	return &pb.RegistrationReply{Config: &structpb.Struct{}}, e
+	gLog.Info().Str("worker_id", wid).Msg("new client registration has been completed")
+	return &emptypb.Empty{}, e
 }

@@ -206,6 +206,16 @@ func main() {
 			Value:   "",
 			EnvVars: []string{"DELUGE_PASSWORD"},
 		},
+		&cli.StringFlag{
+			Name:  "deluge-data-path",
+			Usage: "",
+			Value: "/mnt/deluge",
+		},
+		&cli.StringFlag{
+			Name:  "deluge-torrentfiles-path",
+			Usage: "",
+			Value: "./data",
+		},
 
 		// common settings
 		&cli.StringFlag{
