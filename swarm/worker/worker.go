@@ -34,9 +34,6 @@ type Worker struct {
 	gserver  *grpc.Server
 
 	id string
-
-	sync.RWMutex
-	pingblock bool
 }
 
 var (
@@ -244,20 +241,6 @@ func (m *Worker) ping() (reconn bool, e error) {
 	return
 }
 
-func (m *Worker) isPingBlocked() bool {
-	return m.pingblock
-}
-func (m *Worker) unblockPing() {
-	m.Lock()
-	m.pingblock = false
-	m.Unlock()
-}
-func (m *Worker) blockPing() {
-	m.Lock()
-	m.pingblock = true
-	m.Unlock()
-}
-
 func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 	var trrs []*deluge.Torrent
 	var strmap = make([]*structpb.Struct, len(trrs))
@@ -313,18 +296,3 @@ func (*Worker) IsMaster() bool {
 
 // 		gLog.Warn().Msg("registraion has been completed")
 // 	}
-
-// 	m.enablePing()
-// 	return nil
-// }
-
-// func (m *Worker) disablePing() {
-// 	m.Lock()
-// 	m.pingerDisable = true
-// 	m.Unlock()
-// }
-// func (m *Worker) enablePing() {
-// 	m.Lock()
-// 	m.pingerDisable = false
-// 	m.Unlock()
-// }
