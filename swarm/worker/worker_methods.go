@@ -124,7 +124,7 @@ func (m *WorkerService) Init(ctx context.Context, _ *emptypb.Empty) (*pb.InitRep
 	}, e
 }
 
-func (*WorkerService) Ping(ctx context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, _ error) {
+func (*WorkerService) Ping(_ context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, _ error) {
 	// wid, e := m.authorizeWorker(ctx)
 	// if e != nil {
 	// 	return &emptypb.Empty{}, e

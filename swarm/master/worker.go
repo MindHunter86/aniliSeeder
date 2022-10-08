@@ -143,7 +143,7 @@ func (*worker) newServiceRequest(d time.Duration) (context.Context, context.Canc
 	)
 }
 
-func (*worker) authorizeSerivceReply(ctx context.Context, md *metadata.MD) (_ string, e error) {
+func (*worker) authorizeSerivceReply(md *metadata.MD) (_ string, e error) {
 	id := md.Get("x-worker-id")
 	if len(id) != 1 {
 		return "", status.Errorf(codes.InvalidArgument, "")
@@ -212,7 +212,7 @@ func (m *worker) getInitialServiceData() (_ string, e error) {
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(ctx, &md); e != nil {
+	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
