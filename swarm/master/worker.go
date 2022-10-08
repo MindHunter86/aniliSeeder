@@ -71,7 +71,7 @@ func (m *worker) connect() (e error) {
 	}))
 	opts = append(opts, grpc.WithBlock())
 
-	opts = append(opts, grpc.WithDialer(func(tgt string, timeout time.Duration) (net.Conn, error) {
+	opts = append(opts, grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 		return m.msess.Open()
 	}))
 
