@@ -159,7 +159,7 @@ LOOP:
 			m.blockPing()
 			if e := m.ping(); e != nil {
 				gLog.Warn().Err(e).Msg("aborting application due to ping and reconnection failures")
-				break LOOP
+				gAbort()
 			}
 			m.unblockPing()
 		}
@@ -176,6 +176,11 @@ LOOP:
 func (m *Worker) ping() (e error) {
 	if _, e = m.msession.Ping(); e != nil {
 		gLog.Debug().Err(e).Msg("got an error while pinging the mux session")
+
+		if gCli.Bool("grpc-disable-reconnect") {
+			gLog.Debug().Msg("aborting application because of grpc-disable-reconnect flag set")
+			return
+		}
 
 		if e = m.reconnect(); e != nil {
 			gLog.Debug().Err(e).Msg("got an error while reconnecting to the master server")

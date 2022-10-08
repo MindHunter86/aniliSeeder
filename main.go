@@ -150,6 +150,10 @@ func main() {
 			Usage: "",
 			Value: time.Second,
 		},
+		&cli.BoolFlag{
+			Name:  "grpc-disable-reconnect",
+			Usage: "",
+		},
 
 		// http2 settings
 		&cli.DurationFlag{
