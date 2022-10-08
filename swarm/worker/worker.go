@@ -176,9 +176,6 @@ LOOP:
 	if e = m.msession.Close(); e != nil {
 		gLog.Warn().Err(e).Msg("")
 	}
-	if e = m.rawconn.Close(); e != nil {
-		gLog.Warn().Err(e).Msg("")
-	}
 }
 
 func (m *Worker) ping() (e error) {
