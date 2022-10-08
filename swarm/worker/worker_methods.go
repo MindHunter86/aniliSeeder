@@ -5,12 +5,14 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"io"
 	"strings"
 
 	"github.com/MindHunter86/aniliSeeder/deluge"
 	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
 	"github.com/MindHunter86/aniliSeeder/utils"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -32,12 +34,12 @@ func NewWorkerService(w *Worker) *WorkerService {
 func (*WorkerService) authorizeMasterRequest(ctx context.Context) (string, error) {
 	p, ok := peer.FromContext(ctx)
 	if !ok {
-		return "", status.Errorf(codes.DataLoss, "")
+		return "", status.Errorf(codes.DataLoss, "could not get peer data")
 	}
 
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return "", status.Errorf(codes.DataLoss, "")
+		return "", status.Errorf(codes.DataLoss, "could not get metadata")
 	}
 
 	id := md.Get("x-master-id")
@@ -78,6 +80,18 @@ func (*WorkerService) authorizeMasterRequest(ctx context.Context) (string, error
 	return id[0], nil
 }
 
+func (m *WorkerService) authorizeServiceReply(ctx context.Context) error {
+	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
+	io.WriteString(mac, m.w.id)
+
+	md := metadata.New(map[string]string{
+		"x-worker-id":           m.w.id,
+		"x-authentication-hash": hex.EncodeToString(mac.Sum(nil)),
+	})
+
+	return grpc.SendHeader(ctx, md)
+}
+
 func (m *WorkerService) Init(ctx context.Context, _ *emptypb.Empty) (*pb.InitReply, error) {
 	mid, e := m.authorizeMasterRequest(ctx)
 	if e != nil {
@@ -95,6 +109,10 @@ func (m *WorkerService) Init(ctx context.Context, _ *emptypb.Empty) (*pb.InitRep
 		gLog.Warn().Msg("aborting application because of inital phase is failed")
 		gAbort()
 
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
+	if e = m.authorizeServiceReply(ctx); e != nil {
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 

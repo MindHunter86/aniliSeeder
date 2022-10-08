@@ -162,10 +162,10 @@ LOOP:
 			}
 
 			m.blockPing()
-			if e := m.ping(); e != nil {
-				gLog.Warn().Err(e).Msg("aborting application because of ping fails and reconnection failure")
-				break LOOP
-			}
+			// if e := m.ping(); e != nil {
+			// 	gLog.Warn().Err(e).Msg("aborting application because of ping fails and reconnection failure")
+			// 	break LOOP
+			// }
 			m.unblockPing()
 		}
 	}

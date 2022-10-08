@@ -22,7 +22,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -89,6 +88,7 @@ func (m *worker) connect() (e error) {
 	m.gservice = pb.NewWorkerServiceClient(m.gconn)
 
 	if _, e = m.getInitialServiceData(); e != nil {
+		gLog.Debug().Err(e).Msg("got an error while gathering initial service data")
 		return
 	}
 
@@ -143,17 +143,7 @@ func (m *worker) newServiceRequest(d time.Duration) (context.Context, context.Ca
 	)
 }
 
-func (m *worker) authorizeSerivceReply(ctx context.Context) (_ string, e error) {
-	p, ok := peer.FromContext(ctx)
-	if !ok {
-		return "", status.Errorf(codes.DataLoss, "")
-	}
-
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return "", status.Errorf(codes.DataLoss, "")
-	}
-
+func (m *worker) authorizeSerivceReply(ctx context.Context, md *metadata.MD) (_ string, e error) {
 	id := md.Get("x-worker-id")
 	if len(id) != 1 {
 		return "", status.Errorf(codes.InvalidArgument, "")
@@ -162,8 +152,7 @@ func (m *worker) authorizeSerivceReply(ctx context.Context) (_ string, e error) 
 		return "", status.Errorf(codes.InvalidArgument, "")
 	}
 
-	gLog.Debug().Str("worker_ip", p.Addr.String()).Str("worker_id", id[0]).
-		Str("worker_ua", md.Get("user-agent")[0]).Msg("worker reply accepted, authorizing...")
+	gLog.Debug().Str("worker_id", id[0]).Msg("worker reply accepted, authorizing...")
 
 	ah := md.Get("x-authentication-hash")
 	if len(ah) != 1 {
@@ -199,7 +188,6 @@ func (m *worker) getRPCErrors(err error) error {
 	case codes.OK:
 		return nil
 
-	// // !! EXPERIMENTAL
 	case codes.Unavailable:
 		gLog.Warn().Msg("trying to reconnect to the worker service...")
 		if e := m.reconnect(); e != nil {
@@ -218,12 +206,13 @@ func (m *worker) getInitialServiceData() (_ string, e error) {
 	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
 	defer cancel()
 
+	var md metadata.MD
 	var rpl *pb.InitReply
-	if rpl, e = m.gservice.Init(ctx, &emptypb.Empty{}); m.getRPCErrors(e) != nil {
+	if rpl, e = m.gservice.Init(ctx, &emptypb.Empty{}, grpc.Header(&md)); m.getRPCErrors(e) != nil {
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(ctx); e != nil {
+	if m.id, e = m.authorizeSerivceReply(ctx, &md); e != nil {
 		return
 	}
 

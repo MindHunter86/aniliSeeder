@@ -71,6 +71,7 @@ func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
 		Msg("trying to initialize gRPC client...")
 
 	if _, e = m.workerPool.newWorker(muxsess); e != nil {
+		gLog.Debug().Err(e).Msg("got an error while processing new worke; drop mux session ...")
 		muxsess.Close()
 		return
 	}
