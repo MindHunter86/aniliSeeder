@@ -61,6 +61,34 @@ func NewWorker(ctx context.Context) swarm.Swarm {
 }
 
 func (m *Worker) Bootstrap() (e error) {
+	if e = m.connect(); e != nil {
+		return
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	defer wg.Wait()
+
+	defer gLog.Debug().Msg("waiting for destructor...")
+	go m.run()
+
+	gLog.Debug().Msg("starting grpc master server ...")
+	return m.gserver.Serve(m.msession)
+}
+
+func (m *Worker) ping() (e error) {
+	if _, e = m.msession.Ping(); e != nil {
+		if e = m.connect(); e != nil {
+			return
+		}
+	}
+
+	// TODO
+	return
+}
+
+func (m *Worker) connect() (e error) {
 	gLog.Debug().Str("master_addr", gCli.String("swarm-master-addr")).
 		Msg("trying to establish raw tcp connection with the master server")
 
@@ -113,20 +141,18 @@ func (m *Worker) Bootstrap() (e error) {
 	pb.RegisterWorkerServiceServer(m.gserver, wservice)
 
 	gLog.Debug().Msg("grpc master server has been setuped; initialize destructor")
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	defer wg.Wait()
-
-	defer gLog.Debug().Msg("waiting for destructor...")
-	go m.run()
-
-	gLog.Debug().Msg("starting grpc master server ...")
-	return m.gserver.Serve(m.msession)
+	return
 }
 
-func (m *Worker) test() {
+func (m *Worker) reconnect() (e error) {
+	if e = m.msession.Close(); e != nil {
+		gLog.Warn().Err(e).Msg("")
+	}
+	if e = m.rawconn.Close(); e != nil {
+		gLog.Warn().Err(e).Msg("")
+	}
+
+	return
 }
 
 func (m *Worker) run() {

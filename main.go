@@ -307,7 +307,7 @@ func main() {
 type SeverityHook struct{}
 
 func (SeverityHook) Run(e *zerolog.Event, level zerolog.Level, _ string) {
-	if level != zerolog.DebugLevel {
+	if level != zerolog.DebugLevel && version != "devel" {
 		return
 	}
 
