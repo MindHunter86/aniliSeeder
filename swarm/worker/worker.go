@@ -153,12 +153,12 @@ LOOP:
 			break LOOP
 		case <-ticker.C:
 			if m.isPingBlocked() {
-				gLog.Debug().Msg("skipping ping because of the last ping is not completed yet")
+				gLog.Debug().Msg("skipping a ping because the last ping has not completed yet")
 			}
 
 			m.blockPing()
 			if e := m.ping(); e != nil {
-				gLog.Warn().Err(e).Msg("aborting application because of ping fails and reconnection failure")
+				gLog.Warn().Err(e).Msg("aborting application due to ping and reconnection failures")
 				break LOOP
 			}
 			m.unblockPing()
