@@ -70,10 +70,7 @@ func (m *Worker) Bootstrap() (e error) {
 	defer wg.Wait()
 
 	defer gLog.Debug().Msg("waiting for destructor...")
-	go m.run(wg.Done)
-
-	gLog.Debug().Msg("starting grpc master server ...")
-	return m.gserver.Serve(m.msession)
+	return m.run(&wg)
 }
 
 func (m *Worker) connect() (e error) {
@@ -128,7 +125,7 @@ func (m *Worker) connect() (e error) {
 	m.gserver = grpc.NewServer(opts...)
 	pb.RegisterWorkerServiceServer(m.gserver, wservice)
 
-	gLog.Debug().Msg("grpc master server has been setuped; initialize destructor")
+	gLog.Debug().Msg("grpc master server has been started")
 	return
 }
 
@@ -140,10 +137,30 @@ func (m *Worker) reconnect() (e error) {
 	return m.connect()
 }
 
-func (m *Worker) run(done func()) {
+func (m *Worker) serve(epipe chan error, done func()) {
 	defer done()
 
+	gLog.Debug().Msg("starting grpc master server ...")
+	epipe <- m.gserver.Serve(m.msession)
+}
+
+func (m *Worker) run(wg *sync.WaitGroup) error {
+	defer wg.Done()
+
+	var epipe = make(chan error)
+
+	wg.Add(1)
+	go m.serve(epipe, wg.Done)
+
+	var reconnFreeze bool
+
+	// avoid panic if cli arg returns 0
 	ticker := time.NewTicker(time.Second)
+	ticker.Stop()
+
+	if i := gCli.Duration("grpc-ping-interval"); i != 0 {
+		ticker.Reset(i)
+	}
 
 LOOP:
 	for {
@@ -151,30 +168,63 @@ LOOP:
 		case <-gCtx.Done():
 			gLog.Info().Msg("context done() has been caught; closing grpc server, mux session, tcp conn...")
 			break LOOP
+		case err := <-epipe:
+			if err != nil {
+				gLog.Warn().Err(err).Msg("got some errors from grpc serve")
+			}
 		case <-ticker.C:
-			if m.isPingBlocked() {
-				gLog.Debug().Msg("skipping a ping because the last ping has not completed yet")
+
+			if reconnFreeze {
+				gLog.Debug().Msg("restoring ping ticker after reconnection hold")
+				reconnFreeze = false
+				// m.unblockPing()
+
+				ticker.Stop()
+				ticker.Reset(gCli.Duration("grpc-ping-interval"))
+				continue
 			}
 
-			m.blockPing()
-			if e := m.ping(); e != nil {
+			// if m.isPingBlocked() {
+			// 	gLog.Debug().Msg("skipping a ping because the last ping has not completed yet")
+			// 	continue
+			// }
+
+			// m.blockPing()
+			ticker.Stop()
+
+			var e error
+			if reconnFreeze, e = m.ping(); e != nil {
 				gLog.Warn().Err(e).Msg("aborting application due to ping and reconnection failures")
 				gAbort()
 			}
-			m.unblockPing()
+
+			if reconnFreeze {
+				wg.Add(1)
+				go m.serve(epipe, wg.Done)
+
+				if h := gCli.Duration("grpc-ping-reconnect-hold"); h != 0*time.Second {
+					gLog.Debug().Msg("reconnection detected; holding for N seconds")
+
+					ticker.Stop()
+					ticker.Reset(h)
+
+					continue
+				}
+			}
+
+			// m.unblockPing()
+			ticker.Reset(gCli.Duration("grpc-ping-interval"))
 		}
 	}
 
 	m.gserver.Stop()
 
-	var e error
-	if e = m.msession.Close(); e != nil {
-		gLog.Warn().Err(e).Msg("")
-	}
+	return m.msession.Close()
 }
 
-func (m *Worker) ping() (e error) {
-	if _, e = m.msession.Ping(); e != nil {
+func (m *Worker) ping() (reconn bool, e error) {
+	var d time.Duration
+	if d, e = m.msession.Ping(); e != nil {
 		gLog.Debug().Err(e).Msg("got an error while pinging the mux session")
 
 		if gCli.Bool("grpc-disable-reconnect") {
@@ -186,9 +236,11 @@ func (m *Worker) ping() (e error) {
 			gLog.Debug().Err(e).Msg("got an error while reconnecting to the master server")
 			return
 		}
+
+		reconn = true
 	}
 
-	// TODO
+	gLog.Debug().Str("ping_time", d.String()).Msg("mux ping duration")
 	return
 }
 

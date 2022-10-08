@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/MindHunter86/aniliSeeder/deluge"
 	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
@@ -58,11 +59,18 @@ func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
 		return
 	}
 
+	var d time.Duration
+	if d, e = muxsess.Ping(); e != nil {
+		return
+	}
+
+	gLog.Debug().Str("ping_time", d.String()).Msg("mux session is alive")
+
 	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
 		Msg("trying to initialize gRPC client...")
 
 	if _, e = m.workerPool.newWorker(muxsess); e != nil {
-		gLog.Debug().Err(e).Msg("got an error while processing new worke; drop mux session ...")
+		gLog.Debug().Err(e).Msg("got an error while processing new worker; drop mux session ...")
 		muxsess.Close()
 		return
 	}
