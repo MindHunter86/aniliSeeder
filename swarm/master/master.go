@@ -16,7 +16,6 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -28,7 +27,6 @@ var (
 	gCli    *cli.Context
 	gLog    *zerolog.Logger
 	gCtx    context.Context
-	gDeluge *deluge.Client
 	gAniApi *anilibria.ApiClient
 
 	gMasterId string
@@ -40,9 +38,7 @@ var (
 type Master struct {
 	rawListener net.Listener
 
-	ln      net.Listener
-	gserver *grpc.Server
-
+	ln         net.Listener
 	workerPool *workerPool
 }
 

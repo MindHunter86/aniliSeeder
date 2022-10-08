@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
 	"github.com/MindHunter86/aniliSeeder/swarm"
 	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
@@ -45,7 +44,6 @@ var (
 	gLog    *zerolog.Logger
 	gCtx    context.Context
 	gDeluge *deluge.Client
-	gAniApi *anilibria.ApiClient
 	gAbort  context.CancelFunc
 )
 
@@ -136,9 +134,6 @@ func (m *Worker) connect() (e error) {
 
 func (m *Worker) reconnect() (e error) {
 	if e = m.msession.Close(); e != nil {
-		gLog.Warn().Err(e).Msg("")
-	}
-	if e = m.rawconn.Close(); e != nil {
 		gLog.Warn().Err(e).Msg("")
 	}
 
