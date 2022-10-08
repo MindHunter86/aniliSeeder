@@ -136,6 +136,8 @@ func (*SockServer) parseClientCmd(cmd string) rpcCommand {
 		return cmdsRpcGetTorrents
 	case "statTorrents":
 		return cmdsRpcStatTorrents
+	case "listWorkers":
+		return cmdWorkersList
 	default:
 		gLog.Debug().Str("cmd", strings.TrimSpace(cmd)).Msg("trimmed")
 		return cmdRpcUndefined
@@ -148,6 +150,8 @@ func (m *SockServer) runClientCmd(cmd rpcCommand) (io.ReadWriter, error) {
 		return m.cmd.getAvaliableTorrentHashes()
 	case cmdsRpcStatTorrents:
 		return m.cmd.statCurrentTorrents()
+	case cmdWorkersList:
+		return m.cmd.listWorkers()
 
 	default:
 		gLog.Error().Msg("golang internal error; given cmd is undefined in runClientCmd()")

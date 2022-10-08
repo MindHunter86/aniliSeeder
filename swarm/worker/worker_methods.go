@@ -119,7 +119,7 @@ func (m *WorkerService) Init(ctx context.Context, _ *emptypb.Empty) (*pb.InitRep
 	return &pb.InitReply{
 		WorkerId:      m.w.id,
 		WorkerVersion: gCli.App.Version,
-		WDFreeSpace:   utils.CheckDirectoryFreeSpace("deluge-data-path"),
+		WDFreeSpace:   utils.CheckDirectoryFreeSpace(gCli.String("deluge-data-path")),
 		Torrent:       trrs,
 	}, e
 }

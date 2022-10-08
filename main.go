@@ -141,14 +141,23 @@ func main() {
 			Value: time.Second,
 		},
 		&cli.DurationFlag{
-			Name:  "grpc-ping-timeout",
-			Usage: "",
-			Value: 300 * time.Millisecond,
+			Name:  "grpc-ping-reconnect-hold",
+			Usage: "time for grpc reconnection process",
+			Value: 10 * time.Second,
 		},
+		// &cli.DurationFlag{
+		// 	Name:  "grpc-ping-timeout",
+		// 	Usage: "",
+		// 	Value: 300 * time.Millisecond,
+		// },
 		&cli.DurationFlag{
 			Name:  "grpc-request-timeout",
 			Usage: "",
 			Value: time.Second,
+		},
+		&cli.BoolFlag{
+			Name:  "grpc-disable-reconnect",
+			Usage: "",
 		},
 
 		// http2 settings
@@ -214,7 +223,7 @@ func main() {
 		&cli.StringFlag{
 			Name:  "deluge-data-path",
 			Usage: "",
-			Value: "/mnt/deluge",
+			Value: "./data",
 		},
 		&cli.StringFlag{
 			Name:  "deluge-torrentfiles-path",

@@ -14,8 +14,11 @@ type rpcCommand uint8
 
 const (
 	cmdRpcUndefined rpcCommand = iota
+
 	cmdsRpcGetTorrents
 	cmdsRpcStatTorrents
+
+	cmdWorkersList
 )
 
 type cmds struct{}
@@ -80,4 +83,25 @@ func (*cmds) statCurrentTorrents() (io.ReadWriter, error) {
 	})
 
 	return buf, nil
+}
+
+func (*cmds) listWorkers() (_ io.ReadWriter, e error) {
+	tb := table.NewWriter()
+	defer tb.Render()
+
+	var buf = bytes.NewBuffer(nil)
+	tb.SetOutputMirror(buf)
+	tb.AppendHeader(table.Row{"ID", "Version", "FreeSpaceMB", "ActiveTorrents"})
+
+	for id, wrk := range gSwarm.GetConnectedWorkers() {
+		tb.AppendRow([]interface{}{
+			id, wrk.Version, wrk.FreeSpace / 1024 / 1024, len(wrk.ActiveTorrents),
+		})
+	}
+
+	tb.SortBy([]table.SortBy{
+		{Name: "ID", Mode: table.Dsc},
+	})
+
+	return buf, e
 }
