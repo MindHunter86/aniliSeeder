@@ -31,6 +31,9 @@ pkg/.vscode/launch.json
 # removing sesetive data
 ..bfg-report/
 
+# remove test p2p code
+p2p/
+
 # removing dynamic content and test data
 .bash_history
 data/
