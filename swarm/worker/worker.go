@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
@@ -170,65 +169,39 @@ func (m *Worker) run() {
 	}
 }
 
-func (m *Worker) run2() (e error) {
-	ticker := time.NewTicker(time.Second)
-	ticker.Stop() // !!
-	// todo refactor ?
+// func (m *Worker) run2() (e error) {
+// 	ticker := time.NewTicker(time.Second)
+// 	ticker.Stop() // !!
+// 	// todo refactor ?
 
-	if gCli.Duration("grpc-ping-interval") != 0*time.Second {
-		ticker.Reset(gCli.Duration("grpc-ping-interval"))
-	}
+// 	if gCli.Duration("grpc-ping-interval") != 0*time.Second {
+// 		ticker.Reset(gCli.Duration("grpc-ping-interval"))
+// 	}
 
-	defer ticker.Stop()
+// 	defer ticker.Stop()
 
-LOOP:
-	for {
-		select {
-		case <-gCtx.Done():
-			break LOOP
-		case <-ticker.C:
-			m.RLock()
-			if m.pingerDisable {
-				gLog.Debug().Msg("skipping ping call because of the last call is not completed yet")
-				continue
-			}
-			m.RUnlock()
+// LOOP:
+// 	for {
+// 		select {
+// 		case <-gCtx.Done():
+// 			break LOOP
+// 		case <-ticker.C:
+// 			m.RLock()
+// 			if m.pingerDisable {
+// 				gLog.Debug().Msg("skipping ping call because of the last call is not completed yet")
+// 				continue
+// 			}
+// 			m.RUnlock()
 
-			// if e = m.ping(); e != nil {
-			// 	gLog.Warn().Err(e).Msg("grpc ping has been failed; close application...")
-			// 	return
-			// }
-		}
-	}
+// 			// if e = m.ping(); e != nil {
+// 			// 	gLog.Warn().Err(e).Msg("grpc ping has been failed; close application...")
+// 			// 	return
+// 			// }
+// 		}
+// 	}
 
-	return
-}
-
-//
-
-func (m *Worker) getNewRPCContext(d time.Duration) (context.Context, context.CancelFunc) {
-	md := metadata.New(map[string]string{
-		"x-worker-id": m.id,
-	})
-
-	return context.WithTimeout(
-		metadata.NewOutgoingContext(context.Background(), md),
-		d,
-	)
-}
-
-func (m *Worker) getRegistrationRequest() (_ *pb.RegistrationRequest, e error) {
-	var trrs []*structpb.Struct
-	if trrs, e = m.getTorrents(); e != nil {
-		return
-	}
-
-	return &pb.RegistrationRequest{
-		WorkerVersion: gCli.App.Version,
-		WDFreeSpace:   utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
-		Torrent:       trrs,
-	}, e
-}
+// 	return
+// }
 
 func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 	var trrs []*deluge.Torrent

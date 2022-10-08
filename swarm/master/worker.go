@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"net"
 	"strings"
@@ -33,9 +34,10 @@ type worker struct {
 	gconn    *grpc.ClientConn
 	gservice pb.WorkerServiceClient
 
-	id    string
-	token string
-	trrs  []*deluge.Torrent
+	id          string
+	trrs        []*deluge.Torrent
+	version     string
+	wdFreeSpace uint64
 }
 
 func newWorker(ms *yamux.Session) *worker {
@@ -183,27 +185,6 @@ func (m *worker) authorizeSerivceReply(ctx context.Context) (_ string, e error) 
 	return id[0], nil
 }
 
-func (m *worker) getInitialServiceData() (_ string, e error) {
-	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
-	defer cancel()
-
-	var rpl *pb.InitReply
-	if rpl, e = m.gservice.Init(ctx, &emptypb.Empty{}); m.getRPCErrors(e) != nil {
-		return
-	}
-
-	if m.id, e = m.authorizeSerivceReply(ctx); e != nil {
-		return
-	}
-
-	if m.id != rpl.GetWorkerId() {
-		gLog.Warn().Str("worker_id", m.id).Msg("abnormal reply from init method of the worker service; drop worker")
-		return m.id, errWorkerInvalidId
-	}
-
-	return
-}
-
 func (m *worker) getRPCErrors(err error) error {
 	estatus, _ := status.FromError(err)
 
@@ -224,4 +205,38 @@ func (m *worker) getRPCErrors(err error) error {
 	}
 
 	return err
+}
+
+func (m *worker) getInitialServiceData() (_ string, e error) {
+	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
+	defer cancel()
+
+	var rpl *pb.InitReply
+	if rpl, e = m.gservice.Init(ctx, &emptypb.Empty{}); m.getRPCErrors(e) != nil {
+		return
+	}
+
+	if m.id, e = m.authorizeSerivceReply(ctx); e != nil {
+		return
+	}
+
+	if m.id != rpl.GetWorkerId() {
+		gLog.Warn().Str("worker_id", m.id).Msg("abnormal reply from init method of the worker service; drop worker")
+		return m.id, errWorkerInvalidId
+	}
+
+	// unpack Torrent
+	var buf []byte
+	if buf, e = json.Marshal(rpl.GetTorrent()); e != nil {
+		return
+	}
+
+	if e = json.Unmarshal(buf, &m.trrs); e != nil {
+		return
+	}
+
+	m.wdFreeSpace = rpl.GetWDFreeSpace()
+	m.version = rpl.GetWorkerVersion()
+
+	return
 }

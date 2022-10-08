@@ -79,8 +79,17 @@ func (m *WorkerService) Init(ctx context.Context, _ *emptypb.Empty) (*pb.InitRep
 	}
 
 	gLog.Debug().Str("master_id", mid).Msg("processing master request...")
+
+	var trrs []*structpb.Struct
+	if trrs, e = m.w.getTorrents(); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
 	return &pb.InitReply{
-		WorkerId: m.w.id,
+		WorkerId:      m.w.id,
+		WorkerVersion: gCli.App.Version,
+		WDFreeSpace:   utils.CheckDirectoryFreeSpace("deluge-data-path"),
+		Torrent:       trrs,
 	}, e
 }
 

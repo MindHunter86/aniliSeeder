@@ -23,7 +23,13 @@ service WorkerService {
 }
 
 message InitReply {
+    // auth phase
     string WorkerId = 1;
+
+    // registration phase
+    string WorkerVersion = 2;
+    uint64 WDFreeSpace = 3;
+    repeated google.protobuf.Struct Torrent = 4;
 }
 
 message TorrentsReply {
@@ -72,12 +78,7 @@ message SystemSpaceReply {
     uint64 FreeSpace = 1;
 }
 
-//
-
-service MasterService {
-    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
-    rpc Register (RegistrationRequest) returns (google.protobuf.Empty) {}
-}
+// 2delete
 
 message RegistrationRequest {
     // initial phase

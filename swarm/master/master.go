@@ -37,8 +37,6 @@ var (
 // https://camo.githubusercontent.com/79dbaaa1fb7d239f1d21d4be23985b831babfc4b95538413298dce1c5c2600e1/68747470733a2f2f6c68332e676f6f676c6575736572636f6e74656e742e636f6d2f2d544c51596b4975396a49412f57664c61644c4a357a55492f41414141414141415967382f3745716c72613754764b38676f736b44465142637777394c6e584369794a387977434c63424741732f73313630302f494d475f383032372e6a7067
 
 type Master struct {
-	pb.UnimplementedMasterServiceServer
-
 	rawListener net.Listener
 
 	ln      net.Listener
@@ -86,55 +84,6 @@ func (m *Master) Bootstrap() (e error) {
 	}
 
 	return m.run()
-
-	//
-
-	// gLog.Debug().Msg("trying to open grpc socket for master listening...")
-	// if m.ln, e = net.Listen("tcp", gCli.String("swarm-master-listen")); e != nil {
-	// 	return
-	// }
-
-	// gLog.Debug().Msg("grpc socket seems is ok, setuping grpc...")
-
-	// var opts []grpc.ServerOption
-
-	// if !gCli.Bool("grpc-insecure") {
-	// 	gLog.Debug().Msg("generating pub\\priv key pair...")
-
-	// 	var crt tls.Certificate
-	// 	if crt, e = m.getTLSCertificate(); e != nil {
-	// 		return
-	// 	}
-
-	// 	var creds = credentials.NewServerTLSFromCert(&crt)
-	// 	opts = append(opts, grpc.Creds(creds))
-
-	// } else {
-	// 	gLog.Warn().Msg("ATTENTION! gRPC connection is unsecure! do at your own risk")
-	// }
-
-	// if gCli.Duration("http2-conn-max-age") != 0*time.Second {
-	// 	gLog.Debug().Msg("set keepalive for the master server...")
-
-	// 	enforcement := keepalive.EnforcementPolicy{
-	// 		MinTime:             5 * time.Second,
-	// 		PermitWithoutStream: true,
-	// 	}
-
-	// 	opts = append(opts, grpc.KeepaliveEnforcementPolicy(enforcement))
-	// 	opts = append(opts, grpc.KeepaliveParams(keepalive.ServerParameters{
-	// 		MaxConnectionAge:      gCli.Duration("http2-conn-max-age"),
-	// 		MaxConnectionAgeGrace: gCli.Duration("http2-conn-max-age") + 10*time.Second,
-	// 	}))
-	// }
-
-	// m.gserver = grpc.NewServer(opts...)
-	// pb.RegisterMasterServiceServer(m.gserver, m)
-
-	// gLog.Debug().Msg("grpc master server has been setuped")
-
-	// gLog.Debug().Msg("starting grpc master server ...")
-	// return m.gserver.Serve(m.ln)
 }
 
 func (m *Master) run() (e error) {
@@ -161,9 +110,11 @@ LOOP:
 			gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).Str("client_addr", conn.RemoteAddr().String()).
 				Msg("new incoming connection; processing...")
 
-			go func() {
-				// !!
-			}()
+			go func(cn net.Conn) {
+				if err := m.handleIncomingConnection(cn); e != nil {
+					gLog.Warn().Err(err).Msg("got error while handling the workers connection")
+				}
+			}(conn)
 		}
 	}
 
