@@ -162,7 +162,7 @@ LOOP:
 				Msg("new incoming connection; processing...")
 
 			go func() {
-				//
+				// !!
 			}()
 		}
 	}
@@ -223,7 +223,6 @@ func (*Master) authorizeWorker(ctx context.Context) (string, error) {
 	gLog.Debug().Str("worker_id", md.Get("x-worker-id")[0]).Msg("the worker's connect has been authorized")
 	return id[0], nil
 }
-
 
 func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *emptypb.Empty, e error) {
 	var wid string

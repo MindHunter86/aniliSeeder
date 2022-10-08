@@ -126,6 +126,9 @@ func (m *Worker) Bootstrap() (e error) {
 	return m.gserver.Serve(m.msession)
 }
 
+func (m *Worker) test() {
+}
+
 func (m *Worker) run() {
 	<-gCtx.Done()
 	gLog.Info().Msg("context done() has been caught; closing grpc server, mux session, tcp conn...")
