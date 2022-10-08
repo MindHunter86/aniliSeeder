@@ -17,6 +17,15 @@ var (
 	gAniApi *anilibria.ApiClient
 )
 
+type SwarmWorker struct {
+	Id        string
+	Version   string
+	FreeSpace uint64
+
+	ActiveTorrents []*deluge.Torrent
+}
+
 type Swarm interface {
 	Bootstrap() error
+	GetConnectedWorkers() map[string]*SwarmWorker
 }

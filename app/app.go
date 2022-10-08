@@ -28,7 +28,8 @@ var (
 
 	gAniApi *anilibria.ApiClient
 	gDeluge *deluge.Client
-	gRPC    swarm.Swarm
+
+	gSwarm swarm.Swarm
 )
 
 func NewApp(c *cli.Context, l *zerolog.Logger) *App {
@@ -58,7 +59,7 @@ func (m *App) Bootstrap() (e error) {
 		}
 
 		gCtx = context.WithValue(gCtx, utils.ContextKeyAnilibriaClient, gAniApi)
-		gRPC = master.NewMaster(gCtx)
+		gSwarm = master.NewMaster(gCtx)
 	} else {
 		// deluge RPC client
 		if gDeluge, e = deluge.NewClient(gCli, gLog); e != nil {
@@ -66,13 +67,13 @@ func (m *App) Bootstrap() (e error) {
 		}
 
 		gCtx = context.WithValue(gCtx, utils.ContextKeyDelugeClient, gDeluge)
-		gRPC = worker.NewWorker(gCtx)
+		gSwarm = worker.NewWorker(gCtx)
 	}
 
 	// grpc master/worker setup
 	wg.Add(1)
 	go func(errs chan error, done func()) {
-		if err := gRPC.Bootstrap(); err != nil {
+		if err := gSwarm.Bootstrap(); err != nil {
 			gLog.Debug().Err(err).Msg("grpc service has been failed; sending error to main loop")
 			errs <- err
 		}

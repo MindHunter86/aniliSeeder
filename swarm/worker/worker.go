@@ -221,6 +221,10 @@ func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 	return strmap, e
 }
 
+func (*Worker) GetConnectedWorkers() (_ map[string]*swarm.SwarmWorker) {
+	return nil
+}
+
 // todo
 // ? refactor
 // func (m *Worker) ping() (e error) {
