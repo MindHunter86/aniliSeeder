@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
 	pb "github.com/MindHunter86/aniliSeeder/swarm/grpc"
 	"github.com/MindHunter86/aniliSeeder/utils"
@@ -24,10 +23,9 @@ import (
 )
 
 var (
-	gCli    *cli.Context
-	gLog    *zerolog.Logger
-	gCtx    context.Context
-	gAniApi *anilibria.ApiClient
+	gCli *cli.Context
+	gLog *zerolog.Logger
+	gCtx context.Context
 
 	gMasterId string
 )
@@ -37,16 +35,13 @@ var (
 
 type Master struct {
 	rawListener net.Listener
-
-	ln         net.Listener
-	workerPool *workerPool
+	workerPool  *workerPool
 }
 
 func NewMaster(ctx context.Context) *Master {
 	gCtx = ctx
 	gLog = gCtx.Value(utils.ContextKeyLogger).(*zerolog.Logger)
 	gCli = gCtx.Value(utils.ContextKeyCliContext).(*cli.Context)
-	gAniApi = gCtx.Value(utils.ContextKeyAnilibriaClient).(*anilibria.ApiClient)
 	gMasterId = uuid.NewV4().String()
 
 	return &Master{

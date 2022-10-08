@@ -50,16 +50,16 @@ func (m *workerPool) isWorkerExists(wid string) bool {
 	return m.workers[wid] != nil
 }
 
-func (m *workerPool) dropWorker(wid string) (e error) {
-	m.RLock()
-	w := m.workers[wid]
-	m.RUnlock()
+// func (m *workerPool) dropWorker(wid string) (e error) {
+// 	m.RLock()
+// 	w := m.workers[wid]
+// 	m.RUnlock()
 
-	w.disconnect()
+// 	w.disconnect()
 
-	m.Lock()
-	m.workers[wid] = nil
-	m.Unlock()
+// 	m.Lock()
+// 	m.workers[wid] = nil
+// 	m.Unlock()
 
-	return
-}
+// 	return
+// }
