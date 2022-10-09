@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MindHunter86/aniliSeeder/anilibria"
+	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
@@ -19,6 +21,8 @@ const (
 	cmdsRpcStatTorrents
 
 	cmdWorkersList
+	cmdLoadAniUpdates
+	cmdLoadAniChanges
 )
 
 type cmds struct{}
@@ -102,6 +106,43 @@ func (*cmds) listWorkers() (_ io.ReadWriter, e error) {
 	tb.SortBy([]table.SortBy{
 		{Name: "ID", Mode: table.Dsc},
 	})
+
+	return buf, e
+}
+
+func (*cmds) loadAniUpdates() (_ io.ReadWriter, e error) {
+	tb := table.NewWriter()
+	defer tb.Render()
+
+	buf := bytes.NewBuffer(nil)
+	tb.SetOutputMirror(buf)
+	tb.AppendHeader(table.Row{
+		"ID", "Name", "Status", "Type", "Series", "Torrent", "Size", "Seeders", "Leechers",
+	})
+
+	var titles []*anilibria.Title
+	if titles, e = gAniApi.GetLastUpdates(); e != nil {
+		return
+	}
+
+	for _, tl := range titles {
+		for _, tr := range tl.Torrents.List {
+			tb.AppendRow([]interface{}{
+				tl.Id, tl.Names.Ru, tl.Status.String, tl.Type.FullString, tl.Torrents.Series.String,
+				tr.Hash[0:9], utils.GetMBytesFromBytes(tr.TotalSize), tr.Seeders, tr.Leechers,
+			})
+
+		}
+	}
+
+	tb.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+		{Number: 2, AutoMerge: true},
+		{Number: 3, AutoMerge: true},
+		{Number: 4, AutoMerge: true},
+		{Number: 5, AutoMerge: true},
+	})
+	tb.Style().Options.SeparateRows = true
 
 	return buf, e
 }
