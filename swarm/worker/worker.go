@@ -134,7 +134,7 @@ func (m *Worker) reconnect() (e error) {
 	return m.connect()
 }
 
-func (m *Worker) serve(epipe chan error, done func()) {
+func (m *Worker) serve(done func()) {
 	gLog.Debug().Msg("starting grpc master server ...")
 	if e := m.gserver.Serve(m.msession); e != nil {
 		gLog.Warn().Err(e).Msg("got some errors from grpc serve")
@@ -147,14 +147,13 @@ func (m *Worker) serve(epipe chan error, done func()) {
 func (m *Worker) run(done func()) error {
 	defer done()
 
-	var epipe = make(chan error)
 	var wg sync.WaitGroup
 
 	defer wg.Wait()
 	defer gLog.Debug().Msg("waiting for wg.Done")
 
 	wg.Add(1)
-	go m.serve(epipe, wg.Done)
+	go m.serve(wg.Done)
 
 	var reconnFreeze bool
 
@@ -191,7 +190,7 @@ LOOP:
 
 			if reconnFreeze {
 				wg.Add(1)
-				go m.serve(epipe, wg.Done)
+				go m.serve(wg.Done)
 
 				if h := gCli.Duration("grpc-ping-reconnect-hold"); h != 0*time.Second {
 					gLog.Debug().Msg("reconnection detected; holding for N seconds")
