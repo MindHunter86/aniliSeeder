@@ -66,7 +66,7 @@ func (*deploy) getAnilibriaUpdatesTorrents() (trrs []*anilibria.TitleTorrent, e 
 // }
 
 func (*deploy) getWorkersTorrents() (trrs []*deluge.Torrent, e error) {
-	for id, _ := range gSwarm.GetConnectedWorkers() {
+	for id := range gSwarm.GetConnectedWorkers() {
 		var wtrrs []*deluge.Torrent
 		if wtrrs, e = gSwarm.RequestTorrentsFromWorker(id); e != nil {
 			gLog.Error().Str("worker_id", id).Err(e).Msg("could not get torrents from the given worker id; skipping...")
