@@ -19,19 +19,26 @@ import (
 )
 
 type (
-	rspGetSchedule struct {
+	apiError struct {
+		Error *apiErrorDetails
+	}
+	apiErrorDetails struct {
+		Code    int
+		Message string
+	}
+	TitleSchedule struct {
 		Day  int
 		List []*Title
 	}
 	Title struct {
 		Id         int
 		Code       string
-		Updated    time.Time
-		LastChange time.Time
+		Updated    uint64 // sometimes the anilibria project mark their update time as a NULL
+		LastChange uint64 `json:"last_change"` // I dont know how to mark this fields as "if time.Parse fails - ignore"
 		Names      *TitleNames
 		Status     *TitleStatus
 		Type       *TitleType
-		Torrents   *TitleTorrent
+		Torrents   *TitleTorrents
 	}
 	TitleNames struct {
 		Ru          string
@@ -43,7 +50,7 @@ type (
 		Code   int
 	}
 	TitleType struct {
-		FullString string
+		FullString string `json:"full_string"`
 		Code       int
 		String     string
 		Series     interface{}
@@ -54,13 +61,13 @@ type (
 		List   []*TitleTorrent
 	}
 	TitleTorrent struct {
-		TorrentId         int
+		TorrentId         int `json:"torrent_id"`
 		Series            *TorrentSeries
 		Quality           *TorrentQuality
 		Leechers          int
 		Seeders           int
 		Downloads         int
-		TotalSize         int64
+		TotalSize         int64 `json:"total_size"`
 		Url               string
 		UploadedTimestamp *time.Time
 		Hash              string
@@ -77,14 +84,21 @@ type (
 		Type       string
 		Resolution string
 		Encoder    string
-		LqAudio    interface{}
+		LqAudio    interface{} `json:"lq_audio"`
 	}
 )
+
+// https://api.anilibria.tv/v2/getSchedule?days=0&filter=id,code,names,updated,last_change,status,type,torrents
+const defaultApiMethodFilter = "id,code,names,updated,last_change,status,type,torrents"
+
+// const defaultApiMethodLimit = "10"
 
 type ApiRequestMethod string
 
 const (
 	apiMethodGetSchedule ApiRequestMethod = "/getSchedule"
+	apiMethodGetUpdates  ApiRequestMethod = "/getUpdates"
+	apiMethodGetChanges  ApiRequestMethod = "/getChanges"
 )
 
 type SiteRequestMethod string
@@ -296,6 +310,11 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 	var rrl = *m.apiBaseUrl
 	rrl.Path = rrl.Path + string(apiMethod)
 
+	var rgs = &url.Values{}
+	rgs.Add("filter", defaultApiMethodFilter)
+	// rgs.Add("limit", defaultApiMethodLimit)
+	rrl.RawQuery = rgs.Encode()
+
 	if e = m.checkApiAuthorization(&rrl); e != nil {
 		return
 	}
@@ -321,6 +340,16 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 		gLog.Info().Str("api_method", string(apiMethod)).Msg("Correct response")
 	default:
 		gLog.Warn().Str("api_method", string(apiMethod)).Int("api_response_code", rsp.StatusCode).Msg("Abnormal API response")
+		gLog.Debug().Msg("trying to get error description")
+
+		// apierr := &apiError{}
+		var apierr *apiError
+		if e = m.parseResponse(&rsp.Body, &apierr); e != nil {
+			gLog.Error().Err(e).Msg("could not get api error description")
+			return errApiAbnormalResponse
+		}
+
+		gLog.Warn().Int("error_code", apierr.Error.Code).Str("error_desc", apierr.Error.Message).Msg("api error has been parsed")
 		return errApiAbnormalResponse
 	}
 
@@ -333,6 +362,57 @@ func (*ApiClient) parseResponse(rsp *io.ReadCloser, schema interface{}) error {
 	} else {
 		return err
 	}
+}
+
+func (m *ApiClient) downloadTorrentFile(tid string) (_ string, _ *io.ReadCloser, e error) {
+	var rrl *url.URL
+	if rrl, e = url.Parse(m.siteBaseUrl.String() + string(siteMethodTorrentDownload)); e != nil {
+		return
+	}
+
+	var rgs = &url.Values{}
+	rgs.Add("id", tid)
+	rrl.RawQuery = rgs.Encode()
+
+	if e = m.checkApiAuthorization(rrl); e != nil {
+		return
+	}
+
+	var req *http.Request
+	if req, e = http.NewRequest("GET", rrl.String(), nil); e != nil {
+		return
+	}
+	req = m.getBaseRequest(req) // ???
+
+	var rsp *http.Response
+	if rsp, e = m.http.Do(req); e != nil {
+		return
+	}
+	// the caller must close the returned body
+	// defer rsp.Body.Close()
+
+	m.debugHttpHandshake(req)
+	m.debugHttpHandshake(rsp)
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		gLog.Debug().Msg("the requested torrent file has been found")
+	default:
+		gLog.Warn().Int("response_code", rsp.StatusCode).Msg("could not fetch the requested torrent file because of abnormal anilibria server response")
+		return "", nil, errApiAbnormalResponse
+	}
+
+	if rsp.Header.Get("Content-Type") != "application/x-bittorrent" {
+		gLog.Warn().Msg("there is an abnormal content-type in the torrent file response")
+	}
+
+	_, params, e := mime.ParseMediaType(rsp.Header.Get("Content-Disposition"))
+	if e != nil {
+		return
+	}
+
+	gLog.Debug().Str("filename", params["filename"]).Msg("trying to download and save the torrent file...")
+	return params["filename"], &rsp.Body, e
 }
 
 // methods
@@ -351,7 +431,7 @@ func (m *ApiClient) GetApiAuthorization() (e error) {
 }
 
 func (m *ApiClient) GetTitlesFromSchedule() (titles []*Title, e error) {
-	var weekSchedule []*rspGetSchedule
+	var weekSchedule []*TitleSchedule
 	if e = m.getApiResponse("GET", apiMethodGetSchedule, &weekSchedule); e != nil {
 		return
 	}
@@ -364,7 +444,35 @@ func (m *ApiClient) GetTitlesFromSchedule() (titles []*Title, e error) {
 	return
 }
 
-func (m *ApiClient) getTitleTorrentFile(torrentId string) (e error) {
+func (m *ApiClient) SaveTitleTorrentFile(torrentId string) (e error) {
 	gLog.Debug().Msg("trying to fetch torrent file for " + torrentId)
 	return m.getTorrentFile(torrentId)
+}
+
+func (m *ApiClient) GetTitleTorrentFile(tid string) (string, *io.ReadCloser, error) {
+	return m.downloadTorrentFile(tid)
+}
+
+func (m *ApiClient) GetLastUpdates() (titles []*Title, e error) {
+	if e = m.getApiResponse("GET", apiMethodGetUpdates, &titles); e != nil {
+		return
+	}
+
+	return titles, e
+}
+
+func (m *ApiClient) GetLastChanges() (titles []*Title, e error) {
+	if e = m.getApiResponse("GET", apiMethodGetChanges, &titles); e != nil {
+		return
+	}
+
+	return titles, e
+}
+
+func (m *ApiClient) GetTitlesSchedule() (schedule []*TitleSchedule, e error) {
+	if e = m.getApiResponse("GET", apiMethodGetSchedule, &schedule); e != nil {
+		return
+	}
+
+	return
 }

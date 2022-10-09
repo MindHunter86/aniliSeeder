@@ -83,11 +83,15 @@ func (m *SockServer) clientRpcHandler(c net.Conn) {
 
 		gLog.Info().Str("client", clientId).Str("cmd", msg).Msg("received a cmd from the client")
 
+		// !!
+		// TODO
+		// refactoring is needed
+		var buf io.ReadWriter
 		var clientCmd rpcCommand
 		if clientCmd = m.parseClientCmd(msg); clientCmd == cmdRpcUndefined {
 			gLog.Warn().Str("client", clientId).Str("cmd", msg).Msg("received cmd is undefined")
 
-			var buf = bytes.NewBufferString("command not found")
+			buf = bytes.NewBufferString("command not found")
 			if n, err := io.Copy(c, m.getResponseMessage(buf)); m.checkRespondErrors(n, err, msg, clientId) != nil {
 				return
 			}
@@ -95,15 +99,20 @@ func (m *SockServer) clientRpcHandler(c net.Conn) {
 			continue
 		}
 
-		var buf io.ReadWriter
 		if buf, err = m.runClientCmd(clientCmd); err != nil {
 			gLog.Warn().Str("client", clientId).Str("cmd", msg).Err(err).Msg("could not run received cmd because of internal errors")
 
-			var buf = bytes.NewBufferString("internal server error")
+			buf = bytes.NewBufferString("internal server error")
 			if n, err := io.Copy(c, m.getResponseMessage(buf)); m.checkRespondErrors(n, err, msg, clientId) != nil {
 				return
 			}
 		}
+
+		// TODO
+		// !! remove
+		// if buf == nil {
+		// 	buf = bytes.NewBuffer(nil)
+		// }
 
 		if n, err := io.Copy(c, m.getResponseMessage(buf)); m.checkRespondErrors(n, err, msg, clientId) != nil {
 			return
@@ -127,17 +136,21 @@ func (*SockServer) checkRespondErrors(written int64, e error, cmd, id string) er
 	}
 
 	gLog.Debug().Str("client", id).Int64("response_length", written).Msg("successfully responded to the client")
-	return nil
+	return e
 }
 
 func (*SockServer) parseClientCmd(cmd string) rpcCommand {
 	switch strings.TrimSpace(cmd) {
 	case "getTorrents":
-		return cmdsRpcGetTorrents
-	case "statTorrents":
-		return cmdsRpcStatTorrents
+		return cmdsGetTorrents
 	case "listWorkers":
 		return cmdWorkersList
+	case "aniUpdates":
+		return cmdLoadAniUpdates
+	case "aniChanges":
+		return cmdLoadAniChanges
+	case "aniSchedule":
+		return cmdLoadAniSchedule
 	default:
 		gLog.Debug().Str("cmd", strings.TrimSpace(cmd)).Msg("trimmed")
 		return cmdRpcUndefined
@@ -146,12 +159,16 @@ func (*SockServer) parseClientCmd(cmd string) rpcCommand {
 
 func (m *SockServer) runClientCmd(cmd rpcCommand) (io.ReadWriter, error) {
 	switch cmd {
-	case cmdsRpcGetTorrents:
-		return m.cmd.getAvaliableTorrentHashes()
-	case cmdsRpcStatTorrents:
-		return m.cmd.statCurrentTorrents()
+	case cmdsGetTorrents:
+		return m.cmd.getMasterTorrents()
 	case cmdWorkersList:
 		return m.cmd.listWorkers()
+	case cmdLoadAniUpdates:
+		return m.cmd.loadAniUpdates()
+	case cmdLoadAniChanges:
+		return m.cmd.loadAniChanges()
+	case cmdLoadAniSchedule:
+		return m.cmd.loadAniSchedule()
 
 	default:
 		gLog.Error().Msg("golang internal error; given cmd is undefined in runClientCmd()")
