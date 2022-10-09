@@ -243,7 +243,7 @@ func main() {
 			Value: 25,
 		},
 		&cli.UintFlag{
-			Name:  "disk-minimal-avaliable",
+			Name:  "disk-minimal-available",
 			Usage: "In MB",
 			Value: 128,
 		},
