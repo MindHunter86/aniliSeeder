@@ -175,3 +175,46 @@ func (*cmds) loadAniChanges() (_ io.ReadWriter, e error) {
 
 	return buf, e
 }
+
+func (*cmds) loadAniSchedule() (_ io.ReadWriter, e error) {
+	tb := table.NewWriter()
+	defer tb.Render()
+
+	buf := bytes.NewBuffer(nil)
+	tb.SetOutputMirror(buf)
+	tb.AppendHeader(table.Row{
+		"Weekday", "ID", "Name", "Status", "Type", "Series", "Torrent", "Size", "Seeders", "Leechers",
+	})
+
+	var schedule []*anilibria.TitleSchedule
+	if schedule, e = gAniApi.GetTitlesSchedule(); e != nil {
+		return
+	}
+
+	for _, day := range schedule {
+		for _, tl := range day.List {
+			for _, tr := range tl.Torrents.List {
+				tb.AppendRow([]interface{}{
+					day.Day, tl.Id, tl.Names.Ru, tl.Status.String, tl.Type.String, tl.Torrents.Series.String,
+					tr.Hash[0:9], tr.TotalSize / 1024 / 1024, tr.Seeders, tr.Leechers,
+				})
+			}
+		}
+	}
+
+	tb.SortBy([]table.SortBy{
+		{Name: "Weekday", Mode: table.Asc},
+	})
+
+	tb.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+		{Number: 2, AutoMerge: true},
+		{Number: 3, AutoMerge: true},
+		{Number: 4, AutoMerge: true},
+		{Number: 5, AutoMerge: true},
+		{Number: 6, AutoMerge: true},
+	})
+	tb.Style().Options.SeparateRows = true
+
+	return buf, e
+}

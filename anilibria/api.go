@@ -19,7 +19,14 @@ import (
 )
 
 type (
-	rspGetSchedule struct {
+	apiError struct {
+		Error *apiErrorDetails
+	}
+	apiErrorDetails struct {
+		Code    int
+		Message string
+	}
+	TitleSchedule struct {
 		Day  int
 		List []*Title
 	}
@@ -304,7 +311,7 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 
 	var rgs = &url.Values{}
 	rgs.Add("filter", defaultApiMethodFilter)
-	rgs.Add("limit", defaultApiMethodLimit)
+	// rgs.Add("limit", defaultApiMethodLimit)
 	rrl.RawQuery = rgs.Encode()
 
 	if e = m.checkApiAuthorization(&rrl); e != nil {
@@ -332,6 +339,16 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 		gLog.Info().Str("api_method", string(apiMethod)).Msg("Correct response")
 	default:
 		gLog.Warn().Str("api_method", string(apiMethod)).Int("api_response_code", rsp.StatusCode).Msg("Abnormal API response")
+		gLog.Debug().Msg("trying to get error description")
+
+		// apierr := &apiError{}
+		var apierr *apiError
+		if e = m.parseResponse(&rsp.Body, &apierr); e != nil {
+			gLog.Error().Err(e).Msg("could not get api error description")
+			return errApiAbnormalResponse
+		}
+
+		gLog.Warn().Int("error_code", apierr.Error.Code).Str("error_desc", apierr.Error.Message).Msg("api error has been parsed")
 		return errApiAbnormalResponse
 	}
 
@@ -413,7 +430,7 @@ func (m *ApiClient) GetApiAuthorization() (e error) {
 }
 
 func (m *ApiClient) GetTitlesFromSchedule() (titles []*Title, e error) {
-	var weekSchedule []*rspGetSchedule
+	var weekSchedule []*TitleSchedule
 	if e = m.getApiResponse("GET", apiMethodGetSchedule, &weekSchedule); e != nil {
 		return
 	}
@@ -435,8 +452,7 @@ func (m *ApiClient) GetTitleTorrentFile(tid string) (string, *io.ReadCloser, err
 	return m.downloadTorrentFile(tid)
 }
 
-func (m *ApiClient) GetLastUpdates() (_ []*Title, e error) {
-	var titles []*Title
+func (m *ApiClient) GetLastUpdates() (titles []*Title, e error) {
 	if e = m.getApiResponse("GET", apiMethodGetUpdates, &titles); e != nil {
 		return
 	}
@@ -444,11 +460,18 @@ func (m *ApiClient) GetLastUpdates() (_ []*Title, e error) {
 	return titles, e
 }
 
-func (m *ApiClient) GetLastChanges() (_ []*Title, e error) {
-	var titles []*Title
+func (m *ApiClient) GetLastChanges() (titles []*Title, e error) {
 	if e = m.getApiResponse("GET", apiMethodGetChanges, &titles); e != nil {
 		return
 	}
 
 	return titles, e
+}
+
+func (m *ApiClient) GetTitlesSchedule() (schedule []*TitleSchedule, e error) {
+	if e = m.getApiResponse("GET", apiMethodGetSchedule, &schedule); e != nil {
+		return
+	}
+
+	return
 }
