@@ -65,9 +65,9 @@ func (m *Worker) Bootstrap() (e error) {
 
 	wg.Add(1)
 	defer wg.Wait()
-
 	defer gLog.Debug().Msg("waiting for destructor...")
-	return m.run(&wg)
+
+	return m.run(wg.Done)
 }
 
 func (m *Worker) connect() (e error) {
@@ -134,20 +134,26 @@ func (m *Worker) reconnect() (e error) {
 	return m.connect()
 }
 
-func (m *Worker) serve(epipe chan error, done func()) {
-	defer done()
-
+func (m *Worker) serve(done func()) {
 	gLog.Debug().Msg("starting grpc master server ...")
-	epipe <- m.gserver.Serve(m.msession)
+	if e := m.gserver.Serve(m.msession); e != nil {
+		gLog.Warn().Err(e).Msg("got some errors from grpc serve")
+	}
+
+	gLog.Debug().Msg("grpc server has been stopped")
+	done()
 }
 
-func (m *Worker) run(wg *sync.WaitGroup) error {
-	defer wg.Done()
+func (m *Worker) run(done func()) error {
+	defer done()
 
-	var epipe = make(chan error)
+	var wg sync.WaitGroup
+
+	defer wg.Wait()
+	defer gLog.Debug().Msg("waiting for wg.Done")
 
 	wg.Add(1)
-	go m.serve(epipe, wg.Done)
+	go m.serve(wg.Done)
 
 	var reconnFreeze bool
 
@@ -165,29 +171,16 @@ LOOP:
 		case <-gCtx.Done():
 			gLog.Info().Msg("context done() has been caught; closing grpc server, mux session, tcp conn...")
 			break LOOP
-		case err := <-epipe:
-			if err != nil {
-				gLog.Warn().Err(err).Msg("got some errors from grpc serve")
-			}
 		case <-ticker.C:
+			ticker.Stop()
 
 			if reconnFreeze {
 				gLog.Debug().Msg("restoring ping ticker after reconnection hold")
 				reconnFreeze = false
-				// m.unblockPing()
 
-				ticker.Stop()
 				ticker.Reset(gCli.Duration("grpc-ping-interval"))
 				continue
 			}
-
-			// if m.isPingBlocked() {
-			// 	gLog.Debug().Msg("skipping a ping because the last ping has not completed yet")
-			// 	continue
-			// }
-
-			// m.blockPing()
-			ticker.Stop()
 
 			var e error
 			if reconnFreeze, e = m.ping(); e != nil {
@@ -197,7 +190,7 @@ LOOP:
 
 			if reconnFreeze {
 				wg.Add(1)
-				go m.serve(epipe, wg.Done)
+				go m.serve(wg.Done)
 
 				if h := gCli.Duration("grpc-ping-reconnect-hold"); h != 0*time.Second {
 					gLog.Debug().Msg("reconnection detected; holding for N seconds")
@@ -209,13 +202,14 @@ LOOP:
 				}
 			}
 
-			// m.unblockPing()
 			ticker.Reset(gCli.Duration("grpc-ping-interval"))
 		}
 	}
 
+	gLog.Debug().Msg("trying to stop grpc server")
 	m.gserver.Stop()
 
+	gLog.Debug().Msg("trying to stop mux session")
 	return m.msession.Close()
 }
 
