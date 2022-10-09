@@ -202,6 +202,8 @@ func (m *worker) getRPCErrors(err error) error {
 	return err
 }
 
+// methods
+
 func (m *worker) getInitialServiceData() (_ string, e error) {
 	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
 	defer cancel()
@@ -234,5 +236,35 @@ func (m *worker) getInitialServiceData() (_ string, e error) {
 	m.wdFreeSpace = rpl.GetWDFreeSpace()
 	m.version = rpl.GetWorkerVersion()
 
+	return
+}
+
+// get torrents from workers without any caches
+func (m *worker) getTorrents() (trrs []*deluge.Torrent, e error) {
+	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
+	defer cancel()
+
+	var md metadata.MD
+	var rpl *pb.TorrentsReply
+	if rpl, e = m.gservice.GetTorrents(ctx, &emptypb.Empty{}, grpc.Header(&md)); m.getRPCErrors(e) != nil {
+		return
+	}
+
+	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+		return
+	}
+
+	var buf []byte
+	if buf, e = json.Marshal(rpl.GetTorrent()); e != nil {
+		return
+	}
+
+	if e = json.Unmarshal(buf, &trrs); e != nil {
+		return
+	}
+
+	m.trrs = trrs
+
+	gLog.Debug().Int("torrnets_count", len(trrs)).Msg("got reply from the worker with torrents list")
 	return
 }

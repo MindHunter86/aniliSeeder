@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"net"
 	"sync"
 	"time"
@@ -55,6 +56,10 @@ func NewWorker(ctx context.Context) swarm.Swarm {
 		id: uuid.NewV4().String(),
 	}
 }
+
+var (
+	errFuncIsNotForWorker = errors.New("called function is for master only. internal error!!")
+)
 
 func (m *Worker) Bootstrap() (e error) {
 	if e = m.connect(); e != nil {
@@ -255,12 +260,16 @@ func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 	return strmap, e
 }
 
+func (*Worker) IsMaster() bool {
+	return false
+}
+
 func (*Worker) GetConnectedWorkers() (_ map[string]*swarm.SwarmWorker) {
 	return nil
 }
 
-func (*Worker) IsMaster() bool {
-	return false
+func (m *Worker) RequestTorrentsFromWorker(wid string) ([]*deluge.Torrent, error) {
+	return nil, errFuncIsNotForWorker
 }
 
 // todo
