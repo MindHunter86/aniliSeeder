@@ -110,6 +110,47 @@ func (*cmds) listWorkers() (_ io.ReadWriter, e error) {
 	return buf, e
 }
 
+func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
+
+	tb := table.NewWriter()
+	defer tb.Render()
+
+	var buf = bytes.NewBuffer(nil)
+	tb.SetOutputMirror(buf)
+	tb.AppendHeader(table.Row{"Worker", "Hash", "Name", "TotalSize", "Ratio", "Uploaded", "Seedtime", "VKScore"})
+
+	for id, wrk := range gSwarm.GetConnectedWorkers() {
+		for _, trr := range wrk.ActiveTorrents {
+			name, _, _ := strings.Cut(trr.Name, "- AniLibria.TV")
+			seedTime := time.Duration(trr.SeedingTime) * time.Second
+			tb.AppendRow([]interface{}{
+				id[0:8], trr.Hash[0:9], name, trr.TotalSize / 1024 / 1024, trr.Ratio, trr.TotalUploaded / 1024 / 1024, seedTime.String(), trr.GetVKScore(),
+			})
+
+		}
+	}
+
+	tb.SetRowPainter(func(raw table.Row) text.Colors {
+		if raw[7].(float64) >= float64(gCli.Int("torrents-vkscore-line")) {
+			return text.Colors{text.FgGreen}
+		}
+		if raw[4].(float32) < 1 {
+			return text.Colors{text.FgRed}
+		}
+		return text.Colors{text.FgYellow}
+	})
+
+	tb.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 2, WidthMax: 60},
+	})
+
+	tb.SortBy([]table.SortBy{
+		{Name: "VKScore", Mode: table.DscNumeric},
+	})
+
+	return buf, e
+}
+
 func (*cmds) loadAniUpdates() (_ io.ReadWriter, e error) {
 	tb := table.NewWriter()
 	defer tb.Render()
@@ -128,7 +169,7 @@ func (*cmds) loadAniUpdates() (_ io.ReadWriter, e error) {
 	for _, tl := range titles {
 		for _, tr := range tl.Torrents.List {
 			tb.AppendRow([]interface{}{
-				tl.Id, tl.Names.Ru, tl.Status.String, tl.Type.FullString, tl.Torrents.Series.String,
+				tl.Id, tl.Names.Ru, tl.Status.String, tl.Type.String, tl.Torrents.Series.String,
 				tr.Hash[0:9], utils.GetMBytesFromBytes(tr.TotalSize), tr.Seeders, tr.Leechers,
 			})
 

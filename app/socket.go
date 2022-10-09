@@ -162,7 +162,7 @@ func (m *SockServer) runClientCmd(cmd rpcCommand) (io.ReadWriter, error) {
 	case cmdsRpcGetTorrents:
 		return m.cmd.getAvaliableTorrentHashes()
 	case cmdsRpcStatTorrents:
-		return m.cmd.statCurrentTorrents()
+		return m.cmd.getMasterTorrents()
 	case cmdWorkersList:
 		return m.cmd.listWorkers()
 	case cmdLoadAniUpdates:
