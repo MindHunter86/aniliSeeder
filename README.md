@@ -1,20 +1,32 @@
 # aniliSeeder
 [![DeepSource](https://deepsource.io/gh/MindHunter86/aniliSeeder.svg/?label=active+issues&show_trend=true&token=0s6kHn6xfivpVWxqql7PLY23)](https://deepsource.io/gh/MindHunter86/aniliSeeder/?ref=repository-badge)
 
-### cli internal commands (cli can connect only to master)
-`getTorrents` - test comand; printing the hashes 
-`statTorrents` - 
-`` - 
-`` - 
-`` - 
+
+## Project is not ready now! Not for production use!!
+---
+
+<br/>
+
+## cli internal commands (cli socket located on master)
+`getTorrents` - get current torrents with some detailed info from all workers (cached data from conection init phase)
+
+`listWorkers` - get all connected workers (and not connected #30 :))
+
+`aniUpdates` - get last 5 anime updates from the anilibria api
+
+`aniChanges` - get last 5 anime changes from the anilibria api
+
+`aniSchedule` - get the current anilibria team shedule
 
 
-### Running
-run worker - `go run main.go --http-debug --grpc-insecure serve`
+## Running
+run worker - `./aniliSeeder --http-debug --grpc-insecure serve`
 
-run master - `go run main.go --http-debug --grpc-insecure --swarm-is-master serve`
+run master - `./aniliSeeder --http-debug --grpc-insecure --swarm-is-master serve`
 
-### Usage
+run cli = `./aniliSeeder cli`
+
+## Usage
 ```
 NAME:
    aniliSeeder - N\A
@@ -29,8 +41,8 @@ AUTHOR:
    MindHunter86 <admin@vkom.cc>
 
 COMMANDS:
-   cli      
    serve    
+   cli     
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
@@ -64,7 +76,7 @@ GLOBAL OPTIONS:
    --http2-ping-timeout value          for worker (default: 1s)
    --print-version, -V                 (default: false)
    --quite, -q                         Flag is equivalent to verbose -1 (default: false)
-   --socket-path value                 (default: "/tmp/aniliSeeder.sock")
+   --socket-path value                 (default: "aniliSeeder.sock")
    --swarm-custom-ca-path value        
    --swarm-is-master                   (default: false)
    --swarm-master-addr value           (default: "localhost:8081")
