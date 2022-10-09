@@ -172,9 +172,6 @@ LOOP:
 		case <-gCtx.Done():
 			gLog.Info().Msg("context done() has been caught; closing grpc server, mux session, tcp conn...")
 			break LOOP
-		case err := <-epipe:
-			if err != nil {
-			}
 		case <-ticker.C:
 			ticker.Stop()
 
