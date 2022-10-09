@@ -24,9 +24,9 @@ const (
 	cmdLoadAniChanges
 	cmdLoadAniSchedule
 
-	cmdDryDeployAniUpdates
-	cmdDryDeployAniChanges
-	cmdDryDeployAniSchedule
+	// cmdDryDeployAniUpdates
+	// cmdDryDeployAniChanges
+	// cmdDryDeployAniSchedule
 )
 
 type cmds struct{}

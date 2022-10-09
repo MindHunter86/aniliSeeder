@@ -90,7 +90,8 @@ type (
 
 // https://api.anilibria.tv/v2/getSchedule?days=0&filter=id,code,names,updated,last_change,status,type,torrents
 const defaultApiMethodFilter = "id,code,names,updated,last_change,status,type,torrents"
-const defaultApiMethodLimit = "10"
+
+// const defaultApiMethodLimit = "10"
 
 type ApiRequestMethod string
 
