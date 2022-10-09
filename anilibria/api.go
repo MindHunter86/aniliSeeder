@@ -43,7 +43,7 @@ type (
 		Code   int
 	}
 	TitleType struct {
-		FullString string
+		FullString string `json:"full_string"`
 		Code       int
 		String     string
 		Series     interface{}
@@ -60,7 +60,7 @@ type (
 		Leechers          int
 		Seeders           int
 		Downloads         int
-		TotalSize         int64
+		TotalSize         int64 `json:"total_size"`
 		Url               string
 		UploadedTimestamp *time.Time
 		Hash              string
@@ -83,6 +83,7 @@ type (
 
 // https://api.anilibria.tv/v2/getSchedule?days=0&filter=id,code,names,updated,last_change,status,type,torrents
 const defaultApiMethodFilter = "id,code,names,updated,last_change,status,type,torrents"
+const defaultApiMethodLimit = "10"
 
 type ApiRequestMethod string
 
@@ -300,6 +301,11 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 
 	var rrl = *m.apiBaseUrl
 	rrl.Path = rrl.Path + string(apiMethod)
+
+	var rgs = &url.Values{}
+	rgs.Add("filter", defaultApiMethodFilter)
+	rgs.Add("limit", defaultApiMethodLimit)
+	rrl.RawQuery = rgs.Encode()
 
 	if e = m.checkApiAuthorization(&rrl); e != nil {
 		return
