@@ -22,6 +22,11 @@ const (
 
 	cmdLoadAniUpdates
 	cmdLoadAniChanges
+	cmdLoadAniSchedule
+
+	cmdDryDeployAniUpdates
+	cmdDryDeployAniChanges
+	cmdDryDeployAniSchedule
 )
 
 type cmds struct{}
