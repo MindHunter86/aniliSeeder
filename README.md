@@ -55,7 +55,7 @@ GLOBAL OPTIONS:
    --deluge-password value              [$DELUGE_PASSWORD]
    --deluge-torrentfiles-path value    (default: "./data")
    --deluge-username value             (default: "localclient") [$DELUGE_LOGIN, $DELUGE_USERNAME]
-   --disk-minimal-avaliable value      In MB (default: 128)
+   --disk-minimal-available value      In MB (default: 128)
    --grpc-connect-timeout value        for worker (default: 3s)
    --grpc-disable-reconnect            (default: false)
    --grpc-insecure                     (default: false)
