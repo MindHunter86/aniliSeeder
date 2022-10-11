@@ -15,7 +15,7 @@ require (
 	github.com/urfave/cli/v2 v2.19.2
 	golang.org/x/net v0.0.0-20221002022538-bcab6841153b
 	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec
-	google.golang.org/grpc v1.46.2
+	google.golang.org/grpc v1.50.0
 	google.golang.org/protobuf v1.28.1
 )
 
