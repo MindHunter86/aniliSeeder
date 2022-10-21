@@ -297,7 +297,7 @@ func main() {
 			},
 		},
 		&cli.Command{
-			Name:  "test",
+			Name:  "cli",
 			Usage: "",
 			Action: func(c *cli.Context) error {
 				return appcli.TestDial(c, "")

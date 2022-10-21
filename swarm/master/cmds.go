@@ -36,3 +36,12 @@ func (m *Master) RequestTorrentsFromWorker(wid string) ([]*deluge.Torrent, error
 	wrk := m.workerPool.getWorker(wid)
 	return wrk.getTorrents()
 }
+
+func (m *Master) RequestFreeSpaceFromWorker(wid string) (uint64, error) {
+	if !m.workerPool.isWorkerExists(wid) {
+		return 0, errWorkerNotFound
+	}
+
+	wrk := m.workerPool.getWorker(wid)
+	return wrk.getFreeSpace()
+}

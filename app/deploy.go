@@ -119,6 +119,29 @@ func (*deploy) sortTorrentListByLeechers(trrs []*anilibria.TitleTorrent) (_ []*a
 	return trrs
 }
 
-func (*deploy) balanceForWorkers() {
+func (*deploy) balanceForWorkers(trrs []*anilibria.TitleTorrent) (_ map[string][]*anilibria.TitleTorrent, e error) {
+	wrks := gSwarm.GetConnectedWorkers()
+	blncr := make(chan string, len(wrks))
 
+	var fspaces map[string]uint64
+	for id := range wrks {
+		if fspaces[id] == 0 {
+			if fspaces[id], e = gSwarm.RequestFreeSpaceFromWorker(id); e != nil {
+				gLog.Error().Err(e).Str("worker_id", id).Msg("got an error in free space request to the worker")
+				continue
+			}
+		}
+
+		blncr <- id
+	}
+
+	// for _, trr := range trrs {
+	// 	if len(blncr) == 0 {
+	// 		break
+	// 	}
+
+	// 	pid := <-blncr
+	// }
+
+	return
 }

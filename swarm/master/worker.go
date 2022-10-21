@@ -268,3 +268,21 @@ func (m *worker) getTorrents() (trrs []*deluge.Torrent, e error) {
 	gLog.Debug().Int("torrnets_count", len(trrs)).Msg("got reply from the worker with torrents list")
 	return
 }
+
+func (m *worker) getFreeSpace() (fspace uint64, e error) {
+	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
+	defer cancel()
+
+	var md metadata.MD
+	var rpl *pb.SystemSpaceReply
+	if rpl, e = m.gservice.GetSystemFreeSpace(ctx, &emptypb.Empty{}, grpc.Header(&md)); m.getRPCErrors(e) != nil {
+		return
+	}
+
+	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+		return
+	}
+
+	gLog.Debug().Uint64("worker_fspace", rpl.FreeSpace).Msg("got reply from the worker with system free space")
+	return
+}

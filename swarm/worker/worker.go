@@ -272,6 +272,10 @@ func (m *Worker) RequestTorrentsFromWorker(wid string) ([]*deluge.Torrent, error
 	return nil, errFuncIsNotForWorker
 }
 
+func (m *Worker) RequestFreeSpaceFromWorker(wid string) (uint64, error) {
+	return 0, errFuncIsNotForWorker
+}
+
 // todo
 // ? refactor
 // func (m *Worker) ping() (e error) {
