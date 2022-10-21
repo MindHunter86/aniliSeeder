@@ -143,7 +143,7 @@ func main() {
 		&cli.DurationFlag{
 			Name:  "grpc-ping-reconnect-hold",
 			Usage: "time for grpc reconnection process",
-			Value: 10 * time.Second,
+			Value: 5 * time.Second,
 		},
 		// &cli.DurationFlag{
 		// 	Name:  "grpc-ping-timeout",
@@ -158,6 +158,11 @@ func main() {
 		&cli.BoolFlag{
 			Name:  "grpc-disable-reconnect",
 			Usage: "",
+		},
+		&cli.IntFlag{
+			Name:  "grpc-reconnect-tries",
+			Usage: "",
+			Value: 10,
 		},
 
 		// http2 settings

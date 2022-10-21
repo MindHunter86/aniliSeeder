@@ -170,6 +170,8 @@ func (m *Worker) run(done func()) error {
 		ticker.Reset(i)
 	}
 
+	reconns := gCli.Int("grpc-reconnect-tries")
+
 LOOP:
 	for {
 		select {
@@ -190,12 +192,20 @@ LOOP:
 			var e error
 			if reconnFreeze, e = m.ping(); e != nil {
 				gLog.Warn().Err(e).Msg("aborting application due to ping and reconnection failures")
-				gAbort()
+
+				if reconns == 0 {
+					gAbort()
+				}
+
+				gLog.Debug().Int("retries_remaining", reconns).Msg("bypass global abort for further reconnect...")
+				reconns--
 			}
 
 			if reconnFreeze {
 				wg.Add(1)
 				go m.serve(wg.Done)
+
+				reconns = gCli.Int("grpc-reconnect-tries")
 
 				if h := gCli.Duration("grpc-ping-reconnect-hold"); h != 0*time.Second {
 					gLog.Debug().Msg("reconnection detected; holding for N seconds")

@@ -146,10 +146,10 @@ func (*worker) newServiceRequest(d time.Duration) (context.Context, context.Canc
 func (*worker) authorizeSerivceReply(md *metadata.MD) (_ string, e error) {
 	id := md.Get("x-worker-id")
 	if len(id) != 1 {
-		return "", status.Errorf(codes.InvalidArgument, "")
+		return "", status.Errorf(codes.InvalidArgument, "there is no metadata in the reply")
 	}
 	if strings.TrimSpace(id[0]) == "" {
-		return "", status.Errorf(codes.InvalidArgument, "")
+		return "", status.Errorf(codes.InvalidArgument, "there is no worker-id in the reply")
 	}
 
 	gLog.Debug().Str("worker_id", id[0]).Msg("worker reply accepted, authorizing...")
@@ -269,7 +269,7 @@ func (m *worker) getTorrents() (trrs []*deluge.Torrent, e error) {
 	return
 }
 
-func (m *worker) getFreeSpace() (fspace uint64, e error) {
+func (m *worker) getFreeSpace() (_ uint64, e error) {
 	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
 	defer cancel()
 
@@ -284,5 +284,5 @@ func (m *worker) getFreeSpace() (fspace uint64, e error) {
 	}
 
 	gLog.Debug().Uint64("worker_fspace", rpl.FreeSpace).Msg("got reply from the worker with system free space")
-	return
+	return rpl.FreeSpace, e
 }

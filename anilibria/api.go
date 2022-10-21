@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"golang.org/x/net/publicsuffix"
 )
@@ -69,7 +68,7 @@ type (
 		Downloads         int
 		TotalSize         int64 `json:"total_size"`
 		Url               string
-		UploadedTimestamp *time.Time
+		UploadedTimestamp uint64 `json:"uploaded_timestamp"`
 		Hash              string
 		Metadata          interface{}
 		RawBase64File     interface{}
