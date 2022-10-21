@@ -148,7 +148,8 @@ func (*deploy) sortTorrentListByLeechers(trrs []*anilibria.TitleTorrent) (_ []*a
 
 	// debug
 	for _, trr := range trrs {
-		gLog.Debug().Str("torrent_hash", trr.Hash[0:9]).Int64("torrent_size", trr.TotalSize).Msg("sorted slice debug")
+		gLog.Debug().Str("torrent_hash", trr.Hash[0:9]).Int64("torrnet_size_mb", trr.TotalSize/1024/1024).
+			Int("torrent_leechers", trr.Leechers).Msg("sorted slice debug")
 	}
 
 	return trrs
@@ -156,9 +157,27 @@ func (*deploy) sortTorrentListByLeechers(trrs []*anilibria.TitleTorrent) (_ []*a
 
 func (*deploy) balanceForWorkers(trrs []*anilibria.TitleTorrent) (_ map[string][]anilibria.TitleTorrent, e error) {
 	wrks := gSwarm.GetConnectedWorkers()
+	var fspaces = make(map[string]uint64)
+
+	// add fake workers
+	// for i := 0; i < 3; i++ {
+	// 	id, fspace := uuid.NewV4().String(), 21474836480 //20gb
+
+	// 	wrks[id] = &swarm.SwarmWorker{
+	// 		Id:             id,
+	// 		FreeSpace:      uint64(fspace),
+	// 		ActiveTorrents: []*deluge.Torrent{},
+	// 	}
+	// 	fspaces[id] = uint64(fspace)
+
+	// 	gLog.Debug().Str("worker_id", id).Msg("added fake worker")
+	// }
+
+	if len(wrks) == 0 {
+		return nil, errors.New("there is no avaliable workers for the balancing proccess")
+	}
 	blncr := make(chan string, len(wrks))
 
-	var fspaces = make(map[string]uint64)
 	for id := range wrks {
 		if fspaces[id] == 0 {
 			if fspaces[id], e = gSwarm.RequestFreeSpaceFromWorker(id); e != nil {
@@ -172,7 +191,7 @@ func (*deploy) balanceForWorkers(trrs []*anilibria.TitleTorrent) (_ map[string][
 	}
 
 	if len(blncr) == 0 {
-		return nil, errors.New("there is no avaliable workers for the balancing proccess")
+		return nil, errors.New("there is no workers with free space for the balancing proccess")
 	}
 
 	var wtitles = make(map[string][]anilibria.TitleTorrent)
