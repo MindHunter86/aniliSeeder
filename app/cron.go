@@ -10,7 +10,7 @@ type cron struct {
 
 	wg sync.WaitGroup
 
-	mu    sync.Mutex
+	mu    sync.RWMutex
 	tasks cronTask
 }
 type cronTask uint8
@@ -73,7 +73,7 @@ func (*cron) stop() {
 //
 
 func (m *cron) runCronTasks() {
-	gLog.Debug().Uint8("cron_tasks", uint8(m.tasks)).Msg("mask before switch")
+	gLog.Debug().Uint8("cron_tasks", m.getTasks()).Msg("mask before switch")
 
 	tm := time.Now()
 
@@ -104,13 +104,21 @@ func (m *cron) runCronTasks() {
 		gLog.Debug().Msg("running 60min jobs...")
 	}
 
-	gLog.Debug().Uint8("cron_tasks", uint8(m.tasks)).Msg("mask after switch")
+	gLog.Debug().Uint8("cron_tasks", m.getTasks()).Msg("mask after switch")
 }
 
 func (m *cron) toggleTaskLock(task cronTask) {
 	m.mu.Lock()
 	m.tasks = m.tasks ^ task
 	m.mu.Unlock()
+}
+
+func (m *cron) getTasks() (t uint8) {
+	m.mu.RLock()
+	t = uint8(m.tasks)
+	m.mu.RUnlock()
+
+	return
 }
 
 // TASKS
