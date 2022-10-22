@@ -10,6 +10,10 @@ import (
 	"github.com/MindHunter86/aniliSeeder/deluge"
 )
 
+var (
+	errNothingDeploy = errors.New("there is nothing to deploy")
+)
+
 type deploy struct{}
 
 // type deployType uint8
@@ -53,7 +57,7 @@ func (m *deploy) deploy(isDryRun bool) (_ map[string][]anilibria.TitleTorrent, e
 	}
 
 	if len(assignedTitles) == 0 {
-		return nil, errors.New("there is nothing to deploy")
+		return nil, errNothingDeploy
 	}
 
 	if !isDryRun {

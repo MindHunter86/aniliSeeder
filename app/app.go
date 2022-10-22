@@ -85,6 +85,15 @@ func (m *App) Bootstrap() (e error) {
 	// another subsystems
 	// ...
 
+	// cron subservice
+	if gSwarm.IsMaster() {
+		wg.Add(1)
+		go func(done func()) {
+			newCron().run()
+			done()
+		}(wg.Done)
+	}
+
 	// main event loop
 	wg.Add(1)
 	go m.loop(echan, wg.Done)
