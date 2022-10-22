@@ -119,9 +119,9 @@ func (m *cron) getTasks() (t uint8) {
 
 // TASKS
 
-func (*cron) checkTorrentsAnnounces() (e error) {
-	return
-}
+// func (*cron) checkTorrentsAnnounces() (e error) {
+// 	return
+// }
 
 func (m *cron) deployUpdates() (e error) {
 	gLog.Info().Msg("starting check deployment status cronjob...")
