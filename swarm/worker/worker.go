@@ -58,7 +58,7 @@ func NewWorker(ctx context.Context) swarm.Swarm {
 }
 
 var (
-	errFuncIsNotForWorker = errors.New("called function is for master only. internal error!!")
+	errFuncIsNotForWorker = errors.New("called function is for master only. internal error")
 )
 
 func (m *Worker) Bootstrap() (e error) {
