@@ -77,9 +77,9 @@ func (m *cron) runCronTasks() {
 
 	tm := time.Now()
 
-	if tm.Minute()%1 == 0 {
-		gLog.Debug().Msg("running 1min jobs...")
-	}
+	// GO-W5011 - "x % 1 is always zero"
+	gLog.Debug().Msg("running 1min jobs...")
+	// < 1 min jobs here >
 
 	if tm.Minute()%5 == 0 {
 		gLog.Debug().Msg("running 5min jobs...")
