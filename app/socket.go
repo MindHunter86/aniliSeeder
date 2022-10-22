@@ -151,6 +151,10 @@ func (*SockServer) parseClientCmd(cmd string) rpcCommand {
 		return cmdLoadAniChanges
 	case "aniSchedule":
 		return cmdLoadAniSchedule
+	case "dryDeployAniUpdates":
+		return cmdDryDeployAniUpdates
+	case "deployAniUpdates":
+		return cmdDeployAniUpdates
 	default:
 		gLog.Debug().Str("cmd", strings.TrimSpace(cmd)).Msg("trimmed")
 		return cmdRpcUndefined
@@ -169,6 +173,10 @@ func (m *SockServer) runClientCmd(cmd rpcCommand) (io.ReadWriter, error) {
 		return m.cmd.loadAniChanges()
 	case cmdLoadAniSchedule:
 		return m.cmd.loadAniSchedule()
+	case cmdDryDeployAniUpdates:
+		return m.cmd.dryDeployAniUpdates()
+	case cmdDeployAniUpdates:
+		return m.cmd.deployAniUpdates()
 
 	default:
 		gLog.Error().Msg("golang internal error; given cmd is undefined in runClientCmd()")

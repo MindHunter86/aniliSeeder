@@ -152,6 +152,10 @@ func (m *WorkerService) GetTorrents(ctx context.Context, _ *emptypb.Empty) (_ *p
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
+	if e = m.authorizeServiceReply(ctx); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
 	return &pb.TorrentsReply{
 		Torrent: trrs,
 	}, e
@@ -176,6 +180,10 @@ func (m *WorkerService) GetTorrentScore(ctx context.Context, req *pb.TorrentScor
 
 	if req.GetName() != trr.Name {
 		return nil, status.Errorf(codes.InvalidArgument, "given name is not equal torrent name")
+	}
+
+	if e = m.authorizeServiceReply(ctx); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
 	return &pb.TorrentScoreReply{
@@ -205,6 +213,10 @@ func (m *WorkerService) DropTorrent(ctx context.Context, req *pb.TorrentDropRequ
 		return nil, status.Errorf(codes.InvalidArgument, "given name is not equal torrent name")
 	}
 
+	if e = m.authorizeServiceReply(ctx); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
 	return &pb.TorrentDropReply{
 		FreedSpace: uint64(trr.TotalSize),
 		FreeSpace:  utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
@@ -225,6 +237,10 @@ func (m *WorkerService) SaveTorrentFile(ctx context.Context, req *pb.TFileSaveRe
 		return nil, status.Errorf(codes.FailedPrecondition, e.Error())
 	}
 
+	if e = m.authorizeServiceReply(ctx); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
 	gLog.Debug().Str("master_id", mid).Int64("written_bytes", n).Msg("the requested method has been processed")
 	return &pb.TFileSaveReply{
 		WrittenBytes: n,
@@ -238,6 +254,10 @@ func (m *WorkerService) GetSystemFreeSpace(ctx context.Context, _ *emptypb.Empty
 	}
 
 	gLog.Debug().Str("master_id", mid).Msg("processing master request...")
+
+	if e = m.authorizeServiceReply(ctx); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
 
 	return &pb.SystemSpaceReply{
 		FreeSpace: utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),

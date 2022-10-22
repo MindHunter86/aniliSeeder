@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"net"
 	"sync"
 	"time"
@@ -55,6 +56,10 @@ func NewWorker(ctx context.Context) swarm.Swarm {
 		id: uuid.NewV4().String(),
 	}
 }
+
+var (
+	errFuncIsNotForWorker = errors.New("called function is for master only. internal error")
+)
 
 func (m *Worker) Bootstrap() (e error) {
 	if e = m.connect(); e != nil {
@@ -165,6 +170,8 @@ func (m *Worker) run(done func()) error {
 		ticker.Reset(i)
 	}
 
+	reconns := gCli.Int("grpc-reconnect-tries")
+
 LOOP:
 	for {
 		select {
@@ -185,12 +192,20 @@ LOOP:
 			var e error
 			if reconnFreeze, e = m.ping(); e != nil {
 				gLog.Warn().Err(e).Msg("aborting application due to ping and reconnection failures")
-				gAbort()
+
+				if reconns == 0 {
+					gAbort()
+				}
+
+				gLog.Debug().Int("retries_remaining", reconns).Msg("bypass global abort for further reconnect...")
+				reconns--
 			}
 
 			if reconnFreeze {
 				wg.Add(1)
 				go m.serve(wg.Done)
+
+				reconns = gCli.Int("grpc-reconnect-tries")
 
 				if h := gCli.Duration("grpc-ping-reconnect-hold"); h != 0*time.Second {
 					gLog.Debug().Msg("reconnection detected; holding for N seconds")
@@ -255,12 +270,24 @@ func (*Worker) getTorrents() (_ []*structpb.Struct, e error) {
 	return strmap, e
 }
 
+func (*Worker) IsMaster() bool {
+	return false
+}
+
 func (*Worker) GetConnectedWorkers() (_ map[string]*swarm.SwarmWorker) {
 	return nil
 }
 
-func (*Worker) IsMaster() bool {
-	return false
+func (*Worker) RequestTorrentsFromWorker(string) ([]*deluge.Torrent, error) {
+	return nil, errFuncIsNotForWorker
+}
+
+func (*Worker) RequestFreeSpaceFromWorker(string) (uint64, error) {
+	return 0, errFuncIsNotForWorker
+}
+
+func (*Worker) SaveTorrentFile(string, string, *[]byte) (int64, error) {
+	return 0, errFuncIsNotForWorker
 }
 
 // todo

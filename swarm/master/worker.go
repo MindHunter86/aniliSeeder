@@ -146,10 +146,10 @@ func (*worker) newServiceRequest(d time.Duration) (context.Context, context.Canc
 func (*worker) authorizeSerivceReply(md *metadata.MD) (_ string, e error) {
 	id := md.Get("x-worker-id")
 	if len(id) != 1 {
-		return "", status.Errorf(codes.InvalidArgument, "")
+		return "", status.Errorf(codes.InvalidArgument, "there is no metadata in the reply")
 	}
 	if strings.TrimSpace(id[0]) == "" {
-		return "", status.Errorf(codes.InvalidArgument, "")
+		return "", status.Errorf(codes.InvalidArgument, "there is no worker-id in the reply")
 	}
 
 	gLog.Debug().Str("worker_id", id[0]).Msg("worker reply accepted, authorizing...")
@@ -202,6 +202,8 @@ func (m *worker) getRPCErrors(err error) error {
 	return err
 }
 
+// methods
+
 func (m *worker) getInitialServiceData() (_ string, e error) {
 	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
 	defer cancel()
@@ -235,4 +237,75 @@ func (m *worker) getInitialServiceData() (_ string, e error) {
 	m.version = rpl.GetWorkerVersion()
 
 	return
+}
+
+// get torrents from workers without any caches
+func (m *worker) getTorrents() (trrs []*deluge.Torrent, e error) {
+	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
+	defer cancel()
+
+	var md metadata.MD
+	var rpl *pb.TorrentsReply
+	if rpl, e = m.gservice.GetTorrents(ctx, &emptypb.Empty{}, grpc.Header(&md)); m.getRPCErrors(e) != nil {
+		return
+	}
+
+	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+		return
+	}
+
+	var buf []byte
+	if buf, e = json.Marshal(rpl.GetTorrent()); e != nil {
+		return
+	}
+
+	if e = json.Unmarshal(buf, &trrs); e != nil {
+		return
+	}
+
+	m.trrs = trrs
+
+	gLog.Debug().Int("torrnets_count", len(trrs)).Msg("got reply from the worker with torrents list")
+	return
+}
+
+func (m *worker) getFreeSpace() (_ uint64, e error) {
+	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
+	defer cancel()
+
+	var md metadata.MD
+	var rpl *pb.SystemSpaceReply
+	if rpl, e = m.gservice.GetSystemFreeSpace(ctx, &emptypb.Empty{}, grpc.Header(&md)); m.getRPCErrors(e) != nil {
+		return
+	}
+
+	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+		return
+	}
+
+	gLog.Debug().Uint64("worker_fspace", rpl.FreeSpace).Msg("got reply from the worker with system free space")
+	return rpl.FreeSpace, e
+}
+
+func (m *worker) saveTorrentFile(fname string, fbytes *[]byte) (_ int64, e error) {
+	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
+	defer cancel()
+
+	req := &pb.TFileSaveRequest{
+		Filename: fname,
+		Payload:  *fbytes,
+	}
+
+	var md metadata.MD
+	var rpl *pb.TFileSaveReply
+	if rpl, e = m.gservice.SaveTorrentFile(ctx, req, grpc.Header(&md)); m.getRPCErrors(e) != nil {
+		return
+	}
+
+	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+		return
+	}
+
+	gLog.Debug().Int64("written_bytes", rpl.WrittenBytes).Msg("got reply from the worker with written bytes")
+	return rpl.WrittenBytes, e
 }

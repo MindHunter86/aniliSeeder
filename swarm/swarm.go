@@ -13,7 +13,13 @@ type SwarmWorker struct {
 }
 
 type Swarm interface {
+	// common methods
 	IsMaster() bool
 	Bootstrap() error
+
+	// master methods
 	GetConnectedWorkers() map[string]*SwarmWorker
+	RequestTorrentsFromWorker(string) ([]*deluge.Torrent, error)
+	RequestFreeSpaceFromWorker(string) (uint64, error)
+	SaveTorrentFile(string, string, *[]byte) (int64, error)
 }
