@@ -10,24 +10,15 @@ import (
 	"github.com/MindHunter86/aniliSeeder/deluge"
 )
 
-type deployObject struct {
-}
+type deploy struct{}
 
-// ?? func (*App) getDeloyObjectsFromAniDel()
-func (*App) compareDelugeTorrentsWithAniTitles(dtrrs []*deluge.Torrent, attl []anilibria.Title) []*deployObject {
-	return nil
-}
+// type deployType uint8
 
-type deploy struct {
-}
-
-type deployType uint8
-
-const (
-	dplAnilibriaUpdates deployType = iota
-	// dplAnilibriaSchedule
-	// dplAnilibriaWatchingNow
-)
+// const (
+// 	dplAnilibriaUpdates deployType = iota
+// 	// dplAnilibriaSchedule
+// 	// dplAnilibriaWatchingNow
+// )
 
 func newDeploy() *deploy {
 	return &deploy{}
