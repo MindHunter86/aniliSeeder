@@ -18,6 +18,10 @@
 
 `aniSchedule` - get the current anilibria team shedule
 
+`dryDeployAniUpdates` - check the titles (and their assignments) that can be deployed to workers
+
+`deployAniUpdates` - deploy titles from `aniUpdates`
+
 
 ## Running
 run worker - `./aniliSeeder --http-debug --grpc-insecure serve`
@@ -55,12 +59,13 @@ GLOBAL OPTIONS:
    --deluge-password value              [$DELUGE_PASSWORD]
    --deluge-torrentfiles-path value    (default: "./data")
    --deluge-username value             (default: "localclient") [$DELUGE_LOGIN, $DELUGE_USERNAME]
-   --disk-minimal-avaliable value      In MB (default: 128)
+   --disk-minimal-available value      In MB (default: 128)
    --grpc-connect-timeout value        for worker (default: 3s)
    --grpc-disable-reconnect            (default: false)
    --grpc-insecure                     (default: false)
    --grpc-ping-interval value          0 for disabling (default: 1s)
-   --grpc-ping-reconnect-hold value    time for grpc reconnection process (default: 10s)
+   --grpc-ping-reconnect-hold value    time for grpc reconnection process (default: 5s)
+   --grpc-reconnect-tries value        (default: 10)
    --grpc-request-timeout value        (default: 1s)
    --help, -h                          show help (default: false)
    --http-client-insecure              Flag for TLS certificate verification disabling (default: false)
