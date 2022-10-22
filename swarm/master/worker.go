@@ -286,3 +286,26 @@ func (m *worker) getFreeSpace() (_ uint64, e error) {
 	gLog.Debug().Uint64("worker_fspace", rpl.FreeSpace).Msg("got reply from the worker with system free space")
 	return rpl.FreeSpace, e
 }
+
+func (m *worker) saveTorrentFile(fname string, fbytes *[]byte) (_ int64, e error) {
+	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
+	defer cancel()
+
+	req := &pb.TFileSaveRequest{
+		Filename: fname,
+		Payload:  *fbytes,
+	}
+
+	var md metadata.MD
+	var rpl *pb.TFileSaveReply
+	if rpl, e = m.gservice.SaveTorrentFile(ctx, req, grpc.Header(&md)); m.getRPCErrors(e) != nil {
+		return
+	}
+
+	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+		return
+	}
+
+	gLog.Debug().Int64("written_bytes", rpl.WrittenBytes).Msg("got reply from the worker with written bytes")
+	return rpl.WrittenBytes, e
+}

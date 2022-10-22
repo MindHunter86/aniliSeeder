@@ -24,6 +24,7 @@ const (
 	cmdLoadAniChanges
 	cmdLoadAniSchedule
 
+	cmdDeployAniUpdates
 	cmdDryDeployAniUpdates
 	// cmdDryDeployAniChanges
 	// cmdDryDeployAniSchedule
@@ -233,6 +234,44 @@ func (*cmds) dryDeployAniUpdates() (_ io.ReadWriter, e error) {
 	var deployTitles = make(map[string][]anilibria.TitleTorrent)
 
 	if deployTitles, e = dpl.dryRun(); e != nil {
+		return
+	}
+
+	for wid, trrs := range deployTitles {
+		for _, trr := range trrs {
+			tb.AppendRow([]interface{}{
+				wid[0:8], trr.Hash[0:9], trr.TotalSize / 1024 / 1024, trr.Seeders, trr.Leechers,
+				time.Unix(int64(trr.UploadedTimestamp), 0).String(),
+			})
+		}
+	}
+
+	tb.SortBy([]table.SortBy{
+		{Name: "Worker", Mode: table.Asc},
+	})
+
+	tb.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
+	tb.Style().Options.SeparateRows = true
+
+	return buf, e
+}
+
+func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
+	tb := table.NewWriter()
+	defer tb.Render()
+
+	buf := bytes.NewBuffer(nil)
+	tb.SetOutputMirror(buf)
+	tb.AppendHeader(table.Row{
+		"Worker", "Torrent", "Size", "Seeders", "Leechers", "Uploaded",
+	})
+
+	dpl := newDeploy()
+	var deployTitles = make(map[string][]anilibria.TitleTorrent)
+
+	if deployTitles, e = dpl.run(); e != nil {
 		return
 	}
 

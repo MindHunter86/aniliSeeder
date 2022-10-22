@@ -278,11 +278,15 @@ func (*Worker) GetConnectedWorkers() (_ map[string]*swarm.SwarmWorker) {
 	return nil
 }
 
-func (m *Worker) RequestTorrentsFromWorker(wid string) ([]*deluge.Torrent, error) {
+func (*Worker) RequestTorrentsFromWorker(string) ([]*deluge.Torrent, error) {
 	return nil, errFuncIsNotForWorker
 }
 
-func (m *Worker) RequestFreeSpaceFromWorker(wid string) (uint64, error) {
+func (*Worker) RequestFreeSpaceFromWorker(string) (uint64, error) {
+	return 0, errFuncIsNotForWorker
+}
+
+func (m *Worker) SaveTorrentFile(string, string, *[]byte) (int64, error) {
 	return 0, errFuncIsNotForWorker
 }
 

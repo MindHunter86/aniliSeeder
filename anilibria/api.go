@@ -363,7 +363,7 @@ func (*ApiClient) parseResponse(rsp *io.ReadCloser, schema interface{}) error {
 	}
 }
 
-func (m *ApiClient) downloadTorrentFile(tid string) (_ string, _ *io.ReadCloser, e error) {
+func (m *ApiClient) downloadTorrentFile(tid string) (_ string, _ *[]byte, e error) {
 	var rrl *url.URL
 	if rrl, e = url.Parse(m.siteBaseUrl.String() + string(siteMethodTorrentDownload)); e != nil {
 		return
@@ -387,8 +387,7 @@ func (m *ApiClient) downloadTorrentFile(tid string) (_ string, _ *io.ReadCloser,
 	if rsp, e = m.http.Do(req); e != nil {
 		return
 	}
-	// the caller must close the returned body
-	// defer rsp.Body.Close()
+	defer rsp.Body.Close()
 
 	m.debugHttpHandshake(req)
 	m.debugHttpHandshake(rsp)
@@ -410,8 +409,13 @@ func (m *ApiClient) downloadTorrentFile(tid string) (_ string, _ *io.ReadCloser,
 		return
 	}
 
-	gLog.Debug().Str("filename", params["filename"]).Msg("trying to download and save the torrent file...")
-	return params["filename"], &rsp.Body, e
+	gLog.Debug().Str("filename", params["filename"]).Msg("trying to parse the torrent file contents...")
+	var fbytes []byte
+	if fbytes, e = io.ReadAll(rsp.Body); e != nil {
+		return
+	}
+
+	return params["filename"], &fbytes, e
 }
 
 // methods
@@ -448,7 +452,7 @@ func (m *ApiClient) SaveTitleTorrentFile(torrentId string) (e error) {
 	return m.getTorrentFile(torrentId)
 }
 
-func (m *ApiClient) GetTitleTorrentFile(tid string) (string, *io.ReadCloser, error) {
+func (m *ApiClient) GetTitleTorrentFile(tid string) (string, *[]byte, error) {
 	return m.downloadTorrentFile(tid)
 }
 

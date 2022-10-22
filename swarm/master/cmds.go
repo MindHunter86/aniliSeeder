@@ -45,3 +45,12 @@ func (m *Master) RequestFreeSpaceFromWorker(wid string) (uint64, error) {
 	wrk := m.workerPool.getWorker(wid)
 	return wrk.getFreeSpace()
 }
+
+func (m *Master) SaveTorrentFile(wid string, fname string, fbytes *[]byte) (int64, error) {
+	if !m.workerPool.isWorkerExists(wid) {
+		return 0, errWorkerNotFound
+	}
+
+	wrk := m.workerPool.getWorker(wid)
+	return wrk.saveTorrentFile(fname, fbytes)
+}

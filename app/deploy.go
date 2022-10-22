@@ -3,6 +3,8 @@ package app
 import (
 	"errors"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
@@ -31,9 +33,8 @@ func newDeploy() *deploy {
 	return &deploy{}
 }
 
-func (m *deploy) run() error {
-	_, e := m.deploy(false)
-	return e
+func (m *deploy) run() (map[string][]anilibria.TitleTorrent, error) {
+	return m.deploy(false)
 }
 
 func (m *deploy) dryRun() (map[string][]anilibria.TitleTorrent, error) {
@@ -64,7 +65,56 @@ func (m *deploy) deploy(isDryRun bool) (_ map[string][]anilibria.TitleTorrent, e
 		return nil, errors.New("there is nothing to deploy")
 	}
 
+	if !isDryRun {
+		m.sendDeployCommand(assignedTitles)
+	}
+
 	return assignedTitles, e
+}
+
+func (m *deploy) sendDeployCommand(deployTasks map[string][]anilibria.TitleTorrent) {
+	var e error
+
+	for wid, trrs := range deployTasks {
+		gLog.Debug().Str("worker_id", wid).Msg("starting deploy process for the worker...")
+
+		for _, trr := range trrs {
+			name, fbytes, err := gAniApi.GetTitleTorrentFile(strconv.Itoa(trr.TorrentId))
+			if err != nil {
+				gLog.Error().Err(e).Msg("got an error in receiving the deploy file form the anilibria")
+				break
+			}
+
+			gLog.Debug().Str("torrent_hash", trr.Hash[0:9]).Str("old_torrent_name", name).Msg("fixing torrent name...")
+			if name, e = m.fixTorrentFileName(name, trr.Quality.String, trr.Series.String); e != nil {
+				gLog.Error().Err(e).Msg("got an error in fixing torrent name")
+				break
+			}
+
+			gLog.Debug().Str("torrent_name", name).Str("torrent_hash", trr.Hash[0:9]).
+				Msg("sendind deploy request to the worker...")
+
+			var wbytes int64
+			if wbytes, e = gSwarm.SaveTorrentFile(wid, name, fbytes); e != nil {
+				gLog.Error().Err(e).Msg("got an error while processing the deploy request")
+				continue
+			}
+
+			gLog.Info().Str("worker_ud", wid).Int64("written_bytes", wbytes).
+				Msg("the torrent file has been sended to the worker")
+		}
+
+		gLog.Debug().Str("worker_id", wid).Msg("deploy proccess for the worker has been finished")
+	}
+}
+
+func (*deploy) fixTorrentFileName(fname, quality, series string) (_ string, e error) {
+	tname, _, ok := strings.Cut(fname, "AniLibria.TV")
+	if !ok {
+		return "", errors.New("there are troubles with fixing torrent name")
+	}
+
+	return tname + "AniLibria.TV" + " [" + quality + "][" + series + "]" + ".torrent", nil
 }
 
 //
