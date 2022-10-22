@@ -246,7 +246,7 @@ func (m *Worker) ping() (reconn bool, e error) {
 		reconn = true
 	}
 
-	gLog.Debug().Str("ping_time", d.String()).Msg("mux ping duration")
+	gLog.Trace().Str("ping_time", d.String()).Msg("mux ping duration")
 	return
 }
 
