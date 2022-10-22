@@ -165,6 +165,4 @@ func (m *ApiClient) DropActiveSessions(sids ...string) {
 			gLog.Warn().Str("session_id", sid).Msg("there was abnormal result from the anilibria site; drop session api said nonOk with 200 OK")
 		}
 	}
-
-	return
 }
