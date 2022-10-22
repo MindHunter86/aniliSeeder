@@ -346,7 +346,7 @@ func (*cmds) dropAllActiveSessions() (_ io.ReadWriter, e error) {
 	}
 
 	var sids []string
-	for sid, _ := range *sessions {
+	for sid := range *sessions {
 		sids = append(sids, sid)
 	}
 
