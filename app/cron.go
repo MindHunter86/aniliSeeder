@@ -16,7 +16,7 @@ type cron struct {
 type cronTask uint8
 
 const (
-	cronTaskDeployUpdates cronTask = iota
+	cronTaskDeployUpdates cronTask = 1 << iota
 )
 
 func newCron() *cron {
@@ -77,40 +77,43 @@ func (m *cron) runCronTasks() {
 
 	tm := time.Now()
 
-	switch {
-	// 1 min
-	case tm.Minute()%1 == 0:
+	if tm.Minute()%1 == 0 {
 		gLog.Debug().Msg("running 1min jobs...")
+	}
 
-	// 5 mins
-	// !! BUG
-	// !! Not worked
-	case tm.Minute()%5 == 0:
+	if tm.Minute()%1 == 0 {
 		gLog.Debug().Msg("running 5min jobs...")
 
-		m.mu.Lock()
-		m.tasks = m.tasks ^ cronTaskDeployUpdates
-		m.mu.Unlock()
+		if m.tasks&cronTaskDeployUpdates == 0 {
+			gLog.Debug().Msg("deploy updates is not locked; running job...")
+			m.toggleTaskLock(cronTaskDeployUpdates)
 
-		m.wg.Add(1)
-		go func(done func()) {
-			defer done()
-			if err := m.deployUpdates(); err != nil {
-				gLog.Error().Err(err).Msg("got an error in cron deployUpdates job")
-			}
-		}(m.wg.Done)
+			m.wg.Add(1)
+			go func(done func()) {
+				if err := m.deployUpdates(); err != nil {
+					gLog.Error().Err(err).Msg("got an error in cron deployUpdates job")
+				}
 
-	// 60 mins
-	case tm.Minute() == 0:
+				m.toggleTaskLock(cronTaskDeployUpdates)
+				done()
+			}(m.wg.Done)
+		}
+	}
+
+	if tm.Minute()%60 == 0 {
 		gLog.Debug().Msg("running 60min jobs...")
-
-	default:
-		gLog.Debug().Msg("no jobs for running now")
-		return
 	}
 
 	gLog.Debug().Uint8("cron_tasks", uint8(m.tasks)).Msg("mask after switch")
 }
+
+func (m *cron) toggleTaskLock(task cronTask) {
+	m.mu.Lock()
+	m.tasks = m.tasks ^ task
+	m.mu.Unlock()
+}
+
+// TASKS
 
 func (*cron) checkTorrentsAnnounces() (e error) {
 	return
