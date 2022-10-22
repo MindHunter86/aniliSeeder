@@ -248,52 +248,50 @@ func (*deploy) balanceForWorkers(trrs []*anilibria.TitleTorrent) (_ map[string][
 
 loop:
 	for {
-		select {
 
-		case w := <-blncr:
-			var assigned bool
+		w := <-blncr
+		var assigned bool
 
-			for id, trr := range trrs {
-				if trr == nil {
-					continue
-				}
-
-				if uint64(trr.TotalSize) > fspaces[w] {
-					gLog.Info().Str("worker_id", w).Str("torrent_hash", trr.Hash[0:9]).Int64("fspace", int64(fspaces[w])).Int64("tspace", trr.TotalSize).
-						Msg("skipping torrents because of insufficient disk space on the worker")
-					continue
-				}
-
-				// decrease the workers free space
-				gLog.Debug().Uint64("old_fspace", fspaces[w]).Int64("torrent_size", trr.TotalSize).
-					Uint64("new_fspace", fspaces[w]-uint64(trr.TotalSize)).Msg("decreasing the worker's free space")
-				fspaces[w] = fspaces[w] - uint64(trr.TotalSize)
-
-				// assigning the torrent to the worker
-				wtitles[w] = append(wtitles[w], *trr)
-
-				// remove the title from a slice
-				trrs[id] = nil
-
-				assigned = true
-				gLog.Debug().Str("worker_id", w).Str("torrent_hash", trr.Hash[0:9]).Msg("the torrent has been assigned")
-
-				break
-			}
-
-			if assigned {
-				gLog.Debug().Str("worker_id", w).Msg("put the worker into balancer chan")
-				blncr <- w
-			}
-
-			if len(blncr) != 0 {
-				gLog.Debug().Int("balance_queue", len(blncr)).Msg("found workers in the balancing chan")
+		for id, trr := range trrs {
+			if trr == nil {
 				continue
 			}
 
-			gLog.Debug().Msg("there is no avaliable workers for the balancing proccess")
-			break loop
+			if uint64(trr.TotalSize) > fspaces[w] {
+				gLog.Info().Str("worker_id", w).Str("torrent_hash", trr.Hash[0:9]).Int64("fspace", int64(fspaces[w])).Int64("tspace", trr.TotalSize).
+					Msg("skipping torrents because of insufficient disk space on the worker")
+				continue
+			}
+
+			// decrease the workers free space
+			gLog.Debug().Uint64("old_fspace", fspaces[w]).Int64("torrent_size", trr.TotalSize).
+				Uint64("new_fspace", fspaces[w]-uint64(trr.TotalSize)).Msg("decreasing the worker's free space")
+			fspaces[w] = fspaces[w] - uint64(trr.TotalSize)
+
+			// assigning the torrent to the worker
+			wtitles[w] = append(wtitles[w], *trr)
+
+			// remove the title from a slice
+			trrs[id] = nil
+
+			assigned = true
+			gLog.Debug().Str("worker_id", w).Str("torrent_hash", trr.Hash[0:9]).Msg("the torrent has been assigned")
+
+			break
 		}
+
+		if assigned {
+			gLog.Debug().Str("worker_id", w).Msg("put the worker into balancer chan")
+			blncr <- w
+		}
+
+		if len(blncr) != 0 {
+			gLog.Debug().Int("balance_queue", len(blncr)).Msg("found workers in the balancing chan")
+			continue
+		}
+
+		gLog.Debug().Msg("there is no avaliable workers for the balancing proccess")
+		break loop
 	}
 
 	return wtitles, e
