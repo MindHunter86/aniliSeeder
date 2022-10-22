@@ -81,7 +81,7 @@ func (m *cron) runCronTasks() {
 		gLog.Debug().Msg("running 1min jobs...")
 	}
 
-	if tm.Minute()%1 == 0 {
+	if tm.Minute()%5 == 0 {
 		gLog.Debug().Msg("running 5min jobs...")
 
 		if m.tasks&cronTaskDeployUpdates == 0 {
