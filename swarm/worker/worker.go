@@ -286,7 +286,7 @@ func (*Worker) RequestFreeSpaceFromWorker(string) (uint64, error) {
 	return 0, errFuncIsNotForWorker
 }
 
-func (m *Worker) SaveTorrentFile(string, string, *[]byte) (int64, error) {
+func (*Worker) SaveTorrentFile(string, string, *[]byte) (int64, error) {
 	return 0, errFuncIsNotForWorker
 }
 
