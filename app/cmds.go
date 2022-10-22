@@ -30,6 +30,7 @@ const (
 	// cmdDryDeployAniSchedule
 
 	cmdGetActiveSessions
+	cmdDropAllActiveSessions
 )
 
 type cmds struct{}
@@ -336,4 +337,19 @@ func (*cmds) getActiveSessions() (_ io.ReadWriter, e error) {
 	tb.Style().Options.SeparateRows = true
 
 	return buf, e
+}
+
+func (*cmds) dropAllActiveSessions() (_ io.ReadWriter, e error) {
+	var sessions *map[string][]string
+	if sessions, e = gAniApi.GetActiveSessions(); e != nil {
+		return
+	}
+
+	var sids []string
+	for sid, _ := range *sessions {
+		sids = append(sids, sid)
+	}
+
+	gAniApi.DropActiveSessions(sids...)
+	return bytes.NewBufferString("OK"), e
 }

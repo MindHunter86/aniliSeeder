@@ -106,20 +106,30 @@ var (
 )
 
 // common
-func (*ApiClient) debugHttpHandshake(data interface{}) {
+func (*ApiClient) debugHttpHandshake(data interface{}, withBody ...bool) {
 	if !gCli.Bool("http-debug") {
 		return
 	}
 
+	var body bool
+	if len(withBody) != 0 {
+		body = withBody[0]
+	}
+
 	var dump []byte
+	var err error
 
 	switch v := data.(type) {
 	case *http.Request:
-		dump, _ = httputil.DumpRequestOut(data.(*http.Request), false)
+		dump, err = httputil.DumpRequestOut(data.(*http.Request), body)
 	case *http.Response:
-		dump, _ = httputil.DumpResponse(data.(*http.Response), false)
+		dump, _ = httputil.DumpResponse(data.(*http.Response), body)
 	default:
 		gLog.Error().Msgf("there is an internal application error; undefined type - %T", v)
+	}
+
+	if err != nil {
+		gLog.Warn().Err(err).Msg("got an error in http debug proccess")
 	}
 
 	log.Println(string(dump))

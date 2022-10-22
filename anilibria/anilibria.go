@@ -145,3 +145,26 @@ func (m *ApiClient) GetActiveSessions() (_ *map[string][]string, e error) {
 	s := newSession()
 	return s.getActiveAniSessions(buf)
 }
+
+func (m *ApiClient) DropActiveSession(sid string) (bool, error) {
+	return m.dropActiveSession(sid)
+}
+
+func (m *ApiClient) DropActiveSessions(sids ...string) {
+	var ok bool
+	var err error
+
+	for _, sid := range sids {
+		gLog.Debug().Str("session_id", sid).Msg("trying to close anilibria session...")
+
+		if ok, err = m.dropActiveSession(sid); err != nil {
+			gLog.Warn().Err(err).Str("session_id", sid).Msg("got an error while trying to close the anilibria session")
+		}
+
+		if !ok {
+			gLog.Warn().Str("session_id", sid).Msg("there was abnormal result from the anilibria site; drop session api said nonOk with 200 OK")
+		}
+	}
+
+	return
+}
