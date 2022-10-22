@@ -47,10 +47,6 @@ loop:
 	m.wg.Wait()
 }
 
-func (*cron) stop() {
-	return
-}
-
 //	triggers
 //	1 min - collect stats and push to graphite (?)
 //
