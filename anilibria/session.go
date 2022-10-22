@@ -1,7 +1,7 @@
 package anilibria
 
 import (
-	"fmt"
+	"bytes"
 	"io"
 	"strings"
 
@@ -15,15 +15,15 @@ func newSession() *session {
 	return &session{}
 }
 
-func (*session) getActiveAniSessions() (_ []string, e error) {
-	return
+func (m *session) getActiveAniSessions(body *[]byte) (_ *map[string][]string, e error) {
+	return m.parseRawCPPage(bytes.NewBuffer(*body))
 }
 
-func (*session) parseRawCPPage(buf io.ReadCloser) (e error) {
+func (*session) parseRawCPPage(buf io.Reader) (_ *map[string][]string, e error) {
 
 	var z = html.NewTokenizer(buf)
 
-	var isSessTable, isParsable, isTd bool
+	var isSessTable, isTableBody, isTd bool
 	var tdCount int
 
 	var sessTdBuf []string
@@ -45,19 +45,26 @@ loop:
 			case atom.Table:
 				for _, attr := range tkn.Attr {
 					if isSessTable = attr.Key == "id" && attr.Val == "tableSess"; isSessTable {
-						continue
+						gLog.Debug().Bool("isSessTable", isSessTable).Msg("session html table has been found")
+						break
 					}
 				}
 			case atom.Tbody:
-				isParsable = isSessTable
+				isTableBody = isSessTable
+				gLog.Debug().Bool("isTableBpdy", isTableBody).Msg("html table body has been found")
 			case atom.Td:
-				isTd = isParsable
+				isTd = isTableBody
+				gLog.Trace().Bool("isTd", isTd).Msg("html table raw has been found")
 			case atom.A:
 				if !isTd {
 					continue
 				}
 
+				gLog.Trace().Bool("isTd", isTd).Msg("html table raw link has been found")
+
 				for _, attr := range tkn.Attr {
+					gLog.Trace().Str("key", attr.Key).Str("value", attr.Val).Msg("")
+
 					if attr.Key == "data-session-id" && attr.Val != "" {
 						if tdCount%3 != 0 {
 							gLog.Debug().Msg("html parser found data-session-id but there is no session details")
@@ -65,6 +72,8 @@ loop:
 
 						sessions[strings.TrimSpace(attr.Val)] = sessTdBuf
 						sessTdBuf, isTd = nil, false
+
+						gLog.Debug().Str("session", strings.TrimSpace(attr.Val)).Msg("session has been collected")
 					}
 				}
 			}
@@ -76,17 +85,23 @@ loop:
 				continue
 			}
 
-			sessTdBuf = append(sessTdBuf, strings.TrimSpace(tkn.Data))
+			data := strings.TrimSpace(tkn.Data)
+
+			if strings.TrimSpace(tkn.Data) == "" {
+				continue
+			}
+
+			gLog.Trace().Str("shit", data).Msg("found some text shit")
+			sessTdBuf = append(sessTdBuf, data)
 			isTd = false
 		}
 	}
 
+	// for id, sess := range sessions {
+	// 	fmt.Println(id)
+	// 	fmt.Println(sess)
+	// }
+
 	gLog.Debug().Int("sessions_length", len(sessions)).Msg("parsed sessions count")
-
-	for id, sess := range sessions {
-		fmt.Println(id)
-		fmt.Println(sess)
-	}
-
-	return
+	return &sessions, e
 }

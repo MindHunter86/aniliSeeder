@@ -136,6 +136,12 @@ func (*ApiClient) checkDownloadDir() error {
 
 // https://api.anilibria.tv/v2/getSchedule?days=0&filter=id,code,names,updated,last_change,status,type,torrents
 
-func (*ApiClient) GetPopularTorrents() (error, error) {
-	return nil, nil
+func (m *ApiClient) GetActiveSessions() (_ *map[string][]string, e error) {
+	var buf *[]byte
+	if buf, e = m.getSessionsPage(); e != nil {
+		return
+	}
+
+	s := newSession()
+	return s.getActiveAniSessions(buf)
 }

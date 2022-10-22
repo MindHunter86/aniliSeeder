@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MindHunter86/aniliSeeder/anilibria"
 	application "github.com/MindHunter86/aniliSeeder/app"
 	appcli "github.com/MindHunter86/aniliSeeder/cli"
 	"github.com/rs/zerolog"
@@ -306,6 +307,19 @@ func main() {
 			Usage: "",
 			Action: func(c *cli.Context) error {
 				return appcli.TestDial(c, "")
+			},
+		},
+		&cli.Command{
+			Name:  "sessions",
+			Usage: "",
+			Action: func(c *cli.Context) (e error) {
+				var gAniApi *anilibria.ApiClient
+				if gAniApi, e = anilibria.NewApiClient(c, &log); e != nil {
+					return
+				}
+
+				_, e = gAniApi.GetActiveSessions()
+				return e
 			},
 		},
 	}
