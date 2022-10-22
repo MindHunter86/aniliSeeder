@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/syslog"
 	"os"
 	"runtime"
 	"sort"
@@ -84,6 +85,22 @@ func main() {
 			Name:  "socket-path",
 			Usage: "",
 			Value: "aniliSeeder.sock",
+		},
+
+		&cli.StringFlag{
+			Name:  "syslog-addr",
+			Usage: "",
+			Value: "10.10.11.1:33517",
+		},
+		&cli.StringFlag{
+			Name:  "syslog-proto",
+			Usage: "",
+			Value: "tcp",
+		},
+		&cli.StringFlag{
+			Name:  "syslog-tag",
+			Usage: "",
+			Value: "aniliseeder",
 		},
 
 		&cli.IntFlag{
@@ -296,7 +313,25 @@ func main() {
 		&cli.Command{
 			Name:  "serve",
 			Usage: "",
-			Action: func(c *cli.Context) error {
+			Action: func(c *cli.Context) (e error) {
+				var slog *syslog.Writer
+				if c.String("syslog-addr") != "" {
+					log.Debug().Msg("connecting to the syslog server...")
+					if slog, e = syslog.Dial(c.String("syslog-proto"), c.String("syslog-addr"), syslog.LOG_INFO, c.String("syslog-tag")); e != nil {
+						return
+					}
+
+					log.Info().Msg("connection to the syslog server has been established; reset log driver ...")
+
+					log = zerolog.New(zerolog.MultiLevelWriter(
+						zerolog.ConsoleWriter{Out: os.Stderr},
+						slog,
+					)).With().Timestamp().Logger()
+
+					log = log.Hook(SeverityHook{})
+					log.Info().Msg("zerolog has been reinited; starting application ...")
+				}
+
 				a := application.NewApp(c, &log)
 				return a.Bootstrap()
 			},
