@@ -12,7 +12,6 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"strings"
 
 	"golang.org/x/net/publicsuffix"
 )
@@ -95,9 +94,10 @@ const defaultApiMethodFilter = "id,code,names,updated,last_change,status,type,to
 type ApiRequestMethod string
 
 const (
-	apiMethodGetSchedule ApiRequestMethod = "/getSchedule"
-	apiMethodGetUpdates  ApiRequestMethod = "/getUpdates"
-	apiMethodGetChanges  ApiRequestMethod = "/getChanges"
+	apiMethodGetSchedule  ApiRequestMethod = "/getSchedule"
+	apiMethodGetUpdates   ApiRequestMethod = "/getUpdates"
+	apiMethodGetChanges   ApiRequestMethod = "/getChanges"
+	apiMethodSearchTitles ApiRequestMethod = "/searchTitles"
 )
 
 type SiteRequestMethod string
@@ -124,7 +124,7 @@ func (*ApiClient) debugHttpHandshake(data interface{}) {
 	case *http.Request:
 		dump, _ = httputil.DumpRequestOut(data.(*http.Request), false)
 	case *http.Response:
-		dump, _ = httputil.DumpResponse(data.(*http.Response), false)
+		dump, _ = httputil.DumpResponse(data.(*http.Response), true)
 	default:
 		gLog.Error().Msgf("there is an internal application error; undefined type - %T", v)
 	}
@@ -341,7 +341,6 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 		gLog.Warn().Str("api_method", string(apiMethod)).Int("api_response_code", rsp.StatusCode).Msg("Abnormal API response")
 		gLog.Debug().Msg("trying to get error description")
 
-		// apierr := &apiError{}
 		var apierr *apiError
 		if e = m.parseResponse(&rsp.Body, &apierr); e != nil {
 			gLog.Error().Err(e).Msg("could not get api error description")
@@ -416,66 +415,4 @@ func (m *ApiClient) downloadTorrentFile(tid string) (_ string, _ *[]byte, e erro
 	}
 
 	return params["filename"], &fbytes, e
-}
-
-// methods
-func (m *ApiClient) GetApiAuthorization() (e error) {
-	gLog.Debug().Msg("Called apiAuthorize()")
-
-	authForm := url.Values{
-		"mail":    {gCli.String("anilibria-login-username")},
-		"passwd":  {gCli.String("anilibria-login-password")},
-		"fa2code": {""},
-		"csrf":    {"1"},
-	}
-
-	gLog.Debug().Str("username", gCli.String("anilibria-login-username")).Msg("trying to complete authentication process on anilibria")
-	return m.apiAuthorize(strings.NewReader(authForm.Encode()))
-}
-
-func (m *ApiClient) GetTitlesFromSchedule() (titles []*Title, e error) {
-	var weekSchedule []*TitleSchedule
-	if e = m.getApiResponse("GET", apiMethodGetSchedule, &weekSchedule); e != nil {
-		return
-	}
-
-	for _, schedule := range weekSchedule {
-		titles = append(titles, schedule.List...)
-	}
-
-	gLog.Debug().Int("titles_count", len(titles)).Msg("titles has been successfully parsed from schedule")
-	return
-}
-
-func (m *ApiClient) SaveTitleTorrentFile(torrentId string) (e error) {
-	gLog.Debug().Msg("trying to fetch torrent file for " + torrentId)
-	return m.getTorrentFile(torrentId)
-}
-
-func (m *ApiClient) GetTitleTorrentFile(tid string) (string, *[]byte, error) {
-	return m.downloadTorrentFile(tid)
-}
-
-func (m *ApiClient) GetLastUpdates() (titles []*Title, e error) {
-	if e = m.getApiResponse("GET", apiMethodGetUpdates, &titles); e != nil {
-		return
-	}
-
-	return titles, e
-}
-
-func (m *ApiClient) GetLastChanges() (titles []*Title, e error) {
-	if e = m.getApiResponse("GET", apiMethodGetChanges, &titles); e != nil {
-		return
-	}
-
-	return titles, e
-}
-
-func (m *ApiClient) GetTitlesSchedule() (schedule []*TitleSchedule, e error) {
-	if e = m.getApiResponse("GET", apiMethodGetSchedule, &schedule); e != nil {
-		return
-	}
-
-	return
 }

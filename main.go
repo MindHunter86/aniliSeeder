@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MindHunter86/aniliSeeder/anilibria"
 	application "github.com/MindHunter86/aniliSeeder/app"
 	appcli "github.com/MindHunter86/aniliSeeder/cli"
 	"github.com/rs/zerolog"
@@ -306,6 +307,23 @@ func main() {
 			Usage: "",
 			Action: func(c *cli.Context) error {
 				return appcli.TestDial(c, "")
+			},
+		},
+		&cli.Command{
+			Name:  "test",
+			Usage: "",
+			Action: func(c *cli.Context) error {
+				aniApi, e := anilibria.NewApiClient(c, &log)
+				if e != nil {
+					return e
+				}
+
+				titles, e := aniApi.SearchTitlesByName("Urusei Yatsura 2022")
+				for _, title := range titles {
+					log.Debug().Str("title_name", title.Names.Ru).Msg("")
+				}
+
+				return e
 			},
 		},
 	}
