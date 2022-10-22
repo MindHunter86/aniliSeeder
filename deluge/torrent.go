@@ -111,6 +111,7 @@ type Torrent struct {
 	TotalSeeds    int64
 	TotalSize     int64
 	TotalUploaded int64
+	TrackerStatus string
 
 	// Files          []delugeclient.File
 	// Peers          []delugeclient.Peer
@@ -137,6 +138,7 @@ func (*Client) newTorrentFromStatus(hash string, t *delugeclient.TorrentStatus) 
 		TotalDone:     t.TotalDone,
 		TotalUploaded: t.TotalUploaded,
 		TotalSize:     t.TotalSize,
+		TrackerStatus: t.TrackerStatus,
 	}
 }
 
@@ -197,4 +199,12 @@ func (m *Torrent) GetVKScore() (_ float64) {
 func (*Torrent) roundGivenScore(val float64, precision uint) float64 {
 	ratio := math.Pow(10, float64(precision))
 	return math.Round(val*ratio) / ratio
+}
+
+func (m *Torrent) isTrackerOk() bool {
+	return m.TrackerStatus == "Announce OK"
+}
+
+func (m *Torrent) getTrackerError() string {
+	return m.TrackerStatus
 }
