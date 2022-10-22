@@ -100,13 +100,6 @@ const (
 	apiMethodGetChanges  ApiRequestMethod = "/getChanges"
 )
 
-type SiteRequestMethod string
-
-const (
-	siteMethodLogin           SiteRequestMethod = "/public/login.php"
-	siteMethodTorrentDownload SiteRequestMethod = "/public/torrent/download.php"
-)
-
 var (
 	errApiAuthorizationFailed = errors.New("there is some problems with the authorization process")
 	errApiAbnormalResponse    = errors.New("there is some problems with anilibria servers communication")
