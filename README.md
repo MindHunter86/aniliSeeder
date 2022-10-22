@@ -22,6 +22,10 @@
 
 `deployAniUpdates` - deploy titles from `aniUpdates`
 
+`getActiveSessions` - list all active anilibria sessions (PHPSESSID)
+
+`dropActiveSessions` - close all active anilibria session
+
 
 ## Running
 run worker - `./aniliSeeder --http-debug --grpc-insecure serve`
