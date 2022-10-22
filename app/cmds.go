@@ -321,7 +321,7 @@ func (*cmds) getActiveSessions() (_ io.ReadWriter, e error) {
 		}
 
 		tb.AppendRow([]interface{}{
-			session[1], sid, tm.String(), time.Now().Sub(tm).String(), session[3],
+			session[1], sid, tm.String(), time.Since(tm).String(), session[3],
 		})
 	}
 
