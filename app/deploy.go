@@ -164,7 +164,7 @@ func (*deploy) compareUpdateListWithTorrents(atrrs []*anilibria.TitleTorrent, wt
 			break
 		}
 
-		if found != true {
+		if !found {
 			gLog.Debug().Str("hash", atrr.Hash).Msg("torrent compare process: missed hash found")
 			mtrrs = append(mtrrs, atrr)
 			continue
