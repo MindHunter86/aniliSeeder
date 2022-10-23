@@ -21,7 +21,8 @@ type failedTitle struct {
 
 	sizeChanges int64
 
-	noDeploy bool
+	noDeploy   bool
+	duplicated bool
 }
 
 type workerTorrents struct {
@@ -33,9 +34,6 @@ func (m *deploy) dryDeployFailedAnnounces() ([]*failedTitle, error) {
 	return m.deployFailedAnnounces(true)
 }
 
-// TODO
-// !! before sending to deploy check if searched tiltes are exists
-// !!
 func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, e error) {
 	wtorrents, ok := m.getWorkersTorrentsV2()
 	if !ok {
@@ -61,13 +59,6 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 		return nil, errors.New("could not continue the deploy process because of insufficient space for some torrents")
 	}
 
-	// !!
-	// !! DEBUG
-	ok = m.dropFailedTorrent(ftitles)
-	if !ok && !gCli.Bool("deploy-ignore-errors") {
-		return nil, errors.New("could not continue the deploy process because of unsuccessful deletions")
-	}
-
 	// redeploy ...
 
 	// panic avoid
@@ -78,17 +69,15 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 			return nil, errors.New("could not continue the deploy process because of unsuccessful deletions")
 		}
 
-		var anitorrents []*anilibria.TitleTorrent
-		for _, ftitle := range ftitles {
-			anitorrents = append(anitorrents, ftitle.aniTorrent)
-		}
+		m.searchForDuplicates(ftitles, wtorrents)
+		atorrents := m.getTorrentsListForDeploy(ftitles)
 
-		var atitles = make(map[string][]anilibria.TitleTorrent)
-		if atitles, e = m.balanceForWorkers(anitorrents); e != nil {
+		var btorrents = make(map[string][]anilibria.TitleTorrent)
+		if btorrents, e = m.balanceForWorkers(atorrents); e != nil {
 			return
 		}
 
-		m.sendDeployCommand(atitles)
+		m.sendDeployCommand(btorrents)
 	}
 
 	// TODO
@@ -216,6 +205,9 @@ func (*deploy) isSpaceEnoughForUpdate(ftitles []*failedTitle) (ok bool) {
 				Int64("torrent_size_changes", ftitle.sizeChanges).Msg("could not deploy the torrents because of insufficient space")
 			ftitle.noDeploy = true
 		}
+
+		gLog.Debug().Str("torrent_name", ftitle.oldTorrent.GetName()).Int64("torrent_size_changes", ftitle.sizeChanges).
+			Msg("torrent ready for deletion")
 	}
 
 	return
@@ -225,6 +217,12 @@ func (*deploy) dropFailedTorrent(ftitles []*failedTitle) (ok bool) {
 	ok = true
 
 	for _, ftitle := range ftitles {
+		if ftitle.noDeploy {
+			gLog.Debug().Str("torrent_name", ftitle.oldTorrent.GetName()).
+				Msg("the torrent marked as noDeploy, so delition process will be skipped too")
+			continue
+		}
+
 		dbytes, tbytes, err := gSwarm.RemoveTorrent(ftitle.workerId, ftitle.oldTorrent.Hash, ftitle.oldTorrent.Name)
 		if err != nil {
 			gLog.Error().Err(err).Str("torrent_hash", ftitle.aniTorrent.GetShortHash()).Str("torrent_name", ftitle.oldTorrent.GetName()).
@@ -246,4 +244,38 @@ func (*deploy) dropFailedTorrent(ftitles []*failedTitle) (ok bool) {
 	}
 
 	return ok
+}
+
+func (*deploy) searchForDuplicates(ftitles []*failedTitle, wtorrents []*workerTorrents) {
+	for _, ftitle := range ftitles {
+		if ftitle.noDeploy {
+			continue
+		}
+
+		for _, worker := range wtorrents {
+			for _, trr := range worker.torrents {
+				if trr.Hash == ftitle.aniTorrent.Hash {
+					ftitle.duplicated = true
+					gLog.Debug().Str("torrent_name", ftitle.oldTorrent.GetName()).
+						Msg("found duplication in searched titles; the torrent marked as 'duplicated' and will be skipped")
+				}
+			}
+		}
+	}
+}
+
+func (*deploy) getTorrentsListForDeploy(ftitles []*failedTitle) []*anilibria.TitleTorrent {
+	var atorrents []*anilibria.TitleTorrent
+
+	for _, ftitle := range ftitles {
+		if ftitle.noDeploy || ftitle.duplicated {
+			gLog.Debug().Str("torrent_name", ftitle.oldTorrent.GetName()).
+				Msg("the torrent marked as noDeploy or as duplicated, so deploy will be skipped")
+			continue
+		}
+
+		atorrents = append(atorrents, ftitle.aniTorrent)
+	}
+
+	return atorrents
 }
