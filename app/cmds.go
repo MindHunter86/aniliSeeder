@@ -27,6 +27,9 @@ const (
 	cmdDryDeployAniUpdates
 	// cmdDryDeployAniChanges
 	// cmdDryDeployAniSchedule
+
+	cmdDryDeployFailedAnnounces
+	cmdDeployFailedAnnounces
 )
 
 type cmds struct{}
@@ -281,6 +284,40 @@ func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
 				time.Unix(int64(trr.UploadedTimestamp), 0).String(),
 			})
 		}
+	}
+
+	tb.SortBy([]table.SortBy{
+		{Name: "Worker", Mode: table.Asc},
+	})
+
+	tb.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
+	tb.Style().Options.SeparateRows = true
+
+	return buf, e
+}
+
+func (*cmds) deployFailedAnnounces(dryrun bool) (_ io.ReadWriter, e error) {
+	tb := table.NewWriter()
+	defer tb.Render()
+
+	buf := bytes.NewBuffer(nil)
+	tb.SetOutputMirror(buf)
+	tb.AppendHeader(table.Row{
+		"Worker", "Name", "Quality", "OldHash", "NewHash", "SizeChanges", // "Deploied" // TODO
+	})
+
+	var ftitles []*failedTitle
+	if ftitles, e = newDeploy().deployFailedAnnounces(dryrun); e != nil {
+		return
+	}
+
+	for _, ft := range ftitles {
+		tb.AppendRow([]interface{}{
+			ft.workerId, ft.oldTorrent.GetName(), ft.oldTorrent.GetTorrentQuality(),
+			ft.oldTorrent.GetShortHash(), ft.aniTorrent.GetShortHash(), ft.sizeChanges,
+		})
 	}
 
 	tb.SortBy([]table.SortBy{

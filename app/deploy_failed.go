@@ -71,7 +71,7 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 	}
 
 	// panic avoid
-	dryrun = append(dryrun, false)
+	dryrun = append(dryrun, true)
 	if !dryrun[0] {
 		m.sendDeployCommand(atitles)
 	}
