@@ -265,7 +265,7 @@ func (m *worker) getTorrents() (trrs []*deluge.Torrent, e error) {
 
 	m.trrs = trrs
 
-	gLog.Debug().Int("torrnets_count", len(trrs)).Msg("got reply from the worker with torrents list")
+	gLog.Debug().Int("torrents_count", len(trrs)).Msg("got reply from the worker with torrents list")
 	return
 }
 
@@ -308,4 +308,30 @@ func (m *worker) saveTorrentFile(fname string, fbytes *[]byte) (_ int64, e error
 
 	gLog.Debug().Int64("written_bytes", rpl.WrittenBytes).Msg("got reply from the worker with written bytes")
 	return rpl.WrittenBytes, e
+}
+
+func (m *worker) deleteTorrent(hash, name string, withData bool) (_ uint64, _ uint64, e error) {
+	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
+	defer cancel()
+
+	req := &pb.TorrentDropRequest{
+		Name:     name,
+		Hash:     hash,
+		WithData: withData,
+	}
+
+	var md metadata.MD
+	var rpl *pb.TorrentDropReply
+	if rpl, e = m.gservice.DropTorrent(ctx, req, grpc.Header(&md)); m.getRPCErrors(e) != nil {
+		return
+	}
+
+	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+		return
+	}
+
+	gLog.Debug().Uint64("worker_fspace", rpl.GetFreeSpace()).Uint64("worker_freed_space", rpl.FreedSpace).
+		Msg("got reply from the worker with deleted bytes")
+
+	return rpl.FreedSpace, rpl.FreeSpace, e
 }

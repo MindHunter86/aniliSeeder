@@ -139,3 +139,7 @@ func (*ApiClient) checkDownloadDir() error {
 func (*ApiClient) GetPopularTorrents() (error, error) {
 	return nil, nil
 }
+
+func (m *TitleTorrent) GetShortHash() string {
+	return m.Hash[0:9]
+}

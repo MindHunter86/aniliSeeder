@@ -48,6 +48,7 @@ message TorrentScoreReply {
 message TorrentDropRequest {
     string Hash = 1;
     string Name = 2;
+    bool WithData = 3;
 }
 message TorrentDropReply {
     uint64 FreedSpace = 1;

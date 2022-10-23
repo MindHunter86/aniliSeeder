@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MindHunter86/aniliSeeder/anilibria"
 	application "github.com/MindHunter86/aniliSeeder/app"
 	appcli "github.com/MindHunter86/aniliSeeder/cli"
 	"github.com/rs/zerolog"
@@ -96,6 +97,12 @@ func main() {
 			Name:    "quite",
 			Aliases: []string{"q"},
 			Usage:   "Flag is equivalent to verbose -1",
+		},
+
+		// deploy settings
+		&cli.BoolFlag{
+			Name:  "deploy-ignore-errors",
+			Usage: "",
 		},
 
 		// swarm settings
@@ -255,8 +262,8 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) error {
-		log.Debug().Msg("ready...")
-		log.Debug().Strs("args", os.Args).Msg("")
+		// log.Debug().Msg("ready...")
+		// log.Debug().Strs("args", os.Args).Msg("")
 
 		// TODO
 		// if c.Int("verbose") < -1 || c.Int("verbose") > 5 {
@@ -306,6 +313,23 @@ func main() {
 			Usage: "",
 			Action: func(c *cli.Context) error {
 				return appcli.TestDial(c, "")
+			},
+		},
+		&cli.Command{
+			Name:  "test",
+			Usage: "",
+			Action: func(c *cli.Context) error {
+				aniApi, e := anilibria.NewApiClient(c, &log)
+				if e != nil {
+					return e
+				}
+
+				titles, e := aniApi.SearchTitlesByName("Urusei Yatsura 2022")
+				for _, title := range titles {
+					log.Debug().Str("title_name", title.Names.Ru).Msg("")
+				}
+
+				return e
 			},
 		},
 	}
