@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"strings"
 	"time"
 
 	delugeclient "github.com/MindHunter86/go-libdeluge"
@@ -43,7 +44,7 @@ func (m *Client) GetTorrentsHashes() ([]string, error) {
 		hashes = append(hashes, hash)
 	}
 
-	gLog.Debug().Int("hashes_length", len(hashes)).Msg("the torrnets hashes has been collected")
+	gLog.Debug().Int("hashes_length", len(hashes)).Msg("the torrents hashes has been collected")
 	return hashes, e
 }
 
@@ -86,7 +87,7 @@ func (m *Client) GetWeakTorrents() ([]*delugeclient.TorrentStatus, error) {
 			continue
 		}
 
-		gLog.Info().Str("hash", hash).Str("torrnet_name", torrent.Name).Msg("marking as weak ...")
+		gLog.Info().Str("hash", hash).Str("torrent_name", torrent.Name).Msg("marking as weak ...")
 		weakTrrs = append(weakTrrs, torrent)
 	}
 
@@ -111,6 +112,7 @@ type Torrent struct {
 	TotalSeeds    int64
 	TotalSize     int64
 	TotalUploaded int64
+	TrackerStatus string
 
 	// Files          []delugeclient.File
 	// Peers          []delugeclient.Peer
@@ -137,6 +139,7 @@ func (*Client) newTorrentFromStatus(hash string, t *delugeclient.TorrentStatus) 
 		TotalDone:     t.TotalDone,
 		TotalUploaded: t.TotalUploaded,
 		TotalSize:     t.TotalSize,
+		TrackerStatus: t.TrackerStatus,
 	}
 }
 
@@ -197,4 +200,36 @@ func (m *Torrent) GetVKScore() (_ float64) {
 func (*Torrent) roundGivenScore(val float64, precision uint) float64 {
 	ratio := math.Pow(10, float64(precision))
 	return math.Round(val*ratio) / ratio
+}
+
+func (m *Torrent) GetTrackerStatus() string {
+	switch m.TrackerStatus {
+	case "Announce OK":
+		return "OK"
+	default:
+		return "Error"
+	}
+}
+
+func (m *Torrent) GetTrackerError() string {
+	return m.TrackerStatus
+}
+
+func (m *Torrent) IsTrackerOk() bool {
+	return m.TrackerStatus == "Announce OK"
+}
+
+func (m *Torrent) GetName() string {
+	name, _, _ := strings.Cut(m.Name, "- AniLibria.TV")
+	return strings.TrimSpace(name)
+}
+
+func (m *Torrent) GetShortHash() string {
+	return m.Hash[0:9]
+}
+
+func (m *Torrent) GetQuality() string {
+	// strings.Trim("][") is not worked here; and I don't know why...
+	_, rawquality, _ := strings.Cut(strings.Trim(m.Name, "]"), "[")
+	return strings.TrimSpace(rawquality)
 }

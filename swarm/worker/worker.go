@@ -246,7 +246,7 @@ func (m *Worker) ping() (reconn bool, e error) {
 		reconn = true
 	}
 
-	gLog.Debug().Str("ping_time", d.String()).Msg("mux ping duration")
+	gLog.Trace().Str("ping_time", d.String()).Msg("mux ping duration")
 	return
 }
 
@@ -288,6 +288,10 @@ func (*Worker) RequestFreeSpaceFromWorker(string) (uint64, error) {
 
 func (*Worker) SaveTorrentFile(string, string, *[]byte) (int64, error) {
 	return 0, errFuncIsNotForWorker
+}
+
+func (*Worker) RemoveTorrent(string, string, string, ...bool) (uint64, uint64, error) {
+	return 0, 0, errFuncIsNotForWorker
 }
 
 // todo
