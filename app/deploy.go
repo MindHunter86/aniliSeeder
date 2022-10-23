@@ -39,42 +39,6 @@ func (*deploy) getWorkersTorrents() (trrs []*deluge.Torrent, e error) {
 	return
 }
 
-func (m *deploy) sendDeployCommand(deployTasks map[string][]anilibria.TitleTorrent) {
-	var e error
-
-	for wid, trrs := range deployTasks {
-		gLog.Debug().Str("worker_id", wid).Msg("starting deploy process for the worker...")
-
-		for _, trr := range trrs {
-			name, fbytes, err := gAniApi.GetTitleTorrentFile(strconv.Itoa(trr.TorrentId))
-			if err != nil {
-				gLog.Error().Err(e).Msg("got an error in receiving the deploy file form the anilibria")
-				break
-			}
-
-			gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Str("old_torrent_name", name).Msg("fixing torrent name...")
-			if name, e = m.fixTorrentFileName(name, trr.Quality.String, trr.Series.String); e != nil {
-				gLog.Error().Err(e).Msg("got an error in fixing torrent name")
-				break
-			}
-
-			gLog.Debug().Str("torrent_name", name).Str("torrent_hash", trr.GetShortHash()).
-				Msg("sendind deploy request to the worker...")
-
-			var wbytes int64
-			if wbytes, e = gSwarm.SaveTorrentFile(wid, name, fbytes); e != nil {
-				gLog.Error().Err(e).Msg("got an error while processing the deploy request")
-				continue
-			}
-
-			gLog.Info().Str("worker_ud", wid).Int64("written_bytes", wbytes).
-				Msg("the torrent file has been sended to the worker")
-		}
-
-		gLog.Debug().Str("worker_id", wid).Msg("deploy process for the worker has been finished")
-	}
-}
-
 func (*deploy) fixTorrentFileName(fname, quality, series string) (_ string, e error) {
 	tname, _, ok := strings.Cut(fname, "AniLibria.TV")
 	if !ok {
@@ -190,4 +154,40 @@ loop:
 	}
 
 	return wtitles, e
+}
+
+func (m *deploy) sendDeployCommand(deployTasks map[string][]anilibria.TitleTorrent) {
+	var e error
+
+	for wid, trrs := range deployTasks {
+		gLog.Debug().Str("worker_id", wid).Msg("starting deploy process for the worker...")
+
+		for _, trr := range trrs {
+			name, fbytes, err := gAniApi.GetTitleTorrentFile(strconv.Itoa(trr.TorrentId))
+			if err != nil {
+				gLog.Error().Err(e).Msg("got an error in receiving the deploy file form the anilibria")
+				break
+			}
+
+			gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Str("old_torrent_name", name).Msg("fixing torrent name...")
+			if name, e = m.fixTorrentFileName(name, trr.Quality.String, trr.Series.String); e != nil {
+				gLog.Error().Err(e).Msg("got an error in fixing torrent name")
+				break
+			}
+
+			gLog.Debug().Str("torrent_name", name).Str("torrent_hash", trr.GetShortHash()).
+				Msg("sendind deploy request to the worker...")
+
+			var wbytes int64
+			if wbytes, e = gSwarm.SaveTorrentFile(wid, name, fbytes); e != nil {
+				gLog.Error().Err(e).Msg("got an error while processing the deploy request")
+				continue
+			}
+
+			gLog.Info().Str("worker_ud", wid).Int64("written_bytes", wbytes).
+				Msg("the torrent file has been sended to the worker")
+		}
+
+		gLog.Debug().Str("worker_id", wid).Msg("deploy process for the worker has been finished")
+	}
 }
