@@ -265,7 +265,7 @@ func (m *worker) getTorrents() (trrs []*deluge.Torrent, e error) {
 
 	m.trrs = trrs
 
-	gLog.Debug().Int("torrnets_count", len(trrs)).Msg("got reply from the worker with torrents list")
+	gLog.Debug().Int("torrents_count", len(trrs)).Msg("got reply from the worker with torrents list")
 	return
 }
 

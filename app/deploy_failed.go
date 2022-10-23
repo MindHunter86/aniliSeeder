@@ -130,7 +130,7 @@ func (*deploy) sortTitlesByLeechers(ftitles []*failedTitle) {
 	// debug
 	if zerolog.GlobalLevel() == zerolog.DebugLevel {
 		for _, ftitle := range ftitles {
-			gLog.Debug().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).Int64("torrnet_size_mb", ftitle.aniTorrent.TotalSize/1024/1024).
+			gLog.Debug().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).Int64("torrent_size_mb", ftitle.aniTorrent.TotalSize/1024/1024).
 				Int("torrent_leechers", ftitle.aniTorrent.Leechers).Msg("sorted slice debug")
 		}
 	}
@@ -156,7 +156,7 @@ func (*deploy) isSpaceEnoughForUpdate(ftitles []*failedTitle) (ok bool) {
 		// title's deploy status definition
 		ftitle.sizeChanges = ftitle.aniTorrent.TotalSize - ftitle.oldTorrent.TotalSize
 		if fspaces[ftitle.workerId]-uint64(ftitle.sizeChanges) <= 0 {
-			gLog.Warn().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).Str("torrnet_name", ftitle.oldTorrent.GetName()).
+			gLog.Warn().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).Str("torrent_name", ftitle.oldTorrent.GetName()).
 				Int64("torrent_size_changes", ftitle.sizeChanges).Msg("could not deploy the torrents because of insufficient space")
 			ftitle.noDeploy = true
 		}

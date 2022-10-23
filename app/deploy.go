@@ -92,7 +92,7 @@ func (*deploy) sortTorrentListByLeechers(trrs []*anilibria.TitleTorrent) (_ []*a
 	// debug
 	if zerolog.GlobalLevel() == zerolog.DebugLevel {
 		for _, trr := range trrs {
-			gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Int64("torrnet_size_mb", trr.TotalSize/1024/1024).
+			gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Int64("torrent_size_mb", trr.TotalSize/1024/1024).
 				Int("torrent_leechers", trr.Leechers).Msg("sorted slice debug")
 		}
 	}

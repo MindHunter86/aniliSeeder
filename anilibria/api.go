@@ -299,7 +299,7 @@ func (*ApiClient) parseFileFromResponse(rsp *io.ReadCloser, filename string) (e 
 		return
 	}
 
-	gLog.Info().Int64("bytes", n).Msg("the torrnet file has been successfully saved")
+	gLog.Info().Int64("bytes", n).Msg("the torrent file has been successfully saved")
 	return fd.Sync()
 }
 

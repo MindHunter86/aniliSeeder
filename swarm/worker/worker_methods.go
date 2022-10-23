@@ -216,7 +216,7 @@ func (m *WorkerService) DropTorrent(ctx context.Context, req *pb.TorrentDropRequ
 	var fspace uint64
 	if req.GetWithData() {
 		fspace = uint64(trr.TotalSize)
-		gLog.Warn().Str("master_id", mid).Msg("torrnet removing with data detected")
+		gLog.Warn().Str("master_id", mid).Msg("torrent removing with data detected")
 	}
 
 	var ok bool

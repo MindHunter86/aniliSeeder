@@ -44,7 +44,7 @@ func (m *Client) GetTorrentsHashes() ([]string, error) {
 		hashes = append(hashes, hash)
 	}
 
-	gLog.Debug().Int("hashes_length", len(hashes)).Msg("the torrnets hashes has been collected")
+	gLog.Debug().Int("hashes_length", len(hashes)).Msg("the torrents hashes has been collected")
 	return hashes, e
 }
 
@@ -87,7 +87,7 @@ func (m *Client) GetWeakTorrents() ([]*delugeclient.TorrentStatus, error) {
 			continue
 		}
 
-		gLog.Info().Str("hash", hash).Str("torrnet_name", torrent.Name).Msg("marking as weak ...")
+		gLog.Info().Str("hash", hash).Str("torrent_name", torrent.Name).Msg("marking as weak ...")
 		weakTrrs = append(weakTrrs, torrent)
 	}
 
