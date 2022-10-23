@@ -213,12 +213,27 @@ func (m *WorkerService) DropTorrent(ctx context.Context, req *pb.TorrentDropRequ
 		return nil, status.Errorf(codes.InvalidArgument, "given name is not equal torrent name")
 	}
 
+	var fspace uint64
+	if req.GetWithData() {
+		fspace = uint64(trr.TotalSize)
+		gLog.Warn().Str("master_id", mid).Msg("torrnet removing with data detected")
+	}
+
+	var ok bool
+	if ok, e = gDeluge.RemoveTorrent(trr.Hash, req.GetWithData()); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
+	if !ok {
+		return nil, status.Errorf(codes.Internal, "undefined internal error in torrent removing; ok is not true")
+	}
+
 	if e = m.authorizeServiceReply(ctx); e != nil {
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
 	return &pb.TorrentDropReply{
-		FreedSpace: uint64(trr.TotalSize),
+		FreedSpace: fspace,
 		FreeSpace:  utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
 	}, e
 }
