@@ -9,11 +9,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var (
-	errDplWorkerUnavailable = errors.New("")
-	errDplFailedAnnounces   = errors.New("")
-)
-
 type failedTitle struct {
 	workerId   string
 	oldTorrent *deluge.Torrent
@@ -30,9 +25,9 @@ type workerTorrents struct {
 	torrents []*deluge.Torrent
 }
 
-func (m *deploy) dryDeployFailedAnnounces() ([]*failedTitle, error) {
-	return m.deployFailedAnnounces(true)
-}
+// func (m *deploy) dryDeployFailedAnnounces() ([]*failedTitle, error) {
+// 	return m.deployFailedAnnounces(true)
+// }
 
 func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, e error) {
 	wtorrents, ok := m.getWorkersTorrentsV2()
