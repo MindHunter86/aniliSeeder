@@ -66,7 +66,7 @@ func (m *ApiClient) getApiResponseV2(hmethod string, amethod ApiRequestMethod, p
 		case []string:
 			rgs.Add(param[0], param[1])
 		case io.Reader:
-			body = param.(io.Reader)
+			body = param
 		}
 	}
 
