@@ -17,8 +17,8 @@ func CheckDirectoryFreeSpace(dir string) uint64 {
 	c := h.MustFindProc("GetDiskFreeSpaceExW")
 
 	var fbytes int64
-	_, _, err := c.Call(uintptr(unsafe.Pointer(windows.StringToUTF16Ptr(dir))),
-		uintptr(unsafe.Pointer(&fbytes)), nil, nil)
+	c.Call(uintptr(unsafe.Pointer(windows.StringToUTF16Ptr(dir))),
+		uintptr(unsafe.Pointer(&fbytes)), uintptr(unsafe.Pointer(nil)), uintptr(unsafe.Pointer(nil)))
 
 	return uint64(fbytes)
 }
