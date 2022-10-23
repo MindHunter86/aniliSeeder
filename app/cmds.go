@@ -62,21 +62,22 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 
 	var buf = bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
-	tb.AppendHeader(table.Row{"Worker", "Hash", "Name", "TotalSize", "Ratio", "Uploaded", "Seedtime", "VKScore"})
+	tb.AppendHeader(table.Row{"Worker", "Hash", "Name", "TotalSize", "Ratio", "Uploaded", "Seedtime", "Announce", "VKScore"})
 
 	for id, wrk := range gSwarm.GetConnectedWorkers() {
 		for _, trr := range wrk.ActiveTorrents {
 			name, _, _ := strings.Cut(trr.Name, "- AniLibria.TV")
 			seedTime := time.Duration(trr.SeedingTime) * time.Second
 			tb.AppendRow([]interface{}{
-				id[0:8], trr.Hash[0:9], name, trr.TotalSize / 1024 / 1024, trr.Ratio, trr.TotalUploaded / 1024 / 1024, seedTime.String(), trr.GetVKScore(),
+				id[0:8], trr.Hash[0:9], name, trr.TotalSize / 1024 / 1024, trr.Ratio,
+				trr.TotalUploaded / 1024 / 1024, seedTime.String(), trr.GetTrackerStatus(), trr.GetVKScore(),
 			})
 
 		}
 	}
 
 	tb.SetRowPainter(func(raw table.Row) text.Colors {
-		if raw[7].(float64) >= float64(gCli.Int("torrents-vkscore-line")) {
+		if raw[8].(float64) >= float64(gCli.Int("torrents-vkscore-line")) && raw[7] == "OK" {
 			return text.Colors{text.FgGreen}
 		}
 		if raw[4].(float32) < 1 {

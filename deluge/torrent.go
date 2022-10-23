@@ -201,10 +201,19 @@ func (*Torrent) roundGivenScore(val float64, precision uint) float64 {
 	return math.Round(val*ratio) / ratio
 }
 
-func (m *Torrent) isTrackerOk() bool {
-	return m.TrackerStatus == "Announce OK"
+func (m *Torrent) GetTrackerStatus() string {
+	switch m.TrackerStatus {
+	case "Announce OK":
+		return "OK"
+	default:
+		return "Error"
+	}
 }
 
-func (m *Torrent) getTrackerError() string {
+func (m *Torrent) GetTrackerError() string {
 	return m.TrackerStatus
+}
+
+func (m *Torrent) IsTrackerOk() bool {
+	return m.TrackerStatus == "Announce OK"
 }
