@@ -55,7 +55,7 @@ func (m *Master) SaveTorrentFile(wid string, fname string, fbytes *[]byte) (int6
 	return wrk.saveTorrentFile(fname, fbytes)
 }
 
-func (m *Master) DropTorrent(wid string, name string, hash string, wdata ...bool) (uint64, uint64, error) {
+func (m *Master) RemoveTorrent(wid string, name string, hash string, wdata ...bool) (uint64, uint64, error) {
 	if !m.workerPool.isWorkerExists(wid) {
 		return 0, 0, errWorkerNotFound
 	}
