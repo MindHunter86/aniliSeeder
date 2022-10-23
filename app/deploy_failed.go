@@ -33,10 +33,17 @@ func (m *deploy) dryDeployFailedAnnounces() ([]*failedTitle, error) {
 	return m.deployFailedAnnounces(true)
 }
 
+// TODO
+// !! before sending to deploy check if searched tiltes are exists
+// !!
 func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, e error) {
 	wtorrents, ok := m.getWorkersTorrentsV2()
 	if !ok {
 		return nil, errors.New("could not continue the delpoy process because one of workers errors")
+	}
+
+	if len(wtorrents) == 0 {
+		return nil, errors.New("there is nothing to redeploy; all workers are unavailable")
 	}
 
 	if ftitles, e = m.searchFailedTitles(wtorrents); e != nil {
@@ -54,25 +61,33 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 		return nil, errors.New("could not continue the deploy process because of insufficient space for some torrents")
 	}
 
+	// !!
+	// !! DEBUG
 	ok = m.dropFailedTorrent(ftitles)
 	if !ok && !gCli.Bool("deploy-ignore-errors") {
 		return nil, errors.New("could not continue the deploy process because of unsuccessful deletions")
 	}
 
 	// redeploy ...
-	var anitorrents []*anilibria.TitleTorrent
-	for _, ftitle := range ftitles {
-		anitorrents = append(anitorrents, ftitle.aniTorrent)
-	}
-
-	var atitles = make(map[string][]anilibria.TitleTorrent)
-	if atitles, e = m.balanceForWorkers(anitorrents); e != nil {
-		return
-	}
 
 	// panic avoid
 	dryrun = append(dryrun, true)
 	if !dryrun[0] {
+		ok = m.dropFailedTorrent(ftitles)
+		if !ok && !gCli.Bool("deploy-ignore-errors") {
+			return nil, errors.New("could not continue the deploy process because of unsuccessful deletions")
+		}
+
+		var anitorrents []*anilibria.TitleTorrent
+		for _, ftitle := range ftitles {
+			anitorrents = append(anitorrents, ftitle.aniTorrent)
+		}
+
+		var atitles = make(map[string][]anilibria.TitleTorrent)
+		if atitles, e = m.balanceForWorkers(anitorrents); e != nil {
+			return
+		}
+
 		m.sendDeployCommand(atitles)
 	}
 
@@ -87,7 +102,10 @@ func (*deploy) getWorkersTorrentsV2() (_ []*workerTorrents, ok bool) {
 
 	ok = true
 	for id := range gSwarm.GetConnectedWorkers() {
-		var wt *workerTorrents
+		wt := &workerTorrents{
+			wid: id,
+		}
+
 		if wt.torrents, err = gSwarm.RequestTorrentsFromWorker(id); err != nil {
 			gLog.Error().Str("worker_id", id).Err(err).Msg("could not get torrents from the given worker id; skipping...")
 			ok = false
@@ -115,29 +133,31 @@ func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*failedTitle
 			gLog.Debug().Str("torrents_hash", trr.GetShortHash()).Msg("torrent marked as failed")
 
 			var titles []*anilibria.Title
-			if titles, e = gAniApi.SearchTitlesByName(trr.Name); e != nil {
+			if titles, e = gAniApi.SearchTitlesByName(trr.GetName()); e != nil {
 				return
 			}
 
 			if ltitles := len(titles); ltitles != 1 {
-				gLog.Warn().Str("torrent_hash", trr.GetShortHash()).Str("title_name", trr.Name).Int("titles_count", ltitles).
+				gLog.Warn().Str("torrent_hash", trr.GetShortHash()).Str("title_name", trr.GetName()).Int("titles_count", ltitles).
 					Msg("got a problem in searching failed titles; there are none, two or more titles in the result; manual search required")
 
 				// TODO
 				// ?? Telegram Alert... github.com/MindHunter86/aniliSeeder/issues/55
-				gLog.Warn().Str("torrent_hash", trr.GetShortHash()).Str("title_name", trr.Name).
+				gLog.Warn().Str("torrent_hash", trr.GetShortHash()).Str("title_name", trr.GetName()).
 					Msg("failed torrent will be skipped and not deleted")
 				continue
 			}
 
 			// trying to find failed torrent by quality
 			var found bool
-			for _, anitrr := range titles[1].Torrents.List {
-				if trr.GetTorrentQuality() != anitrr.Quality.String {
+			for _, anitrr := range titles[0].Torrents.List {
+				if trr.GetQuality() != anitrr.Quality.String {
+					gLog.Debug().Str("title_name", trr.GetName()).Str("torrent_found_quality", anitrr.Quality.String).
+						Msg("anilibria quality found but skipped")
 					continue
 				}
 
-				gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Str("title_name", trr.Name).
+				gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Str("title_name", trr.GetName()).
 					Str("new_torrent_hash", anitrr.GetShortHash()).Msg("the title's torrent replacement has been found")
 
 				ftitles = append(ftitles, &failedTitle{
@@ -149,8 +169,8 @@ func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*failedTitle
 			}
 
 			if !found {
-				gLog.Warn().Str("torrent_hash", trr.GetShortHash()).Str("title_name", trr.Name).
-					Msg("there is a proble in searching title's torrent by quality string; manual search required")
+				gLog.Warn().Str("torrent_hash", trr.GetShortHash()).Str("title_name", trr.GetName()).Str("torrent_quality", trr.GetQuality()).
+					Msg("there is a problem in searching title's torrent by quality string; manual search required")
 			}
 		}
 	}

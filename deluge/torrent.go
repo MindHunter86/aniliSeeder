@@ -228,7 +228,8 @@ func (m *Torrent) GetShortHash() string {
 	return m.Hash[0:9]
 }
 
-func (m *Torrent) GetTorrentQuality() string {
-	_, rawquality, _ := strings.Cut(m.Name, "- AniLibria.TV")
-	return strings.TrimSpace(strings.Trim(rawquality, "[]"))
+func (m *Torrent) GetQuality() string {
+	// strings.Trim("][") is not worked here; and I don't know why...
+	_, rawquality, _ := strings.Cut(strings.Trim(m.Name, "]"), "[")
+	return strings.TrimSpace(rawquality)
 }

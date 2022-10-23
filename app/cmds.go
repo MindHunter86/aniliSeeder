@@ -305,7 +305,7 @@ func (*cmds) deployFailedAnnounces(dryrun bool) (_ io.ReadWriter, e error) {
 	buf := bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"Worker", "Name", "Quality", "OldHash", "NewHash", "SizeChanges", // "Deploied" // TODO
+		"Worker", "Name", "Quality", "OldHash", "NewHash", "SizeChanges KB", // "Deploied" // TODO
 	})
 
 	var ftitles []*failedTitle
@@ -315,8 +315,8 @@ func (*cmds) deployFailedAnnounces(dryrun bool) (_ io.ReadWriter, e error) {
 
 	for _, ft := range ftitles {
 		tb.AppendRow([]interface{}{
-			ft.workerId, ft.oldTorrent.GetName(), ft.oldTorrent.GetTorrentQuality(),
-			ft.oldTorrent.GetShortHash(), ft.aniTorrent.GetShortHash(), ft.sizeChanges,
+			ft.workerId[0:8], ft.oldTorrent.GetName(), ft.oldTorrent.GetQuality(),
+			ft.oldTorrent.GetShortHash(), ft.aniTorrent.GetShortHash(), ft.sizeChanges / 1024,
 		})
 	}
 
