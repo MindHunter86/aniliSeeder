@@ -1,10 +1,10 @@
 # Github Actions: AniliSeeder code builder
 name: AniliSeeder code builder
 
-on: push
-  # release:
-  #   types:
-  #     - created
+on:
+  release:
+    types:
+      - created
 
 jobs:
   parse_phase:
