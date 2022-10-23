@@ -53,6 +53,7 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 	}
 
 	m.sortTitlesByLeechers(ftitles)
+	m.searchForDuplicates(ftitles, wtorrents)
 
 	ok = m.isSpaceEnoughForUpdate(ftitles)
 	if !ok && !gCli.Bool("deploy-ignore-errors") {
@@ -69,7 +70,6 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 			return nil, errors.New("could not continue the deploy process because of unsuccessful deletions")
 		}
 
-		m.searchForDuplicates(ftitles, wtorrents)
 		atorrents := m.getTorrentsListForDeploy(ftitles)
 
 		var btorrents = make(map[string][]anilibria.TitleTorrent)
@@ -223,17 +223,19 @@ func (*deploy) dropFailedTorrent(ftitles []*failedTitle) (ok bool) {
 			continue
 		}
 
-		dbytes, tbytes, err := gSwarm.RemoveTorrent(ftitle.workerId, ftitle.oldTorrent.Hash, ftitle.oldTorrent.Name)
+		dbytes, tbytes, err := gSwarm.RemoveTorrent(ftitle.workerId, ftitle.oldTorrent.Hash, ftitle.oldTorrent.GetName())
 		if err != nil {
 			gLog.Error().Err(err).Str("torrent_hash", ftitle.aniTorrent.GetShortHash()).Str("torrent_name", ftitle.oldTorrent.GetName()).
 				Msg("got an error in torrent removing process; skipping the torrent...")
 			ok = false
+			continue
 		}
 
 		if dbytes != 0 {
 			gLog.Warn().Str("torrent_hash", ftitle.aniTorrent.GetShortHash()).Str("torrent_name", ftitle.oldTorrent.GetName()).
 				Msg("an internal error has occurred, operator intervention is required")
 			ok = false
+			continue
 		}
 
 		gLog.Info().Str("torrent_hash", ftitle.aniTorrent.GetShortHash()).Str("torrent_name", ftitle.oldTorrent.GetName()).
