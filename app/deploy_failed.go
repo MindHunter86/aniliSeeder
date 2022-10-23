@@ -2,9 +2,11 @@ package app
 
 import (
 	"errors"
+	"sort"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
+	"github.com/rs/zerolog"
 )
 
 var (
@@ -121,7 +123,17 @@ func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*failedTitle
 }
 
 func (*deploy) sortTitlesByLeechers(ftitles []*failedTitle) {
+	sort.Slice(ftitles, func(i, j int) bool {
+		return ftitles[i].aniTorrent.Leechers > ftitles[j].aniTorrent.Leechers
+	})
 
+	// debug
+	if zerolog.GlobalLevel() == zerolog.DebugLevel {
+		for _, ftitle := range ftitles {
+			gLog.Debug().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).Int64("torrnet_size_mb", ftitle.aniTorrent.TotalSize/1024/1024).
+				Int("torrent_leechers", ftitle.aniTorrent.Leechers).Msg("sorted slice debug")
+		}
+	}
 }
 
 func (*deploy) isSpaceEnoughForUpdate(ftitles []*failedTitle) (ok bool) {
