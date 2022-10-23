@@ -124,30 +124,24 @@ func (*deploy) sortTitlesByLeechers(ftitles []*failedTitle) {
 
 }
 
-func (*deploy) isSpaceEnoughForUpdate(ftitles []*failedTitle) bool {
-	var ok = true
+func (*deploy) isSpaceEnoughForUpdate(ftitles []*failedTitle) (ok bool) {
 	var fspaces = make(map[string]uint64)
 
+	ok = true
 	for _, ftitle := range ftitles {
-		if fspaces[ftitle.workerId] != 0 {
-			continue
-		}
-
-		var e error
-		if fspaces[ftitle.workerId], e = gSwarm.RequestFreeSpaceFromWorker(ftitle.workerId); e != nil {
-			gLog.Warn().Err(e).Msg("got an error in get free space for worker operation in deploy process")
-			ok = false
-		}
-
-		gLog.Debug().Str("worker_id", ftitle.workerId).Uint64("worker_free_space", fspaces[ftitle.workerId]).
-			Msg("title's worker free space debug")
-	}
-
-	for _, ftitle := range ftitles {
+		// cache worker's free space for another titles
 		if fspaces[ftitle.workerId] == 0 {
-			continue
+			var e error
+			if fspaces[ftitle.workerId], e = gSwarm.RequestFreeSpaceFromWorker(ftitle.workerId); e != nil {
+				gLog.Warn().Err(e).Msg("got an error in get free space for worker operation in deploy process")
+				ok = false
+			}
+
+			gLog.Debug().Str("worker_id", ftitle.workerId).Uint64("worker_free_space", fspaces[ftitle.workerId]).
+				Msg("title's worker free space debug")
 		}
 
+		// title's deploy status definition
 		ftitle.sizeChanges = ftitle.aniTorrent.TotalSize - ftitle.oldTorrent.TotalSize
 		if fspaces[ftitle.workerId]-uint64(ftitle.sizeChanges) <= 0 {
 			gLog.Warn().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).Str("torrnet_name", ftitle.oldTorrent.GetName()).
@@ -156,7 +150,7 @@ func (*deploy) isSpaceEnoughForUpdate(ftitles []*failedTitle) bool {
 		}
 	}
 
-	return ok
+	return
 }
 
 func (*deploy) dropFailedTorrent(ftitles []*failedTitle) error {
