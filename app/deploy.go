@@ -70,7 +70,7 @@ func (m *deploy) sendDeployCommand(deployTasks map[string][]anilibria.TitleTorre
 				Msg("the torrent file has been sended to the worker")
 		}
 
-		gLog.Debug().Str("worker_id", wid).Msg("deploy proccess for the worker has been finished")
+		gLog.Debug().Str("worker_id", wid).Msg("deploy process for the worker has been finished")
 	}
 }
 
@@ -116,7 +116,7 @@ func (*deploy) balanceForWorkers(trrs []*anilibria.TitleTorrent) (_ map[string][
 	// }
 
 	if len(wrks) == 0 {
-		return nil, errors.New("there is no avaliable workers for the balancing proccess")
+		return nil, errors.New("there is no avaliable workers for the balancing process")
 	}
 	blncr := make(chan string, len(wrks))
 
@@ -133,7 +133,7 @@ func (*deploy) balanceForWorkers(trrs []*anilibria.TitleTorrent) (_ map[string][
 	}
 
 	if len(blncr) == 0 {
-		return nil, errors.New("there is no workers with free space for the balancing proccess")
+		return nil, errors.New("there is no workers with free space for the balancing process")
 	}
 
 	var wtitles = make(map[string][]anilibria.TitleTorrent)
@@ -182,7 +182,7 @@ loop:
 			continue
 		}
 
-		gLog.Debug().Msg("there is no avaliable workers for the balancing proccess")
+		gLog.Debug().Msg("there is no avaliable workers for the balancing process")
 		break loop
 	}
 

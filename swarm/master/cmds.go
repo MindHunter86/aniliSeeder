@@ -54,3 +54,12 @@ func (m *Master) SaveTorrentFile(wid string, fname string, fbytes *[]byte) (int6
 	wrk := m.workerPool.getWorker(wid)
 	return wrk.saveTorrentFile(fname, fbytes)
 }
+
+// func (m *Master) DropTorrent(string, string, bool) (uint64, uint64, error) {
+// 	if !m.workerPool.isWorkerExists(wid) {
+// 		return 0, errWorkerNotFound
+// 	}
+
+// 	wrk := m.workerPool.getWorker(wid)
+// 	return wrk.saveTorrentFile(fname, fbytes)
+// }
