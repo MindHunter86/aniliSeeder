@@ -3,9 +3,6 @@
 package utils
 
 import (
-	"log/syslog"
-	"os"
-
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
