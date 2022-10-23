@@ -256,8 +256,8 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) error {
-		log.Debug().Msg("ready...")
-		log.Debug().Strs("args", os.Args).Msg("")
+		// log.Debug().Msg("ready...")
+		// log.Debug().Strs("args", os.Args).Msg("")
 
 		// TODO
 		// if c.Int("verbose") < -1 || c.Int("verbose") > 5 {
