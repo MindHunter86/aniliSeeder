@@ -99,6 +99,12 @@ func main() {
 			Usage:   "Flag is equivalent to verbose -1",
 		},
 
+		// deploy settings
+		*cli.BoolFlag{
+			Name:  "deploy-ignore-errors",
+			Usage: "",
+		},
+
 		// swarm settings
 		&cli.BoolFlag{
 			Name:  "swarm-is-master",

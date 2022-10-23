@@ -29,20 +29,56 @@ type workerTorrents struct {
 	torrents []*deluge.Torrent
 }
 
-func (m *deploy) dryDeployFailedAnnounces() error {
+func (m *deploy) dryDeployFailedAnnounces() ([]*failedTitle, error) {
 	return m.deployFailedAnnounces(true)
 }
 
-func (m *deploy) deployFailedAnnounces(dryrun ...bool) (e error) {
-	// wtorrents, ok := m.getWorkersTorrentsV2()
-	// if !ok {
-	// 	return errors.New("could not continue the delpoy process because one of workers errors")
-	// }
+func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, e error) {
+	wtorrents, ok := m.getWorkersTorrentsV2()
+	if !ok {
+		return nil, errors.New("could not continue the delpoy process because one of workers errors")
+	}
 
-	//
+	if ftitles, e = m.searchFailedTitles(wtorrents); e != nil {
+		return
+	}
 
-	//
-	return
+	if len(ftitles) == 0 {
+		return nil, errors.New("there is nothing to redeploy; all torrents has good announces")
+	}
+
+	m.sortTitlesByLeechers(ftitles)
+
+	ok = m.isSpaceEnoughForUpdate(ftitles)
+	if !ok && !gCli.Bool("deploy-ignore-errors") {
+		return nil, errors.New("could not continue the deploy process because of insufficient space for some torrents")
+	}
+
+	ok = m.dropFailedTorrent(ftitles)
+	if !ok && !gCli.Bool("deploy-ignore-errors") {
+		return nil, errors.New("could not continue the deploy process because of unsuccessful deletions")
+	}
+
+	// redeploy ...
+	var anitorrents []*anilibria.TitleTorrent
+	for _, ftitle := range ftitles {
+		anitorrents = append(anitorrents, ftitle.aniTorrent)
+	}
+
+	var atitles = make(map[string][]anilibria.TitleTorrent)
+	if atitles, e = m.balanceForWorkers(anitorrents); e != nil {
+		return
+	}
+
+	// panic avoid
+	dryrun = append(dryrun, false)
+	if !dryrun[0] {
+		m.sendDeployCommand(atitles)
+	}
+
+	// TODO
+	// return failed titles with redeploy status (OK\nonOK)
+	return ftitles, e
 }
 
 func (*deploy) getWorkersTorrentsV2() (_ []*workerTorrents, ok bool) {
