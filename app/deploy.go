@@ -24,43 +24,18 @@ func newDeploy() *deploy {
 	return &deploy{}
 }
 
-func (m *deploy) run() (map[string][]anilibria.TitleTorrent, error) {
-	return m.deploy(false)
-}
+func (*deploy) getWorkersTorrents() (trrs []*deluge.Torrent, e error) {
+	for id := range gSwarm.GetConnectedWorkers() {
+		var wtrrs []*deluge.Torrent
+		if wtrrs, e = gSwarm.RequestTorrentsFromWorker(id); e != nil {
+			gLog.Error().Str("worker_id", id).Err(e).Msg("could not get torrents from the given worker id; skipping...")
+			continue
+		}
 
-func (m *deploy) dryRun() (map[string][]anilibria.TitleTorrent, error) {
-	return m.deploy(true)
-}
-
-func (m *deploy) deploy(isDryRun bool) (_ map[string][]anilibria.TitleTorrent, e error) {
-	var titles []*anilibria.TitleTorrent
-	if titles, e = m.getAnilibriaUpdatesTorrents(); e != nil {
-		return
+		trrs = append(trrs, wtrrs...)
 	}
 
-	var torrents []*deluge.Torrent
-	if torrents, e = m.getWorkersTorrents(); e != nil {
-		return
-	}
-
-	titleUpdates := m.compareUpdateListWithTorrents(titles, torrents)
-
-	sortedUpdates := m.sortTorrentListByLeechers(titleUpdates)
-
-	var assignedTitles = make(map[string][]anilibria.TitleTorrent)
-	if assignedTitles, e = m.balanceForWorkers(sortedUpdates); e != nil {
-		return
-	}
-
-	if len(assignedTitles) == 0 {
-		return nil, errors.New("there is nothing to deploy")
-	}
-
-	if !isDryRun {
-		m.sendDeployCommand(assignedTitles)
-	}
-
-	return assignedTitles, e
+	return
 }
 
 func (m *deploy) sendDeployCommand(deployTasks map[string][]anilibria.TitleTorrent) {

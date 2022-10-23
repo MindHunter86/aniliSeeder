@@ -3,7 +3,6 @@ package app
 import (
 	"bytes"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
@@ -66,10 +65,9 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 
 	for id, wrk := range gSwarm.GetConnectedWorkers() {
 		for _, trr := range wrk.ActiveTorrents {
-			name, _, _ := strings.Cut(trr.Name, "- AniLibria.TV")
 			seedTime := time.Duration(trr.SeedingTime) * time.Second
 			tb.AppendRow([]interface{}{
-				id[0:8], trr.GetShortHash(), name, trr.TotalSize / 1024 / 1024, trr.Ratio,
+				id[0:8], trr.GetShortHash(), trr.GetName(), trr.TotalSize / 1024 / 1024, trr.Ratio,
 				trr.TotalUploaded / 1024 / 1024, seedTime.String(), trr.GetTrackerStatus(), trr.GetVKScore(),
 			})
 

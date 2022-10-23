@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"strings"
 	"time"
 
 	delugeclient "github.com/MindHunter86/go-libdeluge"
@@ -218,6 +219,16 @@ func (m *Torrent) IsTrackerOk() bool {
 	return m.TrackerStatus == "Announce OK"
 }
 
+func (m *Torrent) GetName() string {
+	name, _, _ := strings.Cut(m.Name, "- AniLibria.TV")
+	return strings.TrimSpace(name)
+}
+
 func (m *Torrent) GetShortHash() string {
 	return m.Hash[0:9]
+}
+
+func (m *Torrent) GetTorrentQuality() string {
+	_, rawquality, _ := strings.Cut(m.Name, "- AniLibria.TV")
+	return strings.TrimSpace(strings.Trim(rawquality, "[]"))
 }
