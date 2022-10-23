@@ -165,10 +165,29 @@ func (*deploy) isSpaceEnoughForUpdate(ftitles []*failedTitle) (ok bool) {
 	return
 }
 
-func (*deploy) dropFailedTorrent(ftitles []*failedTitle) error {
-	// for _, ftitle := range ftitles {
+func (*deploy) dropFailedTorrent(ftitles []*failedTitle) (ok bool) {
+	ok = true
 
-	// }
+	for _, ftitle := range ftitles {
+		dbytes, tbytes, err := gSwarm.RemoveTorrent(ftitle.workerId, ftitle.oldTorrent.Name, ftitle.oldTorrent.Hash)
+		if err != nil {
+			gLog.Error().Err(err).Str("torrent_hash", ftitle.aniTorrent.GetShortHash()).Str("torrent_name", ftitle.oldTorrent.GetName()).
+				Msg("got an error in torrent removing process; skipping the torrent...")
+			ok = false
+		}
 
-	return nil
+		if dbytes != 0 {
+			gLog.Warn().Str("torrent_hash", ftitle.aniTorrent.GetShortHash()).Str("torrent_name", ftitle.oldTorrent.GetName()).
+				Msg("an internal error has occurred, operator intervention is required")
+			ok = false
+		}
+
+		gLog.Info().Str("torrent_hash", ftitle.aniTorrent.GetShortHash()).Str("torrent_name", ftitle.oldTorrent.GetName()).
+			Msg("the torrent has been removed; it is now ready to be redeployed")
+
+		gLog.Debug().Str("worker_id", ftitle.workerId).Uint64("worker_fspace", tbytes).
+			Msg("worker free space debug after torrent deleting")
+	}
+
+	return ok
 }
