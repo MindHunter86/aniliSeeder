@@ -62,9 +62,9 @@ func (m *ApiClient) getApiResponseV2(hmethod string, amethod ApiRequestMethod, p
 	params = append(params, nil)
 
 	for _, param := range params {
-		switch param.(type) {
+		switch param := param.(type) {
 		case []string:
-			rgs.Add(param.([]string)[0], (param.([]string)[1]))
+			rgs.Add(param[0], param[1])
 		case io.Reader:
 			body = param.(io.Reader)
 		}
