@@ -225,7 +225,7 @@ func (*deploy) dropFailedTorrent(ftitles []*failedTitle) (ok bool) {
 	ok = true
 
 	for _, ftitle := range ftitles {
-		dbytes, tbytes, err := gSwarm.RemoveTorrent(ftitle.workerId, ftitle.oldTorrent.Name, ftitle.oldTorrent.Hash)
+		dbytes, tbytes, err := gSwarm.RemoveTorrent(ftitle.workerId, ftitle.oldTorrent.Hash, ftitle.oldTorrent.Name)
 		if err != nil {
 			gLog.Error().Err(err).Str("torrent_hash", ftitle.aniTorrent.GetShortHash()).Str("torrent_name", ftitle.oldTorrent.GetName()).
 				Msg("got an error in torrent removing process; skipping the torrent...")
