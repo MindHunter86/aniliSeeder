@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log/syslog"
 	"os"
 	"runtime"
 	"sort"
@@ -11,6 +10,7 @@ import (
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	application "github.com/MindHunter86/aniliSeeder/app"
 	appcli "github.com/MindHunter86/aniliSeeder/cli"
+	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -321,20 +321,22 @@ func main() {
 			Name:  "serve",
 			Usage: "",
 			Action: func(c *cli.Context) (e error) {
-				var slog *syslog.Writer
 				if c.String("syslog-addr") != "" {
+					if runtime.GOOS == "windows" {
+						log.Error().Msg("sorry, but syslog is not worked for windows; golang does not support syslog for win systems")
+						return os.ErrProcessDone
+					}
+
 					log.Debug().Msg("connecting to the syslog server...")
-					if slog, e = syslog.Dial(c.String("syslog-proto"), c.String("syslog-addr"), syslog.LOG_INFO, c.String("syslog-tag")); e != nil {
+
+					var nlog *zerolog.Logger
+					if nlog, e = utils.SetUpSyslogWriter(c); e != nil {
 						return
 					}
 
 					log.Info().Msg("connection to the syslog server has been established; reset log driver ...")
 
-					log = zerolog.New(zerolog.MultiLevelWriter(
-						zerolog.ConsoleWriter{Out: os.Stderr},
-						slog,
-					)).With().Timestamp().Logger()
-
+					log = *nlog
 					log = log.Hook(SeverityHook{})
 					log.Info().Msg("zerolog has been reinited; starting application ...")
 				}
