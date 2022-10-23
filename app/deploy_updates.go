@@ -70,7 +70,7 @@ func (*deploy) compareUpdateListWithTorrents(atrrs []*anilibria.TitleTorrent, wt
 
 	// debug
 	for _, trr := range mtrrs {
-		gLog.Debug().Str("torrent_hash", trr.Hash[0:9]).Int64("torrent_size", trr.TotalSize).Msg("there is a new item for the further deploy")
+		gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Int64("torrent_size", trr.TotalSize).Msg("there is a new item for the further deploy")
 	}
 
 	return

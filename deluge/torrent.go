@@ -217,3 +217,7 @@ func (m *Torrent) GetTrackerError() string {
 func (m *Torrent) IsTrackerOk() bool {
 	return m.TrackerStatus == "Announce OK"
 }
+
+func (m *Torrent) GetShortHash() string {
+	return m.Hash[0:9]
+}
