@@ -100,7 +100,7 @@ func main() {
 		},
 
 		// deploy settings
-		*cli.BoolFlag{
+		&cli.BoolFlag{
 			Name:  "deploy-ignore-errors",
 			Usage: "",
 		},
