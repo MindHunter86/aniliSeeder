@@ -64,7 +64,7 @@ func (m *ApiClient) getApiResponseV2(hmethod string, amethod ApiRequestMethod, p
 	for _, param := range params {
 		switch param.(type) {
 		case []string:
-			rgs.Add(param.([]string)[0], url.QueryEscape(param.([]string)[1]))
+			rgs.Add(param.([]string)[0], (param.([]string)[1]))
 		case io.Reader:
 			body = param.(io.Reader)
 		}
