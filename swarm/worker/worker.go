@@ -290,6 +290,10 @@ func (*Worker) SaveTorrentFile(string, string, *[]byte) (int64, error) {
 	return 0, errFuncIsNotForWorker
 }
 
+func (*Worker) RemoveTorrent(string, string, string, ...bool) (uint64, uint64, error) {
+	return 0, 0, errFuncIsNotForWorker
+}
+
 // todo
 // ? refactor
 // func (m *Worker) ping() (e error) {

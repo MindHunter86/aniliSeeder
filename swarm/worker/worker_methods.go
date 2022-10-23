@@ -178,7 +178,7 @@ func (m *WorkerService) GetTorrentScore(ctx context.Context, req *pb.TorrentScor
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
-	if req.GetName() != trr.Name {
+	if req.GetName() != trr.GetName() {
 		return nil, status.Errorf(codes.InvalidArgument, "given name is not equal torrent name")
 	}
 
