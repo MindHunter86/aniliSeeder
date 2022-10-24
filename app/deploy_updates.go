@@ -53,6 +53,14 @@ func (*deploy) getAnilibriaUpdatesTorrents() (trrs []*anilibria.TitleTorrent, e 
 	}
 
 	for _, ttl := range ttls {
+		// !! XXX
+		// boruto-naruto-next-generations exclude
+		// github.com/MindHunter86/aniliSeeder/issues/59
+		if ttl.Id == 3996 {
+			continue
+		}
+		// !! XXX
+
 		trrs = append(trrs, ttl.Torrents.List...)
 	}
 
