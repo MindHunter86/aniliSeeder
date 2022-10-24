@@ -57,6 +57,7 @@ func (*deploy) getAnilibriaUpdatesTorrents() (trrs []*anilibria.TitleTorrent, e 
 		// boruto-naruto-next-generations exclude
 		// github.com/MindHunter86/aniliSeeder/issues/59
 		if ttl.Id == 3996 {
+			gLog.Error().Msg("ATTENTION!!! Ignoring title with id 3996; please, fix this shit immediately")
 			continue
 		}
 		// !! XXX
