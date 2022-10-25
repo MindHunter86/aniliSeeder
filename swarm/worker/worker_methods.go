@@ -68,7 +68,7 @@ func (*WorkerService) authorizeMasterRequest(ctx context.Context) (string, error
 		return "", status.Errorf(codes.Internal, e.Error())
 	}
 
-	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
+	mac := hmac.New(sha256.New, []byte(gCli.String("master-secret")))
 	mac.Write([]byte(id[0]))
 	expectedMAC := mac.Sum(nil)
 	if !hmac.Equal(wmac, expectedMAC) {
@@ -81,7 +81,7 @@ func (*WorkerService) authorizeMasterRequest(ctx context.Context) (string, error
 }
 
 func (m *WorkerService) authorizeServiceReply(ctx context.Context) error {
-	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
+	mac := hmac.New(sha256.New, []byte(gCli.String("master-secret")))
 	io.WriteString(mac, m.w.id)
 
 	md := metadata.New(map[string]string{
