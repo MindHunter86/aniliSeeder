@@ -129,7 +129,7 @@ func (m *worker) getId() string {
 }
 
 func (*worker) newServiceRequest(d time.Duration) (context.Context, context.CancelFunc) {
-	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
+	mac := hmac.New(sha256.New, []byte(gCli.String("master-secret")))
 	io.WriteString(mac, gMasterId)
 
 	md := metadata.New(map[string]string{
@@ -169,7 +169,7 @@ func (*worker) authorizeSerivceReply(md *metadata.MD) (_ string, e error) {
 		return "", status.Errorf(codes.Internal, e.Error())
 	}
 
-	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
+	mac := hmac.New(sha256.New, []byte(gCli.String("master-secret")))
 	mac.Write([]byte(id[0]))
 	expectedMAC := mac.Sum(nil)
 	if !hmac.Equal(mmac, expectedMAC) {

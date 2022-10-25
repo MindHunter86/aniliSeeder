@@ -76,14 +76,14 @@ func (m *Worker) Bootstrap() (e error) {
 }
 
 func (m *Worker) connect() (e error) {
-	gLog.Debug().Str("master_addr", gCli.String("swarm-master-addr")).
+	gLog.Debug().Str("master_addr", gCli.String("master-addr")).
 		Msg("trying to establish raw tcp connection with the master server")
 
-	if m.rawconn, e = net.DialTimeout("tcp", gCli.String("swarm-master-addr"), gCli.Duration("grpc-connect-timeout")); e != nil {
+	if m.rawconn, e = net.DialTimeout("tcp", gCli.String("master-addr"), gCli.Duration("grpc-connect-timeout")); e != nil {
 		return
 	}
 
-	gLog.Debug().Str("master_addr", gCli.String("swarm-master-addr")).Msg("trying to initialize mux session...")
+	gLog.Debug().Str("master_addr", gCli.String("master-addr")).Msg("trying to initialize mux session...")
 	if m.msession, e = yamux.Server(m.rawconn, yamux.DefaultConfig()); e != nil {
 		return
 	}

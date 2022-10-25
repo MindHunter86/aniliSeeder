@@ -51,7 +51,7 @@ func NewMaster(ctx context.Context) *Master {
 }
 
 func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
-	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
 		Msg("trying to initialize mux session...")
 
 	var muxsess *yamux.Session
@@ -66,7 +66,7 @@ func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
 
 	gLog.Debug().Str("ping_time", d.String()).Msg("mux session is alive")
 
-	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
 		Msg("trying to initialize gRPC client...")
 
 	if _, e = m.workerPool.newWorker(muxsess); e != nil {
@@ -79,10 +79,10 @@ func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
 }
 
 func (m *Master) Bootstrap() (e error) {
-	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
 		Msg("initializing the tcp server for further muxing")
 
-	if m.rawListener, e = net.Listen("tcp", gCli.String("swarm-master-addr")); e != nil {
+	if m.rawListener, e = net.Listen("tcp", gCli.String("master-addr")); e != nil {
 		return
 	}
 
@@ -90,7 +90,7 @@ func (m *Master) Bootstrap() (e error) {
 }
 
 func (m *Master) run() (e error) {
-	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
 		Msg("initializing net acceptor; starting listening for incoming TCP connections...")
 
 	var wg sync.WaitGroup
@@ -110,7 +110,7 @@ LOOP:
 				gLog.Error().Err(e).Msg("got some error with processing a new tcp client")
 			}
 
-			gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).Str("client_addr", conn.RemoteAddr().String()).
+			gLog.Debug().Str("master_listen", gCli.String("master-addr")).Str("client_addr", conn.RemoteAddr().String()).
 				Msg("new incoming connection; processing...")
 
 			go func(cn net.Conn) {
@@ -170,7 +170,7 @@ func (*Master) authorizeWorker(ctx context.Context) (string, error) {
 		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
 		return "", status.Errorf(codes.InvalidArgument, "")
 	}
-	if ak[0] != gCli.String("swarm-master-secret") {
+	if ak[0] != gCli.String("master-secret") {
 		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
 		return "", status.Errorf(codes.Unauthenticated, "")
 	}
