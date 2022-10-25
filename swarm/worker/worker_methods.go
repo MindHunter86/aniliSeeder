@@ -282,7 +282,7 @@ func (m *WorkerService) GetSystemFreeSpace(ctx context.Context, _ *emptypb.Empty
 func (m *WorkerService) ForceReannounce(ctx context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, e error) {
 	mid, e := m.authorizeMasterRequest(ctx)
 	if e != nil {
-		return nil, e
+		return
 	}
 
 	gLog.Debug().Str("master_id", mid).Msg("processing master request...")
@@ -299,5 +299,6 @@ func (m *WorkerService) ForceReannounce(ctx context.Context, _ *emptypb.Empty) (
 	if e = m.authorizeServiceReply(ctx); e != nil {
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
-	return
+
+	return &emptypb.Empty{}, e
 }
