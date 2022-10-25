@@ -257,7 +257,3 @@ func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *
 	gLog.Info().Str("worker_id", wid).Msg("new client registration has been completed")
 	return &emptypb.Empty{}, e
 }
-
-func (*Master) IsMaster() bool {
-	return true
-}

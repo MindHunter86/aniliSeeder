@@ -294,6 +294,10 @@ func (*Worker) RemoveTorrent(string, string, string, ...bool) (uint64, uint64, e
 	return 0, 0, errFuncIsNotForWorker
 }
 
+func (*Worker) ForceReannounce(string) error {
+	return errFuncIsNotForWorker
+}
+
 // todo
 // ? refactor
 // func (m *Worker) ping() (e error) {
