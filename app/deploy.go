@@ -12,7 +12,14 @@ import (
 )
 
 var (
-	errNothingDeploy = errors.New("there is nothing to deploy")
+	errInsufficientSpace = errors.New("could not continue the deploy process because of insufficient space for some torrents")
+	errFailedDeletions   = errors.New("could not continue the deploy process because of unsuccessful deletions")
+	errFailedWorker      = errors.New("could not continue the delpoy process because one of workers errors")
+	errNoFailures        = errors.New("there is nothing to redeploy; all torrents with OK announces")
+	errNoWorkers         = errors.New("there is nothing to redeploy; all workers are unavailable")
+
+	errNothingDeploy   = errors.New("there is nothing to deploy")
+	errNothingAssigned = errors.New("found some updates but there is now assigned titles")
 )
 
 type deploy struct{}

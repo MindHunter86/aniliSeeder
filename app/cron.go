@@ -17,6 +17,7 @@ type cronTask uint8
 
 const (
 	cronTaskDeployUpdates cronTask = 1 << iota
+	cronTaskReannounce
 )
 
 func newCron() *cron {
@@ -73,30 +74,18 @@ func (m *cron) runCronTasks() {
 
 	tm := time.Now()
 
-	// GO-W5011 - "x % 1 is always zero"
-	gLog.Debug().Msg("running 1min jobs...")
 	// < 1 min jobs here >
+	gLog.Debug().Msg("running 1min jobs...")
+	m.reannounce()
 
 	if tm.Minute()%5 == 0 {
+		// < 5 min jobs here >
 		gLog.Debug().Msg("running 5min jobs...")
-
-		if m.tasks&cronTaskDeployUpdates == 0 {
-			gLog.Debug().Msg("deploy updates is not locked; running job...")
-			m.toggleTaskLock(cronTaskDeployUpdates)
-
-			m.wg.Add(1)
-			go func(done func()) {
-				if err := m.deployUpdates(); err != nil {
-					gLog.Error().Err(err).Msg("got an error in cron deployUpdates job")
-				}
-
-				m.toggleTaskLock(cronTaskDeployUpdates)
-				done()
-			}(m.wg.Done)
-		}
+		m.redeploy()
 	}
 
 	if tm.Minute()%60 == 0 {
+		// < 1 hour jobs here >
 		gLog.Debug().Msg("running 60min jobs...")
 	}
 
@@ -117,38 +106,54 @@ func (m *cron) getTasks() (t uint8) {
 	return
 }
 
-// TASKS
-
-// func (*cron) checkTorrentsAnnounces() (e error) {
-// 	return
-// }
-
-func (m *cron) deployUpdates() (e error) {
-	gLog.Info().Msg("starting check deployment status cronjob...")
-
-	if e = m.checkDryDeployReport(); e != nil && e != errNothingDeploy {
-		return
+func (m *cron) redeploy() {
+	if m.tasks&cronTaskDeployUpdates != 0 {
+		gLog.Debug().Msg("deploy updates is locked now; skipping job...")
 	}
 
-	if e == errNothingDeploy {
-		gLog.Info().Msg("there is nothing to deploy; deploy stopped")
-		return nil
+	m.toggleTaskLock(cronTaskDeployUpdates)
+	gLog.Debug().Msg("deploy updates is not locked; running job...")
+
+	m.wg.Add(1)
+	go func(done func()) {
+		if _, e := newDeploy().run(); e != nil && e != errNothingDeploy && e != errNothingAssigned {
+			gLog.Error().Err(e).Msg("got an error in cron deployUpdates job")
+		}
+
+		//! TODO
+		//! if errNothingAssigned
+		//!   try to clean weak VKscore torrents
+
+		m.toggleTaskLock(cronTaskDeployUpdates)
+		done()
+	}(m.wg.Done)
+}
+
+func (m *cron) reannounce() {
+	if m.tasks&cronTaskReannounce != 0 {
+		gLog.Debug().Msg("reannounces is locked now; skipping job...")
 	}
 
-	// !!
-	// TODO try to clean weak VKscore torrents
-	// !!
+	m.toggleTaskLock(cronTaskReannounce)
+	gLog.Debug().Msg("reannounces is not locked; running job...")
 
-	gLog.Info().Msg("dry deploy says that anilibria has some updates; deploying titles...")
-	return m.sendDeployCommand()
-}
+	m.wg.Add(1)
+	go func(done func()) {
+		var e error
+		wrks := gSwarm.GetConnectedWorkers()
 
-func (*cron) checkDryDeployReport() (e error) {
-	_, e = newDeploy().dryRun()
-	return
-}
+		for wid := range wrks {
+			if e = gSwarm.ForceReannounce(wid); e != nil {
+				gLog.Error().Err(e).Msg("got an error in force reannounce request")
+			}
+		}
 
-func (*cron) sendDeployCommand() (e error) {
-	_, e = newDeploy().run()
-	return
+		// wait for reannounces && force redeploy
+		if _, e = newDeploy().deployFailedAnnounces(); e != nil && e != errNoFailures {
+			gLog.Error().Err(e).Msg("got an error in deploy failed_announces request")
+		}
+
+		m.toggleTaskLock(cronTaskReannounce)
+		done()
+	}(m.wg.Done)
 }
