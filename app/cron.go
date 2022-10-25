@@ -114,6 +114,7 @@ func (m *cron) runCronTasks() {
 func (m *cron) redeploy() {
 	if m.tasks&cronTaskDeployUpdates != 0 {
 		gLog.Debug().Msg("deploy updates is locked now; skipping job...")
+		return
 	}
 
 	m.toggleTaskLock(cronTaskDeployUpdates)
@@ -137,6 +138,7 @@ func (m *cron) redeploy() {
 func (m *cron) reannounce() {
 	if m.tasks&cronTaskReannounce != 0 {
 		gLog.Debug().Msg("reannounces is locked now; skipping job...")
+		return
 	}
 
 	m.toggleTaskLock(cronTaskReannounce)
