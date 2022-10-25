@@ -25,6 +25,11 @@ func newCron() *cron {
 }
 
 func (m *cron) run() {
+	if gCli.Bool("cron-disable") {
+		gLog.Warn().Msg("cron-disable flag detected; cron services will be deleted from bootstrap process")
+		return
+	}
+
 	gLog.Debug().Time("time_now", time.Now()).Msg("starting cron subservice...")
 
 	m.wg.Add(1)

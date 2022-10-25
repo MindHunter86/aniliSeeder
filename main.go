@@ -260,6 +260,12 @@ func main() {
 			Value: "./data",
 		},
 
+		// cron settings
+		&cli.BoolFlag{
+			Name:  "cron-disable",
+			Usage: "",
+		},
+
 		// common settings
 		&cli.StringFlag{
 			Name:  "torrentfiles-dir",
