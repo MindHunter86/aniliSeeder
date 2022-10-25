@@ -89,14 +89,40 @@ func (m *Master) Bootstrap() (e error) {
 	return m.run()
 }
 
+type monitoringState uint8
+
+const (
+	monStateDisabled monitoringState = 1 << iota
+	monStateProbing
+)
+
+func (m *monitoringState) toggle(s monitoringState) {
+	*m = *m ^ s // oh lol ... xD
+}
+
 func (m *Master) run() (e error) {
 	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
 		Msg("initializing net acceptor; starting listening for incoming TCP connections...")
 
 	var wg sync.WaitGroup
 
-	var clock sync.RWMutex
-	var conns []net.Conn
+	var mlock sync.Mutex
+	var mstate monitoringState
+	mstate.toggle(monStateDisabled)
+
+	// panic avoid if cli.args returns 0
+	ticker := time.NewTicker(time.Second)
+	ticker.Stop()
+
+	if i := gCli.Duration("master-mon-interval"); i != 0 {
+		mstate.toggle(monStateDisabled)
+		ticker.Reset(i)
+	}
+
+	wg.Add(1)
+	go func(done func()) {
+		m.serve(done)
+	}(wg.Done)
 
 LOOP:
 	for {
@@ -104,39 +130,65 @@ LOOP:
 		case <-gCtx.Done():
 			gLog.Warn().Msg("context done() has been caught; closing grpc server socket...")
 			break LOOP
-		default:
-			conn, e := m.rawListener.Accept()
-			if e != nil {
-				gLog.Error().Err(e).Msg("got some error with processing a new tcp client")
+
+		case <-ticker.C:
+			mlock.Lock()
+			if mstate&monStateDisabled != 0 {
+				gLog.Warn().Msg("internal error! master monitoring is disabled; skipping probe...")
+				mlock.Unlock()
+				continue
 			}
 
-			gLog.Debug().Str("master_listen", gCli.String("master-addr")).Str("client_addr", conn.RemoteAddr().String()).
-				Msg("new incoming connection; processing...")
+			if mstate&monStateProbing != 0 {
+				gLog.Debug().Msg("master monitoring is probing now; skipping ticker event...")
+				mlock.Unlock()
+				return
+			}
 
-			go func(cn net.Conn) {
-				if err := m.handleIncomingConnection(cn); e != nil {
-					gLog.Warn().Err(err).Msg("got error while handling the workers connection")
-					cn.Close()
-				}
-			}(conn)
+			mstate.toggle(monStateProbing)
+			mlock.Unlock()
+
+			wg.Add(1)
+			go func(done func(), mlock *sync.Mutex, mstate *monitoringState) {
+				gLog.Trace().Msg("trying to find dead workers...")
+				m.workerPool.findDeadWorkers()
+
+				mlock.Lock()
+				mstate.toggle(monStateProbing)
+				mlock.Unlock()
+
+				done()
+			}(wg.Done, &mlock, &mstate)
 		}
 	}
+	gLog.Info().Msg("closing net listener...")
+	m.rawListener.Close()
 
-	clock.Lock()
-	defer clock.Unlock()
-
-	for _, conn := range conns {
-		gLog.Debug().Str("client_addr", conn.RemoteAddr().String()).Msg("trying to close the accepted client connection")
-		if e = conn.Close(); e != nil {
-			gLog.Warn().Str("client_addr", conn.RemoteAddr().String()).Err(e).
-				Msg("got some errors while closing client connection")
-		}
-	}
-
-	gLog.Debug().Msg("waiting for closing all accepted connection...")
+	gLog.Debug().Msg("waiting for closing all opened goroutines...")
 	wg.Wait()
 
 	return
+}
+
+func (m *Master) serve(done func()) {
+	defer done()
+
+	for {
+		conn, e := m.rawListener.Accept()
+		if e != nil && e != net.ErrClosed {
+			gLog.Error().Err(e).Msg("got some error with processing a new tcp client")
+		}
+
+		gLog.Debug().Str("master_listen", gCli.String("master-addr")).Str("client_addr", conn.RemoteAddr().String()).
+			Msg("new incoming connection; processing...")
+
+		go func(cn net.Conn) {
+			if err := m.handleIncomingConnection(cn); e != nil {
+				gLog.Warn().Err(err).Msg("got error while handling the workers connection")
+				cn.Close()
+			}
+		}(conn)
+	}
 }
 
 func (*Master) authorizeWorker(ctx context.Context) (string, error) {

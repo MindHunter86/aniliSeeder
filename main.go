@@ -114,8 +114,9 @@ func main() {
 
 		// swarm settings
 		&cli.BoolFlag{
-			Name:  "is-master",
-			Usage: "",
+			Name:    "is-master",
+			Usage:   "",
+			EnvVars: []string{"IS_MASTER"},
 		},
 		&cli.StringFlag{
 			Name:  "master-addr",
@@ -127,6 +128,11 @@ func main() {
 			Usage:   "",
 			Value:   "randomsecretkey",
 			EnvVars: []string{"SWARM_MASTER_SECRETKEY"},
+		},
+		&cli.DurationFlag{
+			Name:  "master-mon-interval",
+			Usage: "master workers monitoring checks interval; 0 - for disabling",
+			Value: 3 * time.Second,
 		},
 
 		// gRPC settings
