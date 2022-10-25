@@ -48,6 +48,20 @@ loop:
 	m.wg.Wait()
 }
 
+func (m *cron) toggleTaskLock(task cronTask) {
+	m.mu.Lock()
+	m.tasks = m.tasks ^ task
+	m.mu.Unlock()
+}
+
+func (m *cron) getTasks() (t uint8) {
+	m.mu.RLock()
+	t = uint8(m.tasks)
+	m.mu.RUnlock()
+
+	return
+}
+
 //	triggers
 //	1 min - collect stats and push to graphite (?)
 //
@@ -90,20 +104,6 @@ func (m *cron) runCronTasks() {
 	}
 
 	gLog.Debug().Uint8("cron_tasks", m.getTasks()).Msg("mask after switch")
-}
-
-func (m *cron) toggleTaskLock(task cronTask) {
-	m.mu.Lock()
-	m.tasks = m.tasks ^ task
-	m.mu.Unlock()
-}
-
-func (m *cron) getTasks() (t uint8) {
-	m.mu.RLock()
-	t = uint8(m.tasks)
-	m.mu.RUnlock()
-
-	return
 }
 
 func (m *cron) redeploy() {
