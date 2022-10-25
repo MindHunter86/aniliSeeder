@@ -31,21 +31,18 @@ func (m *Client) GetTorrents() (map[string]*delugeclient.TorrentStatus, error) {
 	return m.deluge.TorrentsStatus(delugeclient.StateUnspecified, nil)
 }
 
-func (m *Client) GetTorrentsHashes() ([]string, error) {
-	var e error
-	var trrs map[string]*delugeclient.TorrentStatus
-
-	if trrs, e = m.deluge.TorrentsStatus(delugeclient.StateUnspecified, nil); e != nil {
-		return nil, e
+func (m *Client) GetTorrentsHashes() (thashes []string, e error) {
+	var trrs = make(map[string]*delugeclient.TorrentStatus)
+	if trrs, e = m.GetTorrents(); e != nil {
+		return
 	}
 
-	var hashes []string
 	for hash := range trrs {
-		hashes = append(hashes, hash)
+		thashes = append(thashes, hash)
 	}
 
-	gLog.Debug().Int("hashes_length", len(hashes)).Msg("the torrents hashes has been collected")
-	return hashes, e
+	gLog.Debug().Int("hashes_length", len(thashes)).Msg("the torrents hashes has been collected")
+	return
 }
 
 // TODO:
@@ -189,6 +186,10 @@ func (m *Client) TorrentStatus(hash string) (_ *Torrent, e error) {
 	}
 
 	return m.newTorrentFromStatus(hash, tstatus), e
+}
+
+func (m *Client) ForceReannounce(hashes ...string) (e error) {
+	return m.deluge.ForceReannounce(hashes)
 }
 
 func (m *Torrent) GetVKScore() (_ float64) {

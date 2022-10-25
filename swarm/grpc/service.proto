@@ -20,6 +20,8 @@ service WorkerService {
     rpc SaveTorrentFile(TFileSaveRequest) returns (TFileSaveReply) {}
 
     rpc GetSystemFreeSpace(google.protobuf.Empty) returns (SystemSpaceReply) {}
+
+    rpc ForceReannounce(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 message InitReply {

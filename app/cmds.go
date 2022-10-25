@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
+	"github.com/MindHunter86/aniliSeeder/deluge"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
@@ -67,7 +68,12 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 	tb.AppendHeader(table.Row{"Worker", "Hash", "Name", "TotalSize", "Ratio", "Uploaded", "Seedtime", "Announce", "VKScore"})
 
 	for id, wrk := range gSwarm.GetConnectedWorkers() {
-		for _, trr := range wrk.ActiveTorrents {
+		var trrs []*deluge.Torrent
+		if trrs, e = gSwarm.RequestTorrentsFromWorker(wrk.Id); e != nil {
+			return
+		}
+
+		for _, trr := range trrs {
 			seedTime := time.Duration(trr.SeedingTime) * time.Second
 			tb.AppendRow([]interface{}{
 				id[0:8], trr.GetShortHash(), trr.GetName(), trr.TotalSize / 1024 / 1024, trr.Ratio,

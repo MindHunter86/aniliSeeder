@@ -11,6 +11,10 @@ var (
 	errWorkerNotFound = errors.New("there is not worker with such id")
 )
 
+func (*Master) IsMaster() bool {
+	return true
+}
+
 func (m *Master) GetConnectedWorkers() (_ map[string]*swarm.SwarmWorker) {
 	var wrks = make(map[string]*swarm.SwarmWorker)
 
@@ -63,4 +67,12 @@ func (m *Master) RemoveTorrent(wid string, name string, hash string, wdata ...bo
 	// panic avoid
 	wdata = append(wdata, false)
 	return m.workerPool.getWorker(wid).deleteTorrent(name, hash, wdata[0])
+}
+
+func (m *Master) ForceReannounce(wid string) error {
+	if !m.workerPool.isWorkerExists(wid) {
+		return errWorkerNotFound
+	}
+
+	return m.workerPool.getWorker(wid).forceReannounce()
 }

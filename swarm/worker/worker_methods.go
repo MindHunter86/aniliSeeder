@@ -278,3 +278,27 @@ func (m *WorkerService) GetSystemFreeSpace(ctx context.Context, _ *emptypb.Empty
 		FreeSpace: utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
 	}, e
 }
+
+func (m *WorkerService) ForceReannounce(ctx context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, e error) {
+	mid, e := m.authorizeMasterRequest(ctx)
+	if e != nil {
+		return
+	}
+
+	gLog.Debug().Str("master_id", mid).Msg("processing master request...")
+
+	var thashes []string
+	if thashes, e = gDeluge.GetTorrentsHashes(); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
+	if e = gDeluge.ForceReannounce(thashes...); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
+	if e = m.authorizeServiceReply(ctx); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
+	return &emptypb.Empty{}, e
+}

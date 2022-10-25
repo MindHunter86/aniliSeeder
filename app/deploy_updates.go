@@ -1,8 +1,6 @@
 package app
 
 import (
-	"errors"
-
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
 )
@@ -27,6 +25,9 @@ func (m *deploy) deploy(isDryRun bool) (_ map[string][]anilibria.TitleTorrent, e
 	}
 
 	titleUpdates := m.compareUpdateListWithTorrents(titles, torrents)
+	if len(titleUpdates) == 0 {
+		return nil, errNothingDeploy
+	}
 
 	sortedUpdates := m.sortTorrentListByLeechers(titleUpdates)
 
@@ -36,7 +37,7 @@ func (m *deploy) deploy(isDryRun bool) (_ map[string][]anilibria.TitleTorrent, e
 	}
 
 	if len(assignedTitles) == 0 {
-		return nil, errors.New("there is nothing to deploy")
+		return nil, errNothingAssigned
 	}
 
 	if !isDryRun {

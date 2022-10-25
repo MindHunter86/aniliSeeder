@@ -335,3 +335,19 @@ func (m *worker) deleteTorrent(hash, name string, withData bool) (_ uint64, _ ui
 
 	return rpl.FreedSpace, rpl.FreeSpace, e
 }
+
+func (m *worker) forceReannounce() (e error) {
+	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
+	defer cancel()
+
+	var md metadata.MD
+	if _, e = m.gservice.ForceReannounce(ctx, &emptypb.Empty{}, grpc.Header(&md)); m.getRPCErrors(e) != nil {
+		return
+	}
+
+	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+		return
+	}
+
+	return
+}
