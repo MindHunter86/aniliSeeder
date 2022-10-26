@@ -81,11 +81,12 @@ func (m *workerPool) findDeadWorkers() {
 			continue
 		}
 
-		gLog.Trace().Str("worker_id", wid).Msg("probing worker...")
-		if ok := wrk.getRPConnState(); ok {
-			gLog.Trace().Str("worker_id", wid).Msg("worker is alive")
-			continue
-		}
+		// https://github.com/MindHunter86/aniliSeeder/issues/72
+		// gLog.Trace().Str("worker_id", wid).Msg("probing worker...")
+		// if ok := wrk.getRPConnState(); ok {
+		// 	gLog.Trace().Str("worker_id", wid).Msg("worker is alive")
+		// 	continue
+		// }
 
 		gLog.Debug().Str("worker_id", wid).Msg("trying to ping mux session because of abnormal grpc state")
 		if e := wrk.isMuxSessionAlive(); e != nil {
@@ -93,7 +94,8 @@ func (m *workerPool) findDeadWorkers() {
 			m.dropWorker(wid)
 		}
 
-		gLog.Warn().Str("worker_id", wid).Msg("worker has bad rpc state but mux pings are ok")
+		// gLog.Warn().Str("worker_id", wid).Msg("worker has bad rpc state but mux pings are ok")
+		gLog.Trace().Str("worker_id", wid).Msg("worker is alive")
 	}
 }
 
