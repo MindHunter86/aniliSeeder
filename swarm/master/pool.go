@@ -9,25 +9,18 @@ import (
 )
 
 type workerPool struct {
-	pool sync.Pool
-
 	sync.RWMutex
 	workers map[string]*worker
 }
 
 func newWorkerPool() *workerPool {
 	return &workerPool{
-		pool: sync.Pool{
-			New: func() interface{} {
-				return &worker{}
-			},
-		},
 		workers: make(map[string]*worker),
 	}
 }
 
-func (m *workerPool) newWorker(msess *yamux.Session) (wrk *worker, e error) {
-	wrk = newWorker(msess)
+func (m *workerPool) newWorker(msess *yamux.Session, mid string) (wrk *worker, e error) {
+	wrk = newWorker(msess, mid)
 
 	if e = wrk.connect(); e != nil {
 		return

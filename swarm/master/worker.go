@@ -35,15 +35,18 @@ type worker struct {
 	gconn    *grpc.ClientConn
 	gservice pb.WorkerServiceClient
 
+	masterId string
+
 	id          string
 	trrs        []*deluge.Torrent
 	version     string
 	wdFreeSpace uint64
 }
 
-func newWorker(ms *yamux.Session) *worker {
+func newWorker(ms *yamux.Session, mid string) *worker {
 	return &worker{
-		msess: ms,
+		msess:    ms,
+		masterId: mid,
 	}
 }
 
@@ -128,12 +131,12 @@ func (m *worker) getId() string {
 	return m.id
 }
 
-func (*worker) newServiceRequest(d time.Duration) (context.Context, context.CancelFunc) {
+func (m *worker) newServiceRequest(d time.Duration) (context.Context, context.CancelFunc) {
 	mac := hmac.New(sha256.New, []byte(gCli.String("master-secret")))
-	io.WriteString(mac, gMasterId)
+	io.WriteString(mac, m.masterId)
 
 	md := metadata.New(map[string]string{
-		"x-master-id":           gMasterId,
+		"x-master-id":           m.masterId,
 		"x-authentication-hash": hex.EncodeToString(mac.Sum(nil)),
 	})
 
