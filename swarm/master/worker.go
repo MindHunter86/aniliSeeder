@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/MindHunter86/aniliSeeder/deluge"
@@ -35,15 +36,20 @@ type worker struct {
 	gconn    *grpc.ClientConn
 	gservice pb.WorkerServiceClient
 
-	id          string
+	masterId string
+
 	trrs        []*deluge.Torrent
 	version     string
 	wdFreeSpace uint64
+
+	mu sync.RWMutex
+	id string
 }
 
-func newWorker(ms *yamux.Session) *worker {
+func newWorker(ms *yamux.Session, mid string) *worker {
 	return &worker{
-		msess: ms,
+		msess:    ms,
+		masterId: mid,
 	}
 }
 
@@ -124,16 +130,26 @@ func (m *worker) reconnect() (e error) {
 // 	return
 // }
 
-func (m *worker) getId() string {
-	return m.id
+func (m *worker) getId() (id string) {
+	m.mu.RLock()
+	id = m.id
+	m.mu.RUnlock()
+
+	return
 }
 
-func (*worker) newServiceRequest(d time.Duration) (context.Context, context.CancelFunc) {
-	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
-	io.WriteString(mac, gMasterId)
+func (m *worker) setId(id string) {
+	m.mu.Lock()
+	m.id = id
+	m.mu.Unlock()
+}
+
+func (m *worker) newServiceRequest(d time.Duration) (context.Context, context.CancelFunc) {
+	mac := hmac.New(sha256.New, []byte(gCli.String("master-secret")))
+	io.WriteString(mac, m.masterId)
 
 	md := metadata.New(map[string]string{
-		"x-master-id":           gMasterId,
+		"x-master-id":           m.masterId,
 		"x-authentication-hash": hex.EncodeToString(mac.Sum(nil)),
 	})
 
@@ -143,42 +159,47 @@ func (*worker) newServiceRequest(d time.Duration) (context.Context, context.Canc
 	)
 }
 
-func (*worker) authorizeSerivceReply(md *metadata.MD) (_ string, e error) {
+func (m *worker) authorizeSerivceReply(md *metadata.MD) (e error) {
 	id := md.Get("x-worker-id")
 	if len(id) != 1 {
-		return "", status.Errorf(codes.InvalidArgument, "there is no metadata in the reply")
+		return status.Errorf(codes.InvalidArgument, "there is no metadata in the reply")
 	}
 	if strings.TrimSpace(id[0]) == "" {
-		return "", status.Errorf(codes.InvalidArgument, "there is no worker-id in the reply")
+		return status.Errorf(codes.InvalidArgument, "there is no worker-id in the reply")
+	}
+	if m.getId() != "" && m.getId() != id[0] {
+		return status.Errorf(codes.InvalidArgument, "given worker id is not equal to registration id")
+	} else if m.getId() == "" {
+		m.setId(id[0])
 	}
 
-	gLog.Debug().Str("worker_id", id[0]).Msg("worker reply accepted, authorizing...")
+	gLog.Debug().Str("worker_id", m.getId()).Msg("worker reply accepted, authorizing...")
 
 	ah := md.Get("x-authentication-hash")
 	if len(ah) != 1 {
-		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
-		return "", status.Errorf(codes.InvalidArgument, "")
+		gLog.Info().Str("worker_id", m.getId()).Msg("worker authorization failed")
+		return status.Errorf(codes.InvalidArgument, "")
 	}
 	if strings.TrimSpace(ah[0]) == "" {
-		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
-		return "", status.Errorf(codes.InvalidArgument, "")
+		gLog.Info().Str("worker_id", m.getId()).Msg("worker authorization failed")
+		return status.Errorf(codes.InvalidArgument, "")
 	}
 
 	mmac, e := hex.DecodeString(ah[0])
 	if e != nil {
-		return "", status.Errorf(codes.Internal, e.Error())
+		return status.Errorf(codes.Internal, e.Error())
 	}
 
-	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
-	mac.Write([]byte(id[0]))
+	mac := hmac.New(sha256.New, []byte(gCli.String("master-secret")))
+	mac.Write([]byte(m.getId()))
 	expectedMAC := mac.Sum(nil)
 	if !hmac.Equal(mmac, expectedMAC) {
-		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
-		return "", status.Errorf(codes.Unauthenticated, "")
+		gLog.Info().Str("worker_id", m.getId()).Msg("worker authorization failed")
+		return status.Errorf(codes.Unauthenticated, "")
 	}
 
-	gLog.Debug().Str("worker_id", id[0]).Msg("the worker's reply has been authorized")
-	return id[0], nil
+	gLog.Debug().Str("worker_id", m.getId()).Msg("the worker's reply has been authorized")
+	return
 }
 
 func (m *worker) getRPCErrors(err error) error {
@@ -214,7 +235,7 @@ func (m *worker) getInitialServiceData() (_ string, e error) {
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+	if e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
@@ -250,7 +271,7 @@ func (m *worker) getTorrents() (trrs []*deluge.Torrent, e error) {
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+	if e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
@@ -279,7 +300,7 @@ func (m *worker) getFreeSpace() (_ uint64, e error) {
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+	if e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
@@ -302,7 +323,7 @@ func (m *worker) saveTorrentFile(fname string, fbytes *[]byte) (_ int64, e error
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+	if e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
@@ -326,7 +347,7 @@ func (m *worker) deleteTorrent(hash, name string, withData bool) (_ uint64, _ ui
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+	if e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
@@ -334,4 +355,20 @@ func (m *worker) deleteTorrent(hash, name string, withData bool) (_ uint64, _ ui
 		Msg("got reply from the worker with deleted bytes")
 
 	return rpl.FreedSpace, rpl.FreeSpace, e
+}
+
+func (m *worker) forceReannounce() (e error) {
+	ctx, cancel := m.newServiceRequest(gCli.Duration("grpc-request-timeout"))
+	defer cancel()
+
+	var md metadata.MD
+	if _, e = m.gservice.ForceReannounce(ctx, &emptypb.Empty{}, grpc.Header(&md)); m.getRPCErrors(e) != nil {
+		return
+	}
+
+	if e = m.authorizeSerivceReply(&md); e != nil {
+		return
+	}
+
+	return
 }

@@ -4,14 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/fs"
 	"log"
 	"mime"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httputil"
 	"net/url"
-	"os"
 
 	"golang.org/x/net/publicsuffix"
 )
@@ -218,89 +216,6 @@ func (m *ApiClient) checkApiAuthorization(rrl *url.URL) error {
 
 	gLog.Warn().Msg("there is no PHPSESSID cookie found; initiate the authentication process...")
 	return m.GetApiAuthorization()
-}
-
-func (m *ApiClient) getTorrentFile(titleId string) (e error) {
-	var rrl *url.URL
-	if rrl, e = url.Parse(m.siteBaseUrl.String() + string(siteMethodTorrentDownload)); e != nil {
-		return
-	}
-
-	var rgs = &url.Values{}
-	rgs.Add("id", titleId)
-	rrl.RawQuery = rgs.Encode()
-
-	if e = m.checkApiAuthorization(rrl); e != nil {
-		return
-	}
-
-	var req *http.Request
-	if req, e = http.NewRequest("GET", rrl.String(), nil); e != nil {
-		return
-	}
-	req = m.getBaseRequest(req) // ???
-
-	var rsp *http.Response
-	if rsp, e = m.http.Do(req); e != nil {
-		return
-	}
-	defer rsp.Body.Close()
-
-	m.debugHttpHandshake(req)
-	m.debugHttpHandshake(rsp)
-
-	switch rsp.StatusCode {
-	case http.StatusOK:
-		gLog.Debug().Msg("the requested torrent file has been found")
-	default:
-		gLog.Warn().Int("response_code", rsp.StatusCode).Msg("could not fetch the requested torrent file because of abnormal anilibria server response")
-		return errApiAbnormalResponse
-	}
-
-	if rsp.Header.Get("Content-Type") != "application/x-bittorrent" {
-		gLog.Warn().Msg("there is an abnormal content-type in the torrent file response")
-	}
-
-	_, params, e := mime.ParseMediaType(rsp.Header.Get("Content-Disposition"))
-	if e != nil {
-		return
-	}
-
-	gLog.Debug().Str("filename", params["filename"]).Msg("trying to download and save the torrent file...")
-	return m.parseFileFromResponse(&rsp.Body, params["filename"])
-}
-
-func (*ApiClient) parseFileFromResponse(rsp *io.ReadCloser, filename string) (e error) {
-
-	var fi fs.FileInfo
-	if fi, e = os.Stat(gCli.String("torrentfiles-dir") + "/" + filename); e != nil {
-		if !os.IsNotExist(e) {
-			return
-		}
-
-		gLog.Debug().Str("path", gCli.String("torrentfiles-dir")+"/"+filename).
-			Msg("given filepath was not found; continue...")
-	}
-
-	if fi != nil {
-		gLog.Warn().Str("path", gCli.String("torrentfiles-dir")+"/"+filename).
-			Msg("destination file is already exists; skipping downloading...")
-		return
-	}
-
-	var fd *os.File
-	if fd, e = os.Create(gCli.String("torrentfiles-dir") + "/" + filename); e != nil {
-		return
-	}
-	defer fd.Close()
-
-	var n int64
-	if n, e = io.Copy(fd, *rsp); e != nil {
-		return
-	}
-
-	gLog.Info().Int64("bytes", n).Msg("the torrent file has been successfully saved")
-	return fd.Sync()
 }
 
 func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod, rspSchema interface{}) (e error) {

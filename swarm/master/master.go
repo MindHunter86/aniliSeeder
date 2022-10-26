@@ -27,31 +27,144 @@ var (
 	gCli *cli.Context
 	gLog *zerolog.Logger
 	gCtx context.Context
-
-	gMasterId string
 )
 
 // gRPC bypass picture
 // https://camo.githubusercontent.com/79dbaaa1fb7d239f1d21d4be23985b831babfc4b95538413298dce1c5c2600e1/68747470733a2f2f6c68332e676f6f676c6575736572636f6e74656e742e636f6d2f2d544c51596b4975396a49412f57664c61644c4a357a55492f41414141414141415967382f3745716c72613754764b38676f736b44465142637777394c6e584369794a387977434c63424741732f73313630302f494d475f383032372e6a7067
 
+type monitoringState uint8
+
+const (
+	monStateDisabled monitoringState = 1 << iota
+	monStateProbing
+)
+
+func (m *monitoringState) toggle(s monitoringState) {
+	*m = *m ^ s // oh lol ... xD
+}
+
 type Master struct {
+	id          string
 	rawListener net.Listener
-	workerPool  *workerPool
+
+	workerPool *workerPool
 }
 
 func NewMaster(ctx context.Context) *Master {
 	gCtx = ctx
 	gLog = gCtx.Value(utils.ContextKeyLogger).(*zerolog.Logger)
 	gCli = gCtx.Value(utils.ContextKeyCliContext).(*cli.Context)
-	gMasterId = uuid.NewV4().String()
 
 	return &Master{
+		id:         uuid.NewV4().String(),
 		workerPool: newWorkerPool(),
 	}
 }
 
+func (m *Master) Bootstrap() (e error) {
+	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
+		Msg("initializing the tcp server for further muxing")
+
+	if m.rawListener, e = net.Listen("tcp", gCli.String("master-addr")); e != nil {
+		return
+	}
+
+	return m.run()
+}
+
+func (m *Master) run() (e error) {
+	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
+		Msg("initializing net acceptor; starting listening for incoming TCP connections...")
+
+	var wg sync.WaitGroup
+
+	var mlock sync.Mutex
+	var mstate monitoringState
+	mstate.toggle(monStateDisabled)
+
+	// panic avoid if cli.args returns 0
+	ticker := time.NewTicker(time.Second)
+	ticker.Stop()
+
+	if i := gCli.Duration("master-mon-interval"); i != 0 {
+		mstate.toggle(monStateDisabled)
+		ticker.Reset(i)
+	}
+
+	wg.Add(1)
+	go func(done func()) {
+		m.serve(done)
+	}(wg.Done)
+
+LOOP:
+	for {
+		select {
+		case <-gCtx.Done():
+			gLog.Warn().Msg("context done() has been caught; closing grpc server socket...")
+			break LOOP
+
+		case <-ticker.C:
+			mlock.Lock()
+			if mstate&monStateDisabled != 0 {
+				gLog.Warn().Msg("internal error! master monitoring is disabled; skipping probe...")
+				mlock.Unlock()
+				continue
+			}
+
+			if mstate&monStateProbing != 0 {
+				gLog.Debug().Msg("master monitoring is probing now; skipping ticker event...")
+				mlock.Unlock()
+				return
+			}
+
+			mstate.toggle(monStateProbing)
+			mlock.Unlock()
+
+			wg.Add(1)
+			go func(done func(), mlock *sync.Mutex, mstate *monitoringState) {
+				gLog.Trace().Msg("trying to find dead workers...")
+				m.workerPool.findDeadWorkers()
+
+				mlock.Lock()
+				mstate.toggle(monStateProbing)
+				mlock.Unlock()
+
+				done()
+			}(wg.Done, &mlock, &mstate)
+		}
+	}
+	gLog.Info().Msg("closing net listener...")
+	m.rawListener.Close()
+
+	gLog.Debug().Msg("waiting for closing all opened goroutines...")
+	wg.Wait()
+
+	return
+}
+
+func (m *Master) serve(done func()) {
+	defer done()
+
+	for {
+		conn, e := m.rawListener.Accept()
+		if e != nil && e != net.ErrClosed {
+			gLog.Error().Err(e).Msg("got some error with processing a new tcp client")
+		}
+
+		gLog.Debug().Str("master_listen", gCli.String("master-addr")).Str("client_addr", conn.RemoteAddr().String()).
+			Msg("new incoming connection; processing...")
+
+		go func(cn net.Conn) {
+			if err := m.handleIncomingConnection(cn); e != nil {
+				gLog.Warn().Err(err).Msg("got error while handling the workers connection")
+				cn.Close()
+			}
+		}(conn)
+	}
+}
+
 func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
-	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
 		Msg("trying to initialize mux session...")
 
 	var muxsess *yamux.Session
@@ -66,75 +179,14 @@ func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
 
 	gLog.Debug().Str("ping_time", d.String()).Msg("mux session is alive")
 
-	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
+	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
 		Msg("trying to initialize gRPC client...")
 
-	if _, e = m.workerPool.newWorker(muxsess); e != nil {
+	if _, e = m.workerPool.newWorker(muxsess, m.id); e != nil {
 		gLog.Debug().Err(e).Msg("got an error while processing new worker; drop mux session ...")
 		muxsess.Close()
 		return
 	}
-
-	return
-}
-
-func (m *Master) Bootstrap() (e error) {
-	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
-		Msg("initializing the tcp server for further muxing")
-
-	if m.rawListener, e = net.Listen("tcp", gCli.String("swarm-master-addr")); e != nil {
-		return
-	}
-
-	return m.run()
-}
-
-func (m *Master) run() (e error) {
-	gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).
-		Msg("initializing net acceptor; starting listening for incoming TCP connections...")
-
-	var wg sync.WaitGroup
-
-	var clock sync.RWMutex
-	var conns []net.Conn
-
-LOOP:
-	for {
-		select {
-		case <-gCtx.Done():
-			gLog.Warn().Msg("context done() has been caught; closing grpc server socket...")
-			break LOOP
-		default:
-			conn, e := m.rawListener.Accept()
-			if e != nil {
-				gLog.Error().Err(e).Msg("got some error with processing a new tcp client")
-			}
-
-			gLog.Debug().Str("master_listen", gCli.String("swarm-master-addr")).Str("client_addr", conn.RemoteAddr().String()).
-				Msg("new incoming connection; processing...")
-
-			go func(cn net.Conn) {
-				if err := m.handleIncomingConnection(cn); e != nil {
-					gLog.Warn().Err(err).Msg("got error while handling the workers connection")
-					cn.Close()
-				}
-			}(conn)
-		}
-	}
-
-	clock.Lock()
-	defer clock.Unlock()
-
-	for _, conn := range conns {
-		gLog.Debug().Str("client_addr", conn.RemoteAddr().String()).Msg("trying to close the accepted client connection")
-		if e = conn.Close(); e != nil {
-			gLog.Warn().Str("client_addr", conn.RemoteAddr().String()).Err(e).
-				Msg("got some errors while closing client connection")
-		}
-	}
-
-	gLog.Debug().Msg("waiting for closing all accepted connection...")
-	wg.Wait()
 
 	return
 }
@@ -170,7 +222,7 @@ func (*Master) authorizeWorker(ctx context.Context) (string, error) {
 		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
 		return "", status.Errorf(codes.InvalidArgument, "")
 	}
-	if ak[0] != gCli.String("swarm-master-secret") {
+	if ak[0] != gCli.String("master-secret") {
 		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
 		return "", status.Errorf(codes.Unauthenticated, "")
 	}
@@ -256,8 +308,4 @@ func (m *Master) Register(ctx context.Context, req *pb.RegistrationRequest) (_ *
 
 	gLog.Info().Str("worker_id", wid).Msg("new client registration has been completed")
 	return &emptypb.Empty{}, e
-}
-
-func (*Master) IsMaster() bool {
-	return true
 }

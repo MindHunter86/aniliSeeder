@@ -52,7 +52,7 @@ func (m *App) Bootstrap() (e error) {
 	defer gLog.Debug().Msg("waiting for opened goroutines")
 	defer gAbort()
 
-	if gCli.Bool("swarm-is-master") {
+	if gCli.Bool("is-master") {
 		// anilibria API
 		if gAniApi, e = anilibria.NewApiClient(gCli, gLog); e != nil {
 			return
@@ -84,6 +84,15 @@ func (m *App) Bootstrap() (e error) {
 
 	// another subsystems
 	// ...
+
+	// cron subservice
+	if gSwarm.IsMaster() {
+		wg.Add(1)
+		go func(done func()) {
+			newCron().run()
+			done()
+		}(wg.Done)
+	}
 
 	// main event loop
 	wg.Add(1)

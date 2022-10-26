@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -80,10 +79,6 @@ func NewApiClient(ctx *cli.Context, log *zerolog.Logger) (*ApiClient, error) {
 		apiClient.checkAuthData()
 	}
 
-	if err = apiClient.checkDownloadDir(); err != nil {
-		return nil, err
-	}
-
 	return apiClient, apiClient.getApiBaseUrl()
 }
 
@@ -105,28 +100,6 @@ func (m *ApiClient) checkAuthData() {
 		gLog.Info().Msg("\"unauthorized\" has been toggled; sleeping for 3 seconds...")
 		time.Sleep(3 * time.Second)
 	}
-}
-
-func (*ApiClient) checkDownloadDir() error {
-	fi, e := os.Stat(gCli.String("torrentfiles-dir"))
-
-	if e != nil && fi.IsDir() {
-		return nil
-	}
-
-	if os.IsNotExist(e) {
-		gLog.Warn().Str("path", gCli.String("torrentfiles-dir")).Msg("could not find the given download dir; trying to create it ...")
-		if err := os.MkdirAll(gCli.String("torrentfiles-dir"), os.ModePerm); err != nil {
-			return err
-		}
-		gLog.Info().Msg("download directory has been successfully created")
-		return nil
-	} else if os.IsExist(e) {
-		gLog.Error().Msg("given download dir is not directory; check and try again")
-		return e
-	}
-
-	return e
 }
 
 // popular domains origin

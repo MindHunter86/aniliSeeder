@@ -32,11 +32,6 @@ func (m *ApiClient) GetTitlesFromSchedule() (titles []*Title, e error) {
 	return
 }
 
-func (m *ApiClient) SaveTitleTorrentFile(torrentId string) (e error) {
-	gLog.Debug().Msg("trying to fetch torrent file for " + torrentId)
-	return m.getTorrentFile(torrentId)
-}
-
 func (m *ApiClient) GetTitleTorrentFile(tid string) (string, *[]byte, error) {
 	return m.downloadTorrentFile(tid)
 }

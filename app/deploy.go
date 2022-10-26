@@ -11,6 +11,17 @@ import (
 	"github.com/rs/zerolog"
 )
 
+var (
+	errInsufficientSpace = errors.New("could not continue the deploy process because of insufficient space for some torrents")
+	errFailedDeletions   = errors.New("could not continue the deploy process because of unsuccessful deletions")
+	errFailedWorker      = errors.New("could not continue the delpoy process because one of workers errors")
+	errNoFailures        = errors.New("there is nothing to redeploy; all torrents with OK announces")
+	errNoWorkers         = errors.New("there is nothing to redeploy; all workers are unavailable")
+
+	errNothingDeploy   = errors.New("there is nothing to deploy")
+	errNothingAssigned = errors.New("found some updates but there is now assigned titles")
+)
+
 type deploy struct{}
 
 // type deployType uint8
@@ -184,7 +195,7 @@ func (m *deploy) sendDeployCommand(deployTasks map[string][]anilibria.TitleTorre
 				continue
 			}
 
-			gLog.Info().Str("worker_ud", wid).Int64("written_bytes", wbytes).
+			gLog.Info().Str("worker_id", wid).Int64("written_bytes", wbytes).
 				Msg("the torrent file has been sended to the worker")
 		}
 

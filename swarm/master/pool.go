@@ -2,30 +2,24 @@ package master
 
 import (
 	"sync"
+	"time"
 
 	"github.com/hashicorp/yamux"
 )
 
 type workerPool struct {
-	pool sync.Pool
-
 	sync.RWMutex
 	workers map[string]*worker
 }
 
 func newWorkerPool() *workerPool {
 	return &workerPool{
-		pool: sync.Pool{
-			New: func() interface{} {
-				return &worker{}
-			},
-		},
 		workers: make(map[string]*worker),
 	}
 }
 
-func (m *workerPool) newWorker(msess *yamux.Session) (wrk *worker, e error) {
-	wrk = newWorker(msess)
+func (m *workerPool) newWorker(msess *yamux.Session, mid string) (wrk *worker, e error) {
+	wrk = newWorker(msess, mid)
 
 	if e = wrk.connect(); e != nil {
 		return
@@ -50,26 +44,17 @@ func (m *workerPool) isWorkerExists(wid string) bool {
 	return m.workers[wid] != nil
 }
 
-// func (m *workerPool) dropWorker(wid string) (e error) {
-// 	m.RLock()
-// 	w := m.workers[wid]
-// 	m.RUnlock()
-
-// 	w.disconnect()
-
-// 	m.Lock()
-// 	m.workers[wid] = nil
-// 	m.Unlock()
-
-// 	return
-// }
-
 func (m *workerPool) getWorkerIds() []string {
 	m.RLock()
 	defer m.RUnlock()
 
 	var ids []string
 	for id := range m.workers {
+		if m.workers[id] == nil {
+			gLog.Warn().Str("worker_id", id).Msg("abnormal worker detected in pool")
+			continue
+		}
+
 		ids = append(ids, id)
 	}
 
@@ -81,4 +66,45 @@ func (m *workerPool) getWorker(wid string) *worker {
 	defer m.RUnlock()
 
 	return m.workers[wid]
+}
+
+func (m *workerPool) findDeadWorkers() {
+	var wrks = make(map[string]*worker)
+
+	m.RLock()
+	wrks = m.workers
+	m.RUnlock()
+
+	for wid, wrk := range wrks {
+		if wrk == nil {
+			continue
+		}
+
+		if e := wrk.isMuxSessionAlive(); e != nil {
+			gLog.Error().Err(e).Msg("got an error in mux session validataion; removing worker from pool...")
+			m.dropWorker(wid)
+		}
+
+		gLog.Trace().Str("worker_id", wid).Msg("worker is alive")
+	}
+}
+
+func (m *worker) isMuxSessionAlive() (e error) {
+	var du time.Duration
+	if du, e = m.msess.Ping(); e != nil {
+		return
+	}
+
+	gLog.Trace().Str("worker_id", m.id).Dur("worker_mux_ping", du).Msg("")
+	return
+}
+
+func (m *workerPool) dropWorker(wid string) {
+	m.Lock()
+	w := m.workers[wid]
+	delete(m.workers, wid)
+	m.Unlock()
+
+	w.gconn.Close()
+	w.msess.Close()
 }

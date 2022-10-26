@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"sort"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
@@ -32,11 +31,11 @@ type workerTorrents struct {
 func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, e error) {
 	wtorrents, ok := m.getWorkersTorrentsV2()
 	if !ok {
-		return nil, errors.New("could not continue the delpoy process because one of workers errors")
+		return nil, errFailedWorker
 	}
 
 	if len(wtorrents) == 0 {
-		return nil, errors.New("there is nothing to redeploy; all workers are unavailable")
+		return nil, errNoWorkers
 	}
 
 	if ftitles, e = m.searchFailedTitles(wtorrents); e != nil {
@@ -44,7 +43,7 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 	}
 
 	if len(ftitles) == 0 {
-		return nil, errors.New("there is nothing to redeploy; all torrents has good announces")
+		return nil, errNoFailures
 	}
 
 	m.sortTitlesByLeechers(ftitles)
@@ -52,7 +51,7 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 
 	ok = m.isSpaceEnoughForUpdate(ftitles)
 	if !ok && !gCli.Bool("deploy-ignore-errors") {
-		return nil, errors.New("could not continue the deploy process because of insufficient space for some torrents")
+		return nil, errInsufficientSpace
 	}
 
 	// redeploy ...
@@ -62,7 +61,7 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 	if !dryrun[0] {
 		ok = m.dropFailedTorrent(ftitles)
 		if !ok && !gCli.Bool("deploy-ignore-errors") {
-			return nil, errors.New("could not continue the deploy process because of unsuccessful deletions")
+			return nil, errFailedDeletions
 		}
 
 		atorrents := m.getTorrentsListForDeploy(ftitles)

@@ -32,6 +32,7 @@ type WorkerServiceClient interface {
 	UpdateTorrent(ctx context.Context, in *TorrentUpdateRequest, opts ...grpc.CallOption) (*TorrentUpdateReply, error)
 	SaveTorrentFile(ctx context.Context, in *TFileSaveRequest, opts ...grpc.CallOption) (*TFileSaveReply, error)
 	GetSystemFreeSpace(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SystemSpaceReply, error)
+	ForceReannounce(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type workerServiceClient struct {
@@ -114,6 +115,15 @@ func (c *workerServiceClient) GetSystemFreeSpace(ctx context.Context, in *emptyp
 	return out, nil
 }
 
+func (c *workerServiceClient) ForceReannounce(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/grpc.WorkerService/ForceReannounce", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkerServiceServer is the server API for WorkerService service.
 // All implementations must embed UnimplementedWorkerServiceServer
 // for forward compatibility
@@ -127,6 +137,7 @@ type WorkerServiceServer interface {
 	UpdateTorrent(context.Context, *TorrentUpdateRequest) (*TorrentUpdateReply, error)
 	SaveTorrentFile(context.Context, *TFileSaveRequest) (*TFileSaveReply, error)
 	GetSystemFreeSpace(context.Context, *emptypb.Empty) (*SystemSpaceReply, error)
+	ForceReannounce(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedWorkerServiceServer()
 }
 
@@ -157,6 +168,9 @@ func (UnimplementedWorkerServiceServer) SaveTorrentFile(context.Context, *TFileS
 }
 func (UnimplementedWorkerServiceServer) GetSystemFreeSpace(context.Context, *emptypb.Empty) (*SystemSpaceReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSystemFreeSpace not implemented")
+}
+func (UnimplementedWorkerServiceServer) ForceReannounce(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ForceReannounce not implemented")
 }
 func (UnimplementedWorkerServiceServer) mustEmbedUnimplementedWorkerServiceServer() {}
 
@@ -315,6 +329,24 @@ func _WorkerService_GetSystemFreeSpace_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkerService_ForceReannounce_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).ForceReannounce(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.WorkerService/ForceReannounce",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).ForceReannounce(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkerService_ServiceDesc is the grpc.ServiceDesc for WorkerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -353,6 +385,10 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSystemFreeSpace",
 			Handler:    _WorkerService_GetSystemFreeSpace_Handler,
+		},
+		{
+			MethodName: "ForceReannounce",
+			Handler:    _WorkerService_ForceReannounce_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

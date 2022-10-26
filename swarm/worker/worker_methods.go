@@ -68,7 +68,7 @@ func (*WorkerService) authorizeMasterRequest(ctx context.Context) (string, error
 		return "", status.Errorf(codes.Internal, e.Error())
 	}
 
-	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
+	mac := hmac.New(sha256.New, []byte(gCli.String("master-secret")))
 	mac.Write([]byte(id[0]))
 	expectedMAC := mac.Sum(nil)
 	if !hmac.Equal(wmac, expectedMAC) {
@@ -81,7 +81,7 @@ func (*WorkerService) authorizeMasterRequest(ctx context.Context) (string, error
 }
 
 func (m *WorkerService) authorizeServiceReply(ctx context.Context) error {
-	mac := hmac.New(sha256.New, []byte(gCli.String("swarm-master-secret")))
+	mac := hmac.New(sha256.New, []byte(gCli.String("master-secret")))
 	io.WriteString(mac, m.w.id)
 
 	md := metadata.New(map[string]string{
@@ -116,10 +116,11 @@ func (m *WorkerService) Init(ctx context.Context, _ *emptypb.Empty) (*pb.InitRep
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
+	rspace := gCli.Uint64("deluge-disk-minimal") * 1024 * 1024
 	return &pb.InitReply{
 		WorkerId:      m.w.id,
 		WorkerVersion: gCli.App.Version,
-		WDFreeSpace:   utils.CheckDirectoryFreeSpace(gCli.String("deluge-data-path")),
+		WDFreeSpace:   utils.CheckDirectoryFreeSpace(gCli.String("deluge-data-path")) - rspace,
 		Torrent:       trrs,
 	}, e
 }
@@ -232,9 +233,10 @@ func (m *WorkerService) DropTorrent(ctx context.Context, req *pb.TorrentDropRequ
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
+	rspace := gCli.Uint64("deluge-disk-minimal") * 1024 * 1024
 	return &pb.TorrentDropReply{
 		FreedSpace: fspace,
-		FreeSpace:  utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
+		FreeSpace:  utils.CheckDirectoryFreeSpace(gCli.String("deluge-data-path")) - rspace,
 	}, e
 }
 
@@ -274,7 +276,32 @@ func (m *WorkerService) GetSystemFreeSpace(ctx context.Context, _ *emptypb.Empty
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
+	rspace := gCli.Uint64("deluge-disk-minimal") * 1024 * 1024
 	return &pb.SystemSpaceReply{
-		FreeSpace: utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
+		FreeSpace: utils.CheckDirectoryFreeSpace(gCli.String("deluge-data-path")) - rspace,
 	}, e
+}
+
+func (m *WorkerService) ForceReannounce(ctx context.Context, _ *emptypb.Empty) (_ *emptypb.Empty, e error) {
+	mid, e := m.authorizeMasterRequest(ctx)
+	if e != nil {
+		return
+	}
+
+	gLog.Debug().Str("master_id", mid).Msg("processing master request...")
+
+	var thashes []string
+	if thashes, e = gDeluge.GetTorrentsHashes(); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
+	if e = gDeluge.ForceReannounce(thashes...); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
+	if e = m.authorizeServiceReply(ctx); e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+
+	return &emptypb.Empty{}, e
 }

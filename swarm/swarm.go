@@ -23,4 +23,5 @@ type Swarm interface {
 	RequestFreeSpaceFromWorker(string) (uint64, error)
 	SaveTorrentFile(string, string, *[]byte) (int64, error)
 	RemoveTorrent(string, string, string, ...bool) (uint64, uint64, error)
+	ForceReannounce(string) error
 }

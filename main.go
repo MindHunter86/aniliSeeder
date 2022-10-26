@@ -42,15 +42,28 @@ func main() {
 	app.Usage = "N\\A"
 
 	app.Flags = []cli.Flag{
-		// common settings
+		// common flags
+		&cli.IntFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Value:   5,
+			Usage:   "Verbose `LEVEL` (value from 5(debug) to 0(panic) and -1 for log disabling(quite mode))",
+		},
+		&cli.BoolFlag{
+			Name:    "quite",
+			Aliases: []string{"q"},
+			Usage:   "Flag is equivalent to verbose -1",
+		},
+
+		// http client settings
+		&cli.BoolFlag{
+			Name:  "http-client-insecure",
+			Usage: "Flag for TLS certificate verification disabling",
+		},
 		&cli.DurationFlag{
 			Name:  "http-client-timeout",
 			Usage: "Internal HTTP client connection `TIMEOUT` (format: 1000ms, 1s)",
 			Value: 3 * time.Second,
-		},
-		&cli.BoolFlag{
-			Name:  "http-client-insecure",
-			Usage: "Flag for TLS certificate verification disabling",
 		},
 		&cli.DurationFlag{
 			Name:  "http-tcp-timeout",
@@ -82,12 +95,7 @@ func main() {
 			Usage: "",
 		},
 
-		&cli.StringFlag{
-			Name:  "socket-path",
-			Usage: "",
-			Value: "aniliSeeder.sock",
-		},
-
+		// syslog settings
 		&cli.StringFlag{
 			Name:  "syslog-addr",
 			Usage: "",
@@ -104,49 +112,27 @@ func main() {
 			Value: "aniliseeder",
 		},
 
-		&cli.IntFlag{
-			Name:    "verbose",
-			Aliases: []string{"v"},
-			Value:   5,
-			Usage:   "Verbose `LEVEL` (value from 5(debug) to 0(panic) and -1 for log disabling(quite mode))",
-		},
-		&cli.BoolFlag{
-			Name:    "quite",
-			Aliases: []string{"q"},
-			Usage:   "Flag is equivalent to verbose -1",
-		},
-
-		// deploy settings
-		&cli.BoolFlag{
-			Name:  "deploy-ignore-errors",
-			Usage: "",
-		},
-
 		// swarm settings
 		&cli.BoolFlag{
-			Name:  "swarm-is-master",
-			Usage: "",
+			Name:    "is-master",
+			Usage:   "",
+			EnvVars: []string{"IS_MASTER"},
 		},
 		&cli.StringFlag{
-			Name:  "swarm-master-listen",
-			Usage: "",
-			Value: "localhost:8081",
-		},
-		&cli.StringFlag{
-			Name:  "swarm-master-addr",
+			Name:  "master-addr",
 			Usage: "",
 			Value: "localhost:8081",
 		},
 		&cli.StringFlag{
-			Name:  "swarm-custom-ca-path",
-			Usage: "",
-			Value: "",
-		},
-		&cli.StringFlag{
-			Name:    "swarm-master-secret",
+			Name:    "master-secret",
 			Usage:   "",
 			Value:   "randomsecretkey",
 			EnvVars: []string{"SWARM_MASTER_SECRETKEY"},
+		},
+		&cli.DurationFlag{
+			Name:  "master-mon-interval",
+			Usage: "master workers monitoring checks interval; 0 - for disabling",
+			Value: 3 * time.Second,
 		},
 
 		// gRPC settings
@@ -165,16 +151,6 @@ func main() {
 			Value: time.Second,
 		},
 		&cli.DurationFlag{
-			Name:  "grpc-ping-reconnect-hold",
-			Usage: "time for grpc reconnection process",
-			Value: 5 * time.Second,
-		},
-		// &cli.DurationFlag{
-		// 	Name:  "grpc-ping-timeout",
-		// 	Usage: "",
-		// 	Value: 300 * time.Millisecond,
-		// },
-		&cli.DurationFlag{
 			Name:  "grpc-request-timeout",
 			Usage: "",
 			Value: time.Second,
@@ -182,6 +158,11 @@ func main() {
 		&cli.BoolFlag{
 			Name:  "grpc-disable-reconnect",
 			Usage: "",
+		},
+		&cli.DurationFlag{
+			Name:  "grpc-ping-reconnect-hold",
+			Usage: "time for grpc reconnection process",
+			Value: 5 * time.Second,
 		},
 		&cli.IntFlag{
 			Name:  "grpc-reconnect-tries",
@@ -206,24 +187,21 @@ func main() {
 			Value: 600 * time.Second,
 		},
 
-		// queue settings
-		// ...
-
 		// anilibria settings
-		&cli.StringFlag{
-			Name:  "anilibria-api-baseurl",
-			Usage: "",
-			Value: "https://api.anilibria.tv/v2",
-		},
 		&cli.StringFlag{
 			Name:  "anilibria-baseurl",
 			Usage: "",
 			Value: "https://www.anilibria.tv",
 		},
 		&cli.StringFlag{
+			Name:  "anilibria-api-baseurl",
+			Usage: "",
+			Value: "https://api.anilibria.tv/v2",
+		},
+		&cli.StringFlag{
 			Name:    "anilibria-login-username",
 			Usage:   "login",
-			EnvVars: []string{"ANILIBRIA_LOGIN", "ANILIBRIA_USERNAME"},
+			EnvVars: []string{"ANILIBRIA_USERNAME"},
 		},
 		&cli.StringFlag{
 			Name:    "anilibria-login-password",
@@ -241,7 +219,7 @@ func main() {
 			Name:    "deluge-username",
 			Usage:   "",
 			Value:   "localclient",
-			EnvVars: []string{"DELUGE_LOGIN", "DELUGE_USERNAME"},
+			EnvVars: []string{"DELUGE_USERNAME"},
 		},
 		&cli.StringFlag{
 			Name:    "deluge-password",
@@ -251,30 +229,44 @@ func main() {
 		},
 		&cli.StringFlag{
 			Name:  "deluge-data-path",
-			Usage: "",
+			Usage: "directory for space monitoring",
 			Value: "./data",
 		},
 		&cli.StringFlag{
-			Name:  "deluge-torrentfiles-path",
-			Usage: "",
+			Name:  "deluge-torrents-path",
+			Usage: "download directory for .torrent files",
 			Value: "./data",
+		},
+		&cli.Uint64Flag{
+			Name:  "deluge-disk-minimal",
+			Usage: "in MB; ",
+			Value: 128,
 		},
 
-		// common settings
-		&cli.StringFlag{
-			Name:  "torrentfiles-dir",
-			Usage: "",
-			Value: "./data",
-		},
+		// legacy settings
 		&cli.IntFlag{
-			Name:  "torrents-vkscore-line",
-			Usage: "",
+			Name:  "cmd-vkscore-warn",
+			Usage: "all torrents below this value will be marked as inefficient",
 			Value: 25,
 		},
-		&cli.UintFlag{
-			Name:  "disk-minimal-available",
-			Usage: "In MB",
-			Value: 128,
+
+		// deploy settings
+		&cli.BoolFlag{
+			Name:  "deploy-ignore-errors",
+			Usage: "",
+		},
+
+		// cron settings
+		&cli.BoolFlag{
+			Name:  "cron-disable",
+			Usage: "",
+		},
+
+		// master cli settings
+		&cli.StringFlag{
+			Name:  "socket-path",
+			Usage: "",
+			Value: "aniliSeeder.sock",
 		},
 	}
 
