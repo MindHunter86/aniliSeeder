@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -155,7 +156,7 @@ func (m *Client) GetTorrentsV2() (_ []*Torrent, e error) {
 }
 
 func (*Client) SaveTorrentFile(fname string, buf io.Reader) (_ int64, e error) {
-	path := gCli.String("deluge-torrents-path") + "/" + fname
+	path := filepath.Join(gCli.String("deluge-torrents-path"), fname)
 
 	if _, e = os.Stat(path); e != nil {
 		if !os.IsNotExist(e) {
