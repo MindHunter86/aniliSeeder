@@ -240,27 +240,22 @@ func main() {
 			Value: "./data",
 		},
 		&cli.StringFlag{
-			Name:  "deluge-torrentfiles-path",
+			Name:  "deluge-torrents-path",
 			Usage: "download directory for .torrent files",
 			Value: "./data",
 		},
+		&cli.Uint64Flag{
+			Name:  "deluge-disk-minimal",
+			Usage: "in MB; ",
+			Value: 128,
+		},
 
 		// legacy settings
-		&cli.StringFlag{
-			Name:  "torrentfiles-dir",
-			Usage: "directory for space monitoring (2delete) LEGACY",
-			Value: "./data",
-		},
 		&cli.IntFlag{
-			Name:  "torrents-vkscore-line",
-			Usage: "",
+			Name:  "cmd-vkscore-warn",
+			Usage: "all torrents below this value will be marked as inefficient",
 			Value: 25,
 		},
-		// &cli.UintFlag{
-		// 	Name:  "disk-minimal-available",
-		// 	Usage: "In MB",
-		// 	Value: 128,
-		// },
 
 		// deploy settings
 		&cli.BoolFlag{

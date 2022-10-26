@@ -84,7 +84,7 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 	}
 
 	tb.SetRowPainter(func(raw table.Row) text.Colors {
-		if raw[8].(float64) >= float64(gCli.Int("torrents-vkscore-line")) && raw[7] == "OK" {
+		if raw[8].(float64) >= float64(gCli.Int("cmd-vkscore-warn")) && raw[7] == "OK" {
 			return text.Colors{text.FgGreen}
 		}
 		if raw[4].(float32) < 1 {

@@ -116,10 +116,11 @@ func (m *WorkerService) Init(ctx context.Context, _ *emptypb.Empty) (*pb.InitRep
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
+	rspace := gCli.Uint64("deluge-disk-minimal") * 1024 * 1024
 	return &pb.InitReply{
 		WorkerId:      m.w.id,
 		WorkerVersion: gCli.App.Version,
-		WDFreeSpace:   utils.CheckDirectoryFreeSpace(gCli.String("deluge-data-path")),
+		WDFreeSpace:   utils.CheckDirectoryFreeSpace(gCli.String("deluge-data-path")) - rspace,
 		Torrent:       trrs,
 	}, e
 }
@@ -232,9 +233,10 @@ func (m *WorkerService) DropTorrent(ctx context.Context, req *pb.TorrentDropRequ
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
+	rspace := gCli.Uint64("deluge-disk-minimal") * 1024 * 1024
 	return &pb.TorrentDropReply{
 		FreedSpace: fspace,
-		FreeSpace:  utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
+		FreeSpace:  utils.CheckDirectoryFreeSpace(gCli.String("deluge-data-path")) - rspace,
 	}, e
 }
 
@@ -274,8 +276,9 @@ func (m *WorkerService) GetSystemFreeSpace(ctx context.Context, _ *emptypb.Empty
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
+	rspace := gCli.Uint64("deluge-disk-minimal") * 1024 * 1024
 	return &pb.SystemSpaceReply{
-		FreeSpace: utils.CheckDirectoryFreeSpace(gCli.String("torrentfiles-dir")),
+		FreeSpace: utils.CheckDirectoryFreeSpace(gCli.String("deluge-data-path")) - rspace,
 	}, e
 }
 
