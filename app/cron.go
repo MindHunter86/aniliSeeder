@@ -95,7 +95,8 @@ func (m *cron) runCronTasks() {
 
 	// < 1 min jobs here >
 	gLog.Debug().Msg("running 1min jobs...")
-	m.reannounce()
+	// https://github.com/MindHunter86/aniliSeeder/issues/73
+	// m.reannounce()
 
 	if tm.Minute()%5 == 0 {
 		// < 5 min jobs here >
