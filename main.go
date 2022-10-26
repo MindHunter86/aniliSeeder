@@ -57,13 +57,6 @@ func main() {
 
 		// http client settings
 		&cli.BoolFlag{
-			Name:    "quite",
-			Aliases: []string{"q"},
-			Usage:   "Flag is equivalent to verbose -1",
-		},
-
-		// http client settings
-		&cli.BoolFlag{
 			Name:  "http-client-insecure",
 			Usage: "Flag for TLS certificate verification disabling",
 		},
