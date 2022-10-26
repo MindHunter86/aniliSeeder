@@ -146,42 +146,46 @@ func (m *worker) newServiceRequest(d time.Duration) (context.Context, context.Ca
 	)
 }
 
-func (*worker) authorizeSerivceReply(md *metadata.MD) (_ string, e error) {
+func (m *worker) authorizeSerivceReply(md *metadata.MD) (e error) {
 	id := md.Get("x-worker-id")
 	if len(id) != 1 {
-		return "", status.Errorf(codes.InvalidArgument, "there is no metadata in the reply")
+		return status.Errorf(codes.InvalidArgument, "there is no metadata in the reply")
 	}
 	if strings.TrimSpace(id[0]) == "" {
-		return "", status.Errorf(codes.InvalidArgument, "there is no worker-id in the reply")
+		return status.Errorf(codes.InvalidArgument, "there is no worker-id in the reply")
+	}
+	if m.id != "" && m.id != id[0] {
+		return status.Errorf(codes.InvalidArgument, "given worker id is not equal to registration id")
 	}
 
-	gLog.Debug().Str("worker_id", id[0]).Msg("worker reply accepted, authorizing...")
+	m.id = id[0]
+	gLog.Debug().Str("worker_id", m.id).Msg("worker reply accepted, authorizing...")
 
 	ah := md.Get("x-authentication-hash")
 	if len(ah) != 1 {
-		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
-		return "", status.Errorf(codes.InvalidArgument, "")
+		gLog.Info().Str("worker_id", m.id).Msg("worker authorization failed")
+		return status.Errorf(codes.InvalidArgument, "")
 	}
 	if strings.TrimSpace(ah[0]) == "" {
-		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
-		return "", status.Errorf(codes.InvalidArgument, "")
+		gLog.Info().Str("worker_id", m.id).Msg("worker authorization failed")
+		return status.Errorf(codes.InvalidArgument, "")
 	}
 
 	mmac, e := hex.DecodeString(ah[0])
 	if e != nil {
-		return "", status.Errorf(codes.Internal, e.Error())
+		return status.Errorf(codes.Internal, e.Error())
 	}
 
 	mac := hmac.New(sha256.New, []byte(gCli.String("master-secret")))
-	mac.Write([]byte(id[0]))
+	mac.Write([]byte(m.id))
 	expectedMAC := mac.Sum(nil)
 	if !hmac.Equal(mmac, expectedMAC) {
-		gLog.Info().Str("worker_id", id[0]).Msg("worker authorization failed")
-		return "", status.Errorf(codes.Unauthenticated, "")
+		gLog.Info().Str("worker_id", m.id).Msg("worker authorization failed")
+		return status.Errorf(codes.Unauthenticated, "")
 	}
 
-	gLog.Debug().Str("worker_id", id[0]).Msg("the worker's reply has been authorized")
-	return id[0], nil
+	gLog.Debug().Str("worker_id", m.id).Msg("the worker's reply has been authorized")
+	return
 }
 
 func (m *worker) getRPCErrors(err error) error {
@@ -217,7 +221,7 @@ func (m *worker) getInitialServiceData() (_ string, e error) {
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+	if e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
@@ -253,7 +257,7 @@ func (m *worker) getTorrents() (trrs []*deluge.Torrent, e error) {
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+	if e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
@@ -282,7 +286,7 @@ func (m *worker) getFreeSpace() (_ uint64, e error) {
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+	if e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
@@ -305,7 +309,7 @@ func (m *worker) saveTorrentFile(fname string, fbytes *[]byte) (_ int64, e error
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+	if e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
@@ -329,7 +333,7 @@ func (m *worker) deleteTorrent(hash, name string, withData bool) (_ uint64, _ ui
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+	if e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
@@ -348,7 +352,7 @@ func (m *worker) forceReannounce() (e error) {
 		return
 	}
 
-	if m.id, e = m.authorizeSerivceReply(&md); e != nil {
+	if e = m.authorizeSerivceReply(&md); e != nil {
 		return
 	}
 
