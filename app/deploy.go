@@ -195,7 +195,7 @@ func (m *deploy) sendDeployCommand(deployTasks map[string][]anilibria.TitleTorre
 				continue
 			}
 
-			gLog.Info().Str("worker_ud", wid).Int64("written_bytes", wbytes).
+			gLog.Info().Str("worker_id", wid).Int64("written_bytes", wbytes).
 				Msg("the torrent file has been sended to the worker")
 		}
 

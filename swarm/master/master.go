@@ -27,55 +27,38 @@ var (
 	gCli *cli.Context
 	gLog *zerolog.Logger
 	gCtx context.Context
-
-	gMasterId string
 )
 
 // gRPC bypass picture
 // https://camo.githubusercontent.com/79dbaaa1fb7d239f1d21d4be23985b831babfc4b95538413298dce1c5c2600e1/68747470733a2f2f6c68332e676f6f676c6575736572636f6e74656e742e636f6d2f2d544c51596b4975396a49412f57664c61644c4a357a55492f41414141414141415967382f3745716c72613754764b38676f736b44465142637777394c6e584369794a387977434c63424741732f73313630302f494d475f383032372e6a7067
 
+type monitoringState uint8
+
+const (
+	monStateDisabled monitoringState = 1 << iota
+	monStateProbing
+)
+
+func (m *monitoringState) toggle(s monitoringState) {
+	*m = *m ^ s // oh lol ... xD
+}
+
 type Master struct {
+	id          string
 	rawListener net.Listener
-	workerPool  *workerPool
+
+	workerPool *workerPool
 }
 
 func NewMaster(ctx context.Context) *Master {
 	gCtx = ctx
 	gLog = gCtx.Value(utils.ContextKeyLogger).(*zerolog.Logger)
 	gCli = gCtx.Value(utils.ContextKeyCliContext).(*cli.Context)
-	gMasterId = uuid.NewV4().String()
 
 	return &Master{
+		id:         uuid.NewV4().String(),
 		workerPool: newWorkerPool(),
 	}
-}
-
-func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
-	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
-		Msg("trying to initialize mux session...")
-
-	var muxsess *yamux.Session
-	if muxsess, e = yamux.Client(conn, yamux.DefaultConfig()); e != nil {
-		return
-	}
-
-	var d time.Duration
-	if d, e = muxsess.Ping(); e != nil {
-		return
-	}
-
-	gLog.Debug().Str("ping_time", d.String()).Msg("mux session is alive")
-
-	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
-		Msg("trying to initialize gRPC client...")
-
-	if _, e = m.workerPool.newWorker(muxsess); e != nil {
-		gLog.Debug().Err(e).Msg("got an error while processing new worker; drop mux session ...")
-		muxsess.Close()
-		return
-	}
-
-	return
 }
 
 func (m *Master) Bootstrap() (e error) {
@@ -87,17 +70,6 @@ func (m *Master) Bootstrap() (e error) {
 	}
 
 	return m.run()
-}
-
-type monitoringState uint8
-
-const (
-	monStateDisabled monitoringState = 1 << iota
-	monStateProbing
-)
-
-func (m *monitoringState) toggle(s monitoringState) {
-	*m = *m ^ s // oh lol ... xD
 }
 
 func (m *Master) run() (e error) {
@@ -189,6 +161,34 @@ func (m *Master) serve(done func()) {
 			}
 		}(conn)
 	}
+}
+
+func (m *Master) handleIncomingConnection(conn net.Conn) (e error) {
+	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
+		Msg("trying to initialize mux session...")
+
+	var muxsess *yamux.Session
+	if muxsess, e = yamux.Client(conn, yamux.DefaultConfig()); e != nil {
+		return
+	}
+
+	var d time.Duration
+	if d, e = muxsess.Ping(); e != nil {
+		return
+	}
+
+	gLog.Debug().Str("ping_time", d.String()).Msg("mux session is alive")
+
+	gLog.Debug().Str("master_listen", gCli.String("master-addr")).
+		Msg("trying to initialize gRPC client...")
+
+	if _, e = m.workerPool.newWorker(muxsess, m.id); e != nil {
+		gLog.Debug().Err(e).Msg("got an error while processing new worker; drop mux session ...")
+		muxsess.Close()
+		return
+	}
+
+	return
 }
 
 func (*Master) authorizeWorker(ctx context.Context) (string, error) {

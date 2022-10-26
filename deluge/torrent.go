@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -155,7 +156,7 @@ func (m *Client) GetTorrentsV2() (_ []*Torrent, e error) {
 }
 
 func (*Client) SaveTorrentFile(fname string, buf io.Reader) (_ int64, e error) {
-	path := gCli.String("deluge-torrentfiles-path") + "/" + fname
+	path := filepath.Join(gCli.String("deluge-torrents-path"), fname)
 
 	if _, e = os.Stat(path); e != nil {
 		if !os.IsNotExist(e) {
@@ -221,7 +222,10 @@ func (m *Torrent) IsTrackerOk() bool {
 }
 
 func (m *Torrent) GetName() string {
-	name, _, _ := strings.Cut(m.Name, "- AniLibria.TV")
+	// https://github.com/MindHunter86/aniliSeeder/issues/74
+	name := strings.ReplaceAll(m.Name, "_", " ")
+
+	name, _, _ = strings.Cut(name, "- AniLibria.TV")
 	return strings.TrimSpace(name)
 }
 
@@ -230,7 +234,10 @@ func (m *Torrent) GetShortHash() string {
 }
 
 func (m *Torrent) GetQuality() string {
+	// https://github.com/MindHunter86/aniliSeeder/issues/74
+	name := strings.ReplaceAll(m.Name, "_", " ")
+
 	// strings.Trim("][") is not worked here; and I don't know why...
-	_, rawquality, _ := strings.Cut(strings.Trim(m.Name, "]"), "[")
+	_, rawquality, _ := strings.Cut(strings.Trim(name, "]"), "[")
 	return strings.TrimSpace(rawquality)
 }
