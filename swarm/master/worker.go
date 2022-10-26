@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/MindHunter86/aniliSeeder/deluge"
@@ -37,10 +38,12 @@ type worker struct {
 
 	masterId string
 
-	id          string
 	trrs        []*deluge.Torrent
 	version     string
 	wdFreeSpace uint64
+
+	mu sync.RWMutex
+	id string
 }
 
 func newWorker(ms *yamux.Session, mid string) *worker {
@@ -127,8 +130,18 @@ func (m *worker) reconnect() (e error) {
 // 	return
 // }
 
-func (m *worker) getId() string {
-	return m.id
+func (m *worker) getId() (id string) {
+	m.mu.RLock()
+	id = m.id
+	m.mu.RUnlock()
+
+	return
+}
+
+func (m *worker) setId(id string) {
+	m.mu.Lock()
+	m.id = id
+	m.mu.Unlock()
 }
 
 func (m *worker) newServiceRequest(d time.Duration) (context.Context, context.CancelFunc) {
@@ -154,20 +167,21 @@ func (m *worker) authorizeSerivceReply(md *metadata.MD) (e error) {
 	if strings.TrimSpace(id[0]) == "" {
 		return status.Errorf(codes.InvalidArgument, "there is no worker-id in the reply")
 	}
-	if m.id != "" && m.id != id[0] {
+	if m.getId() != "" && m.getId() != id[0] {
 		return status.Errorf(codes.InvalidArgument, "given worker id is not equal to registration id")
+	} else if m.getId() == "" {
+		m.setId(id[0])
 	}
 
-	m.id = id[0]
-	gLog.Debug().Str("worker_id", m.id).Msg("worker reply accepted, authorizing...")
+	gLog.Debug().Str("worker_id", m.getId()).Msg("worker reply accepted, authorizing...")
 
 	ah := md.Get("x-authentication-hash")
 	if len(ah) != 1 {
-		gLog.Info().Str("worker_id", m.id).Msg("worker authorization failed")
+		gLog.Info().Str("worker_id", m.getId()).Msg("worker authorization failed")
 		return status.Errorf(codes.InvalidArgument, "")
 	}
 	if strings.TrimSpace(ah[0]) == "" {
-		gLog.Info().Str("worker_id", m.id).Msg("worker authorization failed")
+		gLog.Info().Str("worker_id", m.getId()).Msg("worker authorization failed")
 		return status.Errorf(codes.InvalidArgument, "")
 	}
 
@@ -177,14 +191,14 @@ func (m *worker) authorizeSerivceReply(md *metadata.MD) (e error) {
 	}
 
 	mac := hmac.New(sha256.New, []byte(gCli.String("master-secret")))
-	mac.Write([]byte(m.id))
+	mac.Write([]byte(m.getId()))
 	expectedMAC := mac.Sum(nil)
 	if !hmac.Equal(mmac, expectedMAC) {
-		gLog.Info().Str("worker_id", m.id).Msg("worker authorization failed")
+		gLog.Info().Str("worker_id", m.getId()).Msg("worker authorization failed")
 		return status.Errorf(codes.Unauthenticated, "")
 	}
 
-	gLog.Debug().Str("worker_id", m.id).Msg("the worker's reply has been authorized")
+	gLog.Debug().Str("worker_id", m.getId()).Msg("the worker's reply has been authorized")
 	return
 }
 
