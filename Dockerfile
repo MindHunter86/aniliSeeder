@@ -11,7 +11,7 @@ COPY go.sum ./
 RUN go mod download
 
 COPY *.go ./
-COPY cloner ./cloner
+COPY aniliseeder ./aniliseeder
 RUN go build -ldflags="-s -w" -o /AniliSeeder
 
 RUN apk add --no-cache upx \
