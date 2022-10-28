@@ -32,6 +32,7 @@ var (
 )
 
 type worker struct {
+	
 	msess    *yamux.Session
 	gconn    *grpc.ClientConn
 	gservice pb.WorkerServiceClient
