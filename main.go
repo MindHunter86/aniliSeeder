@@ -6,7 +6,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"runtime"
-	"runtime/pprof"
 	"sort"
 	"strings"
 	"time"
@@ -23,18 +22,10 @@ var version = "devel" // -ldflags="-X 'main.version=X.X.X'"
 
 func main() {
 	// debug
-	// pprof.WriteHeapProfile("mem.pprof")
 	// defer profile.Start(profile.MemProfileHeap, profile.ProfilePath(".")).Stop()
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
-
-	f, err := os.Create("mem.pprof")
-	if err != nil {
-		log.Fatal(err)
-	}
-	pprof.WriteHeapProfile(f)
-	defer f.Close()
 
 	// logger
 	log := zerolog.New(zerolog.ConsoleWriter{
@@ -381,6 +372,7 @@ func main() {
 		},
 	}
 
+	// TODO sort.Sort of Flags uses too much allocs; temporary disabled
 	// sort.Sort(cli.FlagsByName(app.Flags))
 	sort.Sort(cli.CommandsByName(app.Commands))
 
