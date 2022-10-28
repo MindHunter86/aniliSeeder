@@ -32,9 +32,10 @@ var (
 )
 
 type worker struct {
-	
-	msess    *yamux.Session
-	gconn    *grpc.ClientConn
+	msess *yamux.Session
+	gconn *grpc.ClientConn
+
+	glock    sync.Mutex
 	gservice pb.WorkerServiceClient
 
 	masterId string
@@ -55,6 +56,9 @@ func newWorker(ms *yamux.Session, mid string) *worker {
 }
 
 func (m *worker) connect() (e error) {
+	m.glock.Lock()
+	defer m.glock.Unlock()
+
 	var opts []grpc.DialOption
 
 	if !gCli.Bool("grpc-insecure") {
@@ -107,6 +111,9 @@ func (m *worker) reconnect() (e error) {
 	if _, e = m.msess.Ping(); e != nil {
 		return
 	}
+
+	m.glock.Lock()
+	defer m.glock.Unlock()
 
 	m.gservice = nil
 	if e = m.gconn.Close(); e != nil {
@@ -204,6 +211,7 @@ func (m *worker) authorizeSerivceReply(md *metadata.MD) (e error) {
 }
 
 func (m *worker) getRPCErrors(err error) error {
+	defer m.glock.Unlock()
 	estatus, _ := status.FromError(err)
 
 	switch estatus.Code() {
@@ -232,6 +240,8 @@ func (m *worker) getInitialServiceData() (_ string, e error) {
 
 	var md metadata.MD
 	var rpl *pb.InitReply
+
+	m.glock.Lock()
 	if rpl, e = m.gservice.Init(ctx, &emptypb.Empty{}, grpc.Header(&md)); m.getRPCErrors(e) != nil {
 		return
 	}
@@ -268,6 +278,8 @@ func (m *worker) getTorrents() (trrs []*deluge.Torrent, e error) {
 
 	var md metadata.MD
 	var rpl *pb.TorrentsReply
+
+	m.glock.Lock()
 	if rpl, e = m.gservice.GetTorrents(ctx, &emptypb.Empty{}, grpc.Header(&md)); m.getRPCErrors(e) != nil {
 		return
 	}
@@ -297,6 +309,8 @@ func (m *worker) getFreeSpace() (_ uint64, e error) {
 
 	var md metadata.MD
 	var rpl *pb.SystemSpaceReply
+
+	m.glock.Lock()
 	if rpl, e = m.gservice.GetSystemFreeSpace(ctx, &emptypb.Empty{}, grpc.Header(&md)); m.getRPCErrors(e) != nil {
 		return
 	}
@@ -320,6 +334,8 @@ func (m *worker) saveTorrentFile(fname string, fbytes *[]byte) (_ int64, e error
 
 	var md metadata.MD
 	var rpl *pb.TFileSaveReply
+
+	m.glock.Lock()
 	if rpl, e = m.gservice.SaveTorrentFile(ctx, req, grpc.Header(&md)); m.getRPCErrors(e) != nil {
 		return
 	}
@@ -344,6 +360,8 @@ func (m *worker) deleteTorrent(hash, name string, withData bool) (_ uint64, _ ui
 
 	var md metadata.MD
 	var rpl *pb.TorrentDropReply
+
+	m.glock.Lock()
 	if rpl, e = m.gservice.DropTorrent(ctx, req, grpc.Header(&md)); m.getRPCErrors(e) != nil {
 		return
 	}
@@ -363,6 +381,8 @@ func (m *worker) forceReannounce() (e error) {
 	defer cancel()
 
 	var md metadata.MD
+
+	m.glock.Lock()
 	if _, e = m.gservice.ForceReannounce(ctx, &emptypb.Empty{}, grpc.Header(&md)); m.getRPCErrors(e) != nil {
 		return
 	}
