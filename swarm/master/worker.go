@@ -1,6 +1,7 @@
 package master
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/x509"
@@ -36,6 +37,8 @@ type worker struct {
 	gconn    *grpc.ClientConn
 	gservice pb.WorkerServiceClient
 
+	bufPool *sync.Pool
+
 	masterId string
 
 	trrs        []*deluge.Torrent
@@ -50,6 +53,11 @@ func newWorker(ms *yamux.Session, mid string) *worker {
 	return &worker{
 		msess:    ms,
 		masterId: mid,
+		bufPool: &sync.Pool{
+			New: func() any {
+				return new(bytes.Buffer)
+			},
+		},
 	}
 }
 
@@ -275,14 +283,18 @@ func (m *worker) getTorrents() (trrs []*deluge.Torrent, e error) {
 		return
 	}
 
-	var buf []byte
-	if buf, e = json.Marshal(rpl.GetTorrent()); e != nil {
+	buf := m.bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+
+	if e = json.NewEncoder(buf).Encode(rpl.GetTorrent()); e != nil {
 		return
 	}
 
-	if e = json.Unmarshal(buf, &trrs); e != nil {
+	if e = json.NewDecoder(buf).Decode(&trrs); e != nil {
 		return
 	}
+
+	m.bufPool.Put(buf)
 
 	m.trrs = trrs
 
