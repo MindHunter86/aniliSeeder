@@ -64,9 +64,6 @@ func newWorker(ms *yamux.Session, mid string) *worker {
 }
 
 func (m *worker) connect() (e error) {
-	m.glock.Lock()
-	defer m.glock.Unlock()
-
 	var opts []grpc.DialOption
 
 	if !gCli.Bool("grpc-insecure") {
@@ -103,8 +100,10 @@ func (m *worker) connect() (e error) {
 		return
 	}
 
+	m.glock.Lock()
 	gLog.Debug().Msg("connection with the master server has been established; registering grpc services...")
 	m.gservice = pb.NewWorkerServiceClient(m.gconn)
+	m.glock.Unlock()
 
 	if _, e = m.getInitialServiceData(); e != nil {
 		gLog.Debug().Err(e).Msg("got an error while gathering initial service data")
