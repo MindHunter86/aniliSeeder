@@ -1,6 +1,9 @@
 package main
 
 import (
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"sort"
@@ -18,6 +21,12 @@ import (
 var version = "devel" // -ldflags="-X 'main.version=X.X.X'"
 
 func main() {
+	// debug
+	// defer profile.Start(profile.MemProfileHeap, profile.ProfilePath(".")).Stop()
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	// logger
 	log := zerolog.New(zerolog.ConsoleWriter{
 		Out: os.Stderr,
@@ -363,7 +372,8 @@ func main() {
 		},
 	}
 
-	sort.Sort(cli.FlagsByName(app.Flags))
+	// TODO sort.Sort of Flags uses too much allocs; temporary disabled
+	// sort.Sort(cli.FlagsByName(app.Flags))
 	sort.Sort(cli.CommandsByName(app.Commands))
 
 	if e := app.Run(os.Args); e != nil {

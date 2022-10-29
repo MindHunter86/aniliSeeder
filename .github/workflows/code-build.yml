@@ -57,8 +57,8 @@ jobs:
         push: true
         context: aniliseeder
         tags: ghcr.io/${{ env.GH_LWREPONAME }}:${{ needs.parse_phase.outputs.build_tag }}
-        cache-from: type=gha
-        cache-to: type=gha
+        # cache-from: type=gha
+        # cache-to: type=gha
   binary_build_pahse:
     name: Build standalone binaries for linux. windows, mac OS
     runs-on: ubuntu-latest
@@ -71,6 +71,8 @@ jobs:
         include: # I think it's true tone build for A* and M1 processes
         - goos: darwin
           goarch: arm64
+        - goos: linux
+          goarch: arm
         - goos: windows
           goarch: 386
           extention: .exe

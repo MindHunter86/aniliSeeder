@@ -24,7 +24,7 @@
 
 `dryDeployFailedAnnounces` - check worker for torrents with failed anounces to the anilibria tracker
 
-`DeployFailedAnnounces` - redeploy torrents with failed announces
+`deployFailedAnnounces` - redeploy torrents with failed announces
 
 
 ## Running
