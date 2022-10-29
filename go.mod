@@ -10,6 +10,7 @@ require (
 	github.com/MindHunter86/go-libdeluge v0.0.0-20221002035026-4eeeac7cd2bf
 	github.com/hashicorp/yamux v0.1.1
 	github.com/jedib0t/go-pretty/v6 v6.4.0
+	github.com/pkg/profile v1.6.0
 	github.com/rs/zerolog v1.28.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/urfave/cli/v2 v2.20.3
