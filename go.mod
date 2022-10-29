@@ -13,7 +13,7 @@ require (
 	github.com/pkg/profile v1.6.0
 	github.com/rs/zerolog v1.28.0
 	github.com/satori/go.uuid v1.2.0
-	github.com/urfave/cli/v2 v2.20.2
+	github.com/urfave/cli/v2 v2.20.3
 	golang.org/x/net v0.0.0-20221002022538-bcab6841153b
 	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec
 	google.golang.org/grpc v1.50.1
