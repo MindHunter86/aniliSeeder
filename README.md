@@ -22,6 +22,10 @@
 
 `deployAniUpdates` - deploy titles from `aniUpdates`
 
+`getActiveSessions` - list all active anilibria sessions (PHPSESSID)
+
+`dropActiveSessions` - close all active anilibria session
+
 `dryDeployFailedAnnounces` - check worker for torrents with failed anounces to the anilibria tracker
 
 `deployFailedAnnounces` - redeploy torrents with failed announces

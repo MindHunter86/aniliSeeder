@@ -155,6 +155,10 @@ func (*SockServer) parseClientCmd(cmd string) rpcCommand {
 		return cmdDryDeployAniUpdates
 	case "deployAniUpdates":
 		return cmdDeployAniUpdates
+	case "getActiveSessions":
+		return cmdGetActiveSessions
+	case "dropActiveSessions":
+		return cmdDropAllActiveSessions
 	case "dryDeployFailedAnnounces":
 		return cmdDryDeployFailedAnnounces
 	case "deployFailedAnnounces":
@@ -181,6 +185,10 @@ func (m *SockServer) runClientCmd(cmd rpcCommand) (io.ReadWriter, error) {
 		return m.cmd.dryDeployAniUpdates()
 	case cmdDeployAniUpdates:
 		return m.cmd.deployAniUpdates()
+	case cmdGetActiveSessions:
+		return m.cmd.getActiveSessions()
+	case cmdDropAllActiveSessions:
+		return m.cmd.dropAllActiveSessions()
 	case cmdDryDeployFailedAnnounces:
 		return m.cmd.deployFailedAnnounces(true)
 	case cmdDeployFailedAnnounces:

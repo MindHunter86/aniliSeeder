@@ -29,6 +29,9 @@ const (
 	// cmdDryDeployAniChanges
 	// cmdDryDeployAniSchedule
 
+	cmdGetActiveSessions
+	cmdDropAllActiveSessions
+
 	cmdDryDeployFailedAnnounces
 	cmdDeployFailedAnnounces
 )
@@ -304,6 +307,61 @@ func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
 	return buf, e
 }
 
+func (*cmds) getActiveSessions() (_ io.ReadWriter, e error) {
+	tb := table.NewWriter()
+	defer tb.Render()
+
+	buf := bytes.NewBuffer(nil)
+	tb.SetOutputMirror(buf)
+	tb.AppendHeader(table.Row{
+		"IP", "SID", "Time", "LifeTime", "Status",
+	})
+
+	var sessions *map[string][]string
+	if sessions, e = gAniApi.GetActiveSessions(); e != nil {
+		return
+	}
+
+	for sid, session := range *sessions {
+		// tm, e := time.Parse(time.RFC3339, session[2])
+		tm, e := time.Parse("2006-01-02 15:04", session[2])
+		if e != nil {
+			gLog.Warn().Err(e).Msg("got an error in active sessions cmd rendering")
+		}
+
+		tb.AppendRow([]interface{}{
+			session[1], sid, tm.String(), time.Since(tm).String(), session[3],
+		})
+	}
+
+	tb.SortBy([]table.SortBy{
+		{Name: "IP", Mode: table.Asc},
+		{Name: "Time", Mode: table.Asc},
+	})
+
+	tb.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
+	tb.Style().Options.SeparateRows = true
+
+	return buf, e
+}
+
+func (*cmds) dropAllActiveSessions() (_ io.ReadWriter, e error) {
+	var sessions *map[string][]string
+	if sessions, e = gAniApi.GetActiveSessions(); e != nil {
+		return
+	}
+
+	var sids []string
+	for sid := range *sessions {
+		sids = append(sids, sid)
+	}
+
+	gAniApi.DropActiveSessions(sids...)
+	return bytes.NewBufferString("OK"), e
+}
+
 func (*cmds) deployFailedAnnounces(dryrun bool) (_ io.ReadWriter, e error) {
 	tb := table.NewWriter()
 	defer tb.Render()
@@ -325,10 +383,6 @@ func (*cmds) deployFailedAnnounces(dryrun bool) (_ io.ReadWriter, e error) {
 			ft.oldTorrent.GetShortHash(), ft.aniTorrent.GetShortHash(), ft.sizeChanges / 1024,
 		})
 	}
-
-	tb.SortBy([]table.SortBy{
-		{Name: "Worker", Mode: table.Asc},
-	})
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},

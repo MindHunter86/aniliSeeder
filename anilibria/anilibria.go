@@ -109,8 +109,35 @@ func (m *ApiClient) checkAuthData() {
 
 // https://api.anilibria.tv/v2/getSchedule?days=0&filter=id,code,names,updated,last_change,status,type,torrents
 
-func (*ApiClient) GetPopularTorrents() (error, error) {
-	return nil, nil
+func (m *ApiClient) GetActiveSessions() (_ *map[string][]string, e error) {
+	var buf *[]byte
+	if buf, e = m.getSessionsPage(); e != nil {
+		return
+	}
+
+	s := newSession()
+	return s.getActiveAniSessions(buf)
+}
+
+func (m *ApiClient) DropActiveSession(sid string) (bool, error) {
+	return m.dropActiveSession(sid)
+}
+
+func (m *ApiClient) DropActiveSessions(sids ...string) {
+	var ok bool
+	var err error
+
+	for _, sid := range sids {
+		gLog.Debug().Str("session_id", sid).Msg("trying to close anilibria session...")
+
+		if ok, err = m.dropActiveSession(sid); err != nil {
+			gLog.Warn().Err(err).Str("session_id", sid).Msg("got an error while trying to close the anilibria session")
+		}
+
+		if !ok {
+			gLog.Warn().Str("session_id", sid).Msg("there was abnormal result from the anilibria site; drop session api said nonOk with 200 OK")
+		}
+	}
 }
 
 func (m *TitleTorrent) GetShortHash() string {
