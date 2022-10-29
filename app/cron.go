@@ -52,10 +52,6 @@ func (m *cron) run() {
 	}
 
 	gLog.Debug().Time("time_now", time.Now()).Msg("starting cron subservice...")
-
-	m.wg.Add(1)
-	defer m.wg.Done()
-
 	m.ticker = time.NewTicker(time.Minute)
 
 loop:
