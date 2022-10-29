@@ -1,14 +1,19 @@
 package main
 
 import (
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/MindHunter86/aniliSeeder/anilibria"
 	application "github.com/MindHunter86/aniliSeeder/app"
 	appcli "github.com/MindHunter86/aniliSeeder/cli"
+	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -16,6 +21,12 @@ import (
 var version = "devel" // -ldflags="-X 'main.version=X.X.X'"
 
 func main() {
+	// debug
+	// defer profile.Start(profile.MemProfileHeap, profile.ProfilePath(".")).Stop()
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	// logger
 	log := zerolog.New(zerolog.ConsoleWriter{
 		Out: os.Stderr,
@@ -40,15 +51,28 @@ func main() {
 	app.Usage = "N\\A"
 
 	app.Flags = []cli.Flag{
-		// common settings
+		// common flags
+		&cli.IntFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Value:   5,
+			Usage:   "Verbose `LEVEL` (value from 5(debug) to 0(panic) and -1 for log disabling(quite mode))",
+		},
+		&cli.BoolFlag{
+			Name:    "quite",
+			Aliases: []string{"q"},
+			Usage:   "Flag is equivalent to verbose -1",
+		},
+
+		// http client settings
+		&cli.BoolFlag{
+			Name:  "http-client-insecure",
+			Usage: "Flag for TLS certificate verification disabling",
+		},
 		&cli.DurationFlag{
 			Name:  "http-client-timeout",
 			Usage: "Internal HTTP client connection `TIMEOUT` (format: 1000ms, 1s)",
 			Value: 3 * time.Second,
-		},
-		&cli.BoolFlag{
-			Name:  "http-client-insecure",
-			Usage: "Flag for TLS certificate verification disabling",
 		},
 		&cli.DurationFlag{
 			Name:  "http-tcp-timeout",
@@ -80,49 +104,44 @@ func main() {
 			Usage: "",
 		},
 
+		// syslog settings
 		&cli.StringFlag{
-			Name:  "socket-path",
+			Name:  "syslog-addr",
 			Usage: "",
-			Value: "aniliSeeder.sock",
+			Value: "10.10.11.1:33517",
 		},
-
-		&cli.IntFlag{
-			Name:    "verbose",
-			Aliases: []string{"v"},
-			Value:   5,
-			Usage:   "Verbose `LEVEL` (value from 5(debug) to 0(panic) and -1 for log disabling(quite mode))",
+		&cli.StringFlag{
+			Name:  "syslog-proto",
+			Usage: "",
+			Value: "tcp",
 		},
-		&cli.BoolFlag{
-			Name:    "quite",
-			Aliases: []string{"q"},
-			Usage:   "Flag is equivalent to verbose -1",
+		&cli.StringFlag{
+			Name:  "syslog-tag",
+			Usage: "",
+			Value: "aniliseeder",
 		},
 
 		// swarm settings
 		&cli.BoolFlag{
-			Name:  "swarm-is-master",
-			Usage: "",
+			Name:    "is-master",
+			Usage:   "",
+			EnvVars: []string{"IS_MASTER"},
 		},
 		&cli.StringFlag{
-			Name:  "swarm-master-listen",
-			Usage: "",
-			Value: "localhost:8081",
-		},
-		&cli.StringFlag{
-			Name:  "swarm-master-addr",
+			Name:  "master-addr",
 			Usage: "",
 			Value: "localhost:8081",
 		},
 		&cli.StringFlag{
-			Name:  "swarm-custom-ca-path",
-			Usage: "",
-			Value: "",
-		},
-		&cli.StringFlag{
-			Name:    "swarm-master-secret",
+			Name:    "master-secret",
 			Usage:   "",
 			Value:   "randomsecretkey",
 			EnvVars: []string{"SWARM_MASTER_SECRETKEY"},
+		},
+		&cli.DurationFlag{
+			Name:  "master-mon-interval",
+			Usage: "master workers monitoring checks interval; 0 - for disabling",
+			Value: 3 * time.Second,
 		},
 
 		// gRPC settings
@@ -141,16 +160,6 @@ func main() {
 			Value: time.Second,
 		},
 		&cli.DurationFlag{
-			Name:  "grpc-ping-reconnect-hold",
-			Usage: "time for grpc reconnection process",
-			Value: 5 * time.Second,
-		},
-		// &cli.DurationFlag{
-		// 	Name:  "grpc-ping-timeout",
-		// 	Usage: "",
-		// 	Value: 300 * time.Millisecond,
-		// },
-		&cli.DurationFlag{
 			Name:  "grpc-request-timeout",
 			Usage: "",
 			Value: time.Second,
@@ -158,6 +167,11 @@ func main() {
 		&cli.BoolFlag{
 			Name:  "grpc-disable-reconnect",
 			Usage: "",
+		},
+		&cli.DurationFlag{
+			Name:  "grpc-ping-reconnect-hold",
+			Usage: "time for grpc reconnection process",
+			Value: 5 * time.Second,
 		},
 		&cli.IntFlag{
 			Name:  "grpc-reconnect-tries",
@@ -182,24 +196,21 @@ func main() {
 			Value: 600 * time.Second,
 		},
 
-		// queue settings
-		// ...
-
 		// anilibria settings
-		&cli.StringFlag{
-			Name:  "anilibria-api-baseurl",
-			Usage: "",
-			Value: "https://api.anilibria.tv/v2",
-		},
 		&cli.StringFlag{
 			Name:  "anilibria-baseurl",
 			Usage: "",
 			Value: "https://www.anilibria.tv",
 		},
 		&cli.StringFlag{
+			Name:  "anilibria-api-baseurl",
+			Usage: "",
+			Value: "https://api.anilibria.tv/v2",
+		},
+		&cli.StringFlag{
 			Name:    "anilibria-login-username",
 			Usage:   "login",
-			EnvVars: []string{"ANILIBRIA_LOGIN", "ANILIBRIA_USERNAME"},
+			EnvVars: []string{"ANILIBRIA_USERNAME"},
 		},
 		&cli.StringFlag{
 			Name:    "anilibria-login-password",
@@ -217,7 +228,7 @@ func main() {
 			Name:    "deluge-username",
 			Usage:   "",
 			Value:   "localclient",
-			EnvVars: []string{"DELUGE_LOGIN", "DELUGE_USERNAME"},
+			EnvVars: []string{"DELUGE_USERNAME"},
 		},
 		&cli.StringFlag{
 			Name:    "deluge-password",
@@ -227,36 +238,50 @@ func main() {
 		},
 		&cli.StringFlag{
 			Name:  "deluge-data-path",
-			Usage: "",
+			Usage: "directory for space monitoring",
 			Value: "./data",
 		},
 		&cli.StringFlag{
-			Name:  "deluge-torrentfiles-path",
-			Usage: "",
+			Name:  "deluge-torrents-path",
+			Usage: "download directory for .torrent files",
 			Value: "./data",
+		},
+		&cli.Uint64Flag{
+			Name:  "deluge-disk-minimal",
+			Usage: "in MB; ",
+			Value: 128,
 		},
 
-		// common settings
-		&cli.StringFlag{
-			Name:  "torrentfiles-dir",
-			Usage: "",
-			Value: "./data",
-		},
+		// legacy settings
 		&cli.IntFlag{
-			Name:  "torrents-vkscore-line",
-			Usage: "",
+			Name:  "cmd-vkscore-warn",
+			Usage: "all torrents below this value will be marked as inefficient",
 			Value: 25,
 		},
-		&cli.UintFlag{
-			Name:  "disk-minimal-available",
-			Usage: "In MB",
-			Value: 128,
+
+		// deploy settings
+		&cli.BoolFlag{
+			Name:  "deploy-ignore-errors",
+			Usage: "",
+		},
+
+		// cron settings
+		&cli.BoolFlag{
+			Name:  "cron-disable",
+			Usage: "",
+		},
+
+		// master cli settings
+		&cli.StringFlag{
+			Name:  "socket-path",
+			Usage: "",
+			Value: "aniliSeeder.sock",
 		},
 	}
 
 	app.Action = func(c *cli.Context) error {
-		log.Debug().Msg("ready...")
-		log.Debug().Strs("args", os.Args).Msg("")
+		// log.Debug().Msg("ready...")
+		// log.Debug().Strs("args", os.Args).Msg("")
 
 		// TODO
 		// if c.Int("verbose") < -1 || c.Int("verbose") > 5 {
@@ -296,7 +321,27 @@ func main() {
 		&cli.Command{
 			Name:  "serve",
 			Usage: "",
-			Action: func(c *cli.Context) error {
+			Action: func(c *cli.Context) (e error) {
+				if c.String("syslog-addr") != "" {
+					if runtime.GOOS == "windows" {
+						log.Error().Msg("sorry, but syslog is not worked for windows; golang does not support syslog for win systems")
+						return os.ErrProcessDone
+					}
+
+					log.Debug().Msg("connecting to the syslog server...")
+
+					var nlog *zerolog.Logger
+					if nlog, e = utils.SetUpSyslogWriter(c); e != nil {
+						return
+					}
+
+					log.Info().Msg("connection to the syslog server has been established; reset log driver ...")
+
+					log = *nlog
+					log = log.Hook(SeverityHook{})
+					log.Info().Msg("zerolog has been reinited; starting application ...")
+				}
+
 				a := application.NewApp(c, &log)
 				return a.Bootstrap()
 			},
@@ -308,9 +353,27 @@ func main() {
 				return appcli.TestDial(c, "")
 			},
 		},
+		&cli.Command{
+			Name:  "test",
+			Usage: "",
+			Action: func(c *cli.Context) error {
+				aniApi, e := anilibria.NewApiClient(c, &log)
+				if e != nil {
+					return e
+				}
+
+				titles, e := aniApi.SearchTitlesByName("Urusei Yatsura 2022")
+				for _, title := range titles {
+					log.Debug().Str("title_name", title.Names.Ru).Msg("")
+				}
+
+				return e
+			},
+		},
 	}
 
-	sort.Sort(cli.FlagsByName(app.Flags))
+	// TODO sort.Sort of Flags uses too much allocs; temporary disabled
+	// sort.Sort(cli.FlagsByName(app.Flags))
 	sort.Sort(cli.CommandsByName(app.Commands))
 
 	if e := app.Run(os.Args); e != nil {

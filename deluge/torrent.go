@@ -5,6 +5,8 @@ import (
 	"io"
 	"math"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	delugeclient "github.com/MindHunter86/go-libdeluge"
@@ -30,21 +32,18 @@ func (m *Client) GetTorrents() (map[string]*delugeclient.TorrentStatus, error) {
 	return m.deluge.TorrentsStatus(delugeclient.StateUnspecified, nil)
 }
 
-func (m *Client) GetTorrentsHashes() ([]string, error) {
-	var e error
-	var trrs map[string]*delugeclient.TorrentStatus
-
-	if trrs, e = m.deluge.TorrentsStatus(delugeclient.StateUnspecified, nil); e != nil {
-		return nil, e
+func (m *Client) GetTorrentsHashes() (thashes []string, e error) {
+	var trrs = make(map[string]*delugeclient.TorrentStatus)
+	if trrs, e = m.GetTorrents(); e != nil {
+		return
 	}
 
-	var hashes []string
 	for hash := range trrs {
-		hashes = append(hashes, hash)
+		thashes = append(thashes, hash)
 	}
 
-	gLog.Debug().Int("hashes_length", len(hashes)).Msg("the torrnets hashes has been collected")
-	return hashes, e
+	gLog.Debug().Int("hashes_length", len(thashes)).Msg("the torrents hashes has been collected")
+	return
 }
 
 // TODO:
@@ -86,7 +85,7 @@ func (m *Client) GetWeakTorrents() ([]*delugeclient.TorrentStatus, error) {
 			continue
 		}
 
-		gLog.Info().Str("hash", hash).Str("torrnet_name", torrent.Name).Msg("marking as weak ...")
+		gLog.Info().Str("hash", hash).Str("torrent_name", torrent.Name).Msg("marking as weak ...")
 		weakTrrs = append(weakTrrs, torrent)
 	}
 
@@ -111,6 +110,7 @@ type Torrent struct {
 	TotalSeeds    int64
 	TotalSize     int64
 	TotalUploaded int64
+	TrackerStatus string
 
 	// Files          []delugeclient.File
 	// Peers          []delugeclient.Peer
@@ -137,6 +137,7 @@ func (*Client) newTorrentFromStatus(hash string, t *delugeclient.TorrentStatus) 
 		TotalDone:     t.TotalDone,
 		TotalUploaded: t.TotalUploaded,
 		TotalSize:     t.TotalSize,
+		TrackerStatus: t.TrackerStatus,
 	}
 }
 
@@ -155,7 +156,7 @@ func (m *Client) GetTorrentsV2() (_ []*Torrent, e error) {
 }
 
 func (*Client) SaveTorrentFile(fname string, buf io.Reader) (_ int64, e error) {
-	path := gCli.String("deluge-torrentfiles-path") + "/" + fname
+	path := filepath.Join(gCli.String("deluge-torrents-path"), fname)
 
 	if _, e = os.Stat(path); e != nil {
 		if !os.IsNotExist(e) {
@@ -188,6 +189,10 @@ func (m *Client) TorrentStatus(hash string) (_ *Torrent, e error) {
 	return m.newTorrentFromStatus(hash, tstatus), e
 }
 
+func (m *Client) ForceReannounce(hashes ...string) (e error) {
+	return m.deluge.ForceReannounce(hashes)
+}
+
 func (m *Torrent) GetVKScore() (_ float64) {
 	seedtime := time.Duration(m.SeedingTime) * time.Second
 	seeddays := seedtime.Hours() / float64(24)
@@ -197,4 +202,42 @@ func (m *Torrent) GetVKScore() (_ float64) {
 func (*Torrent) roundGivenScore(val float64, precision uint) float64 {
 	ratio := math.Pow(10, float64(precision))
 	return math.Round(val*ratio) / ratio
+}
+
+func (m *Torrent) GetTrackerStatus() string {
+	switch m.TrackerStatus {
+	case "Announce OK":
+		return "OK"
+	default:
+		return "Error"
+	}
+}
+
+func (m *Torrent) GetTrackerError() string {
+	return m.TrackerStatus
+}
+
+func (m *Torrent) IsTrackerOk() bool {
+	return m.TrackerStatus == "Announce OK"
+}
+
+func (m *Torrent) GetName() string {
+	// https://github.com/MindHunter86/aniliSeeder/issues/74
+	name := strings.ReplaceAll(m.Name, "_", " ")
+
+	name, _, _ = strings.Cut(name, "- AniLibria.TV")
+	return strings.TrimSpace(name)
+}
+
+func (m *Torrent) GetShortHash() string {
+	return m.Hash[0:9]
+}
+
+func (m *Torrent) GetQuality() string {
+	// https://github.com/MindHunter86/aniliSeeder/issues/74
+	name := strings.ReplaceAll(m.Name, "_", " ")
+
+	// strings.Trim("][") is not worked here; and I don't know why...
+	_, rawquality, _ := strings.Cut(strings.Trim(name, "]"), "[")
+	return strings.TrimSpace(rawquality)
 }

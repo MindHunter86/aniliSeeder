@@ -22,6 +22,7 @@ vendor/
 # Binary data
 bin/
 aniliSeeder
+aniliSeeder.cli
 __debug_bin
 
 # VSCode data

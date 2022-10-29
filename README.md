@@ -26,6 +26,10 @@
 
 `dropActiveSessions` - close all active anilibria session
 
+`dryDeployFailedAnnounces` - check worker for torrents with failed anounces to the anilibria tracker
+
+`deployFailedAnnounces` - redeploy torrents with failed announces
+
 
 ## Running
 run worker - `./aniliSeeder --http-debug --grpc-insecure serve`
@@ -43,27 +47,31 @@ USAGE:
    aniliSeeder [global options] command [command options] [arguments...]
 
 VERSION:
-   v0.1
+   devel
 
 AUTHOR:
    MindHunter86 <admin@vkom.cc>
 
 COMMANDS:
+   cli      
    serve    
-   cli     
+   test     
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
    --anilibria-api-baseurl value       (default: "https://api.anilibria.tv/v2")
    --anilibria-baseurl value           (default: "https://www.anilibria.tv")
    --anilibria-login-password value    password [$ANILIBRIA_PASSWORD]
-   --anilibria-login-username value    login [$ANILIBRIA_LOGIN, $ANILIBRIA_USERNAME]
+   --anilibria-login-username value    login [$ANILIBRIA_USERNAME]
+   --cmd-vkscore-warn value            all torrents below this value will be marked as inefficient (default: 25)
+   --cron-disable                      (default: false)
    --deluge-addr value                 (default: "127.0.0.1:58846")
-   --deluge-data-path value            (default: "./data")
+   --deluge-data-path value            directory for space monitoring (default: "./data")
+   --deluge-disk-minimal value         in MB;  (default: 128)
    --deluge-password value              [$DELUGE_PASSWORD]
-   --deluge-torrentfiles-path value    (default: "./data")
-   --deluge-username value             (default: "localclient") [$DELUGE_LOGIN, $DELUGE_USERNAME]
-   --disk-minimal-available value      In MB (default: 128)
+   --deluge-torrents-path value        download directory for .torrent files (default: "./data")
+   --deluge-username value             (default: "localclient") [$DELUGE_USERNAME]
+   --deploy-ignore-errors              (default: false)
    --grpc-connect-timeout value        for worker (default: 3s)
    --grpc-disable-reconnect            (default: false)
    --grpc-insecure                     (default: false)
@@ -71,7 +79,6 @@ GLOBAL OPTIONS:
    --grpc-ping-reconnect-hold value    time for grpc reconnection process (default: 5s)
    --grpc-reconnect-tries value        (default: 10)
    --grpc-request-timeout value        (default: 1s)
-   --help, -h                          show help (default: false)
    --http-client-insecure              Flag for TLS certificate verification disabling (default: false)
    --http-client-timeout TIMEOUT       Internal HTTP client connection TIMEOUT (format: 1000ms, 1s) (default: 3s)
    --http-debug                        (default: false)
@@ -83,18 +90,18 @@ GLOBAL OPTIONS:
    --http2-conn-max-age value          for master; 0 for disable (default: 10m0s)
    --http2-ping-time value             for worker (default: 3s)
    --http2-ping-timeout value          for worker (default: 1s)
-   --print-version, -V                 (default: false)
+   --is-master                         (default: false) [$IS_MASTER]
+   --master-addr value                 (default: "localhost:8081")
+   --master-mon-interval value         master workers monitoring checks interval; 0 - for disabling (default: 3s)
+   --master-secret value               (default: "randomsecretkey") [$SWARM_MASTER_SECRETKEY]
    --quite, -q                         Flag is equivalent to verbose -1 (default: false)
    --socket-path value                 (default: "aniliSeeder.sock")
-   --swarm-custom-ca-path value        
-   --swarm-is-master                   (default: false)
-   --swarm-master-addr value           (default: "localhost:8081")
-   --swarm-master-listen value         (default: "localhost:8081")
-   --swarm-master-secret value         (default: "randomsecretkey") [$SWARM_MASTER_SECRETKEY]
-   --torrentfiles-dir value            (default: "./data")
-   --torrents-vkscore-line value       (default: 25)
+   --syslog-addr value                 (default: "10.10.11.1:33517")
+   --syslog-proto value                (default: "tcp")
+   --syslog-tag value                  (default: "aniliseeder")
    --verbose LEVEL, -v LEVEL           Verbose LEVEL (value from 5(debug) to 0(panic) and -1 for log disabling(quite mode)) (default: 5)
-   
+   --help, -h                          show help (default: false)
+   --print-version, -V                 (default: false)
 
 COPYRIGHT:
    (c) 2022 mindhunter86

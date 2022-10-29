@@ -20,6 +20,8 @@ service WorkerService {
     rpc SaveTorrentFile(TFileSaveRequest) returns (TFileSaveReply) {}
 
     rpc GetSystemFreeSpace(google.protobuf.Empty) returns (SystemSpaceReply) {}
+
+    rpc ForceReannounce(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 message InitReply {
@@ -48,6 +50,7 @@ message TorrentScoreReply {
 message TorrentDropRequest {
     string Hash = 1;
     string Name = 2;
+    bool WithData = 3;
 }
 message TorrentDropReply {
     uint64 FreedSpace = 1;

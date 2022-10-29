@@ -159,6 +159,10 @@ func (*SockServer) parseClientCmd(cmd string) rpcCommand {
 		return cmdGetActiveSessions
 	case "dropActiveSessions":
 		return cmdDropAllActiveSessions
+	case "dryDeployFailedAnnounces":
+		return cmdDryDeployFailedAnnounces
+	case "deployFailedAnnounces":
+		return cmdDeployFailedAnnounces
 	default:
 		gLog.Debug().Str("cmd", strings.TrimSpace(cmd)).Msg("trimmed")
 		return cmdRpcUndefined
@@ -185,6 +189,10 @@ func (m *SockServer) runClientCmd(cmd rpcCommand) (io.ReadWriter, error) {
 		return m.cmd.getActiveSessions()
 	case cmdDropAllActiveSessions:
 		return m.cmd.dropAllActiveSessions()
+	case cmdDryDeployFailedAnnounces:
+		return m.cmd.deployFailedAnnounces(true)
+	case cmdDeployFailedAnnounces:
+		return m.cmd.deployFailedAnnounces(false)
 
 	default:
 		gLog.Error().Msg("golang internal error; given cmd is undefined in runClientCmd()")
