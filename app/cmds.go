@@ -381,8 +381,8 @@ func (*cmds) deployFailedAnnounces(dryrun bool) (_ io.ReadWriter, e error) {
 		tb.AppendRow([]interface{}{
 			ft.workerId[0:8], ft.oldTorrent.GetName(), ft.oldTorrent.GetQuality(),
 			ft.oldTorrent.GetShortHash(), ft.aniTorrent.GetShortHash(), ft.sizeChanges / 1024,
-		{Name: "Worker", Mode: table.Asc},
-	})
+		})
+	}
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
