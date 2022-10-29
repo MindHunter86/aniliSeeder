@@ -20,6 +20,27 @@ const (
 	cronTaskReannounce
 )
 
+func (m *cronTask) toggle(lock sync.Locker, task cronTask) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	*m = *m ^ task
+}
+
+func (m *cronTask) isEnabled(lock sync.Locker, task cronTask) cronTask {
+	lock.Lock()
+	defer lock.Unlock()
+	return *m & task //? is lock will work
+}
+
+func (m *cronTask) getTasks(lock sync.Locker) (tasks uint8) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	tasks = uint8(*m)
+	return
+}
+
 func newCron() *cron {
 	return &cron{}
 }
@@ -53,20 +74,6 @@ loop:
 	m.wg.Wait()
 }
 
-func (m *cron) toggleTaskLock(task cronTask) {
-	m.mu.Lock()
-	m.tasks = m.tasks ^ task
-	m.mu.Unlock()
-}
-
-func (m *cron) getTasks() (t uint8) {
-	m.mu.RLock()
-	t = uint8(m.tasks)
-	m.mu.RUnlock()
-
-	return
-}
-
 //	triggers
 //	1 min - collect stats and push to graphite (?)
 //
@@ -86,10 +93,8 @@ func (m *cron) getTasks() (t uint8) {
 //			- try to update
 //			- push notification to telegram
 
-//
-
 func (m *cron) runCronTasks() {
-	gLog.Debug().Uint8("cron_tasks", m.getTasks()).Msg("mask before switch")
+	gLog.Debug().Uint8("cron_tasks", m.tasks.getTasks(m.mu.RLocker())).Msg("mask before switch")
 
 	tm := time.Now()
 
@@ -113,16 +118,16 @@ func (m *cron) runCronTasks() {
 		gLog.Debug().Msg("running 60min jobs...")
 	}
 
-	gLog.Debug().Uint8("cron_tasks", m.getTasks()).Msg("mask after switch")
+	gLog.Debug().Uint8("cron_tasks", m.tasks.getTasks(m.mu.RLocker())).Msg("mask after switch")
 }
 
 func (m *cron) redeploy() {
-	if m.tasks&cronTaskDeployUpdates != 0 {
+	if m.tasks.isEnabled(m.mu.RLocker(), cronTaskDeployUpdates) != 0 {
 		gLog.Debug().Msg("deploy updates is locked now; skipping job...")
 		return
 	}
 
-	m.toggleTaskLock(cronTaskDeployUpdates)
+	m.tasks.toggle(m.mu.RLocker(), cronTaskDeployUpdates)
 	gLog.Debug().Msg("deploy updates is not locked; running job...")
 
 	m.wg.Add(1)
@@ -135,18 +140,18 @@ func (m *cron) redeploy() {
 		//! if errNothingAssigned
 		//!   try to clean weak VKscore torrents
 
-		m.toggleTaskLock(cronTaskDeployUpdates)
+		m.tasks.toggle(m.mu.RLocker(), cronTaskDeployUpdates)
 		done()
 	}(m.wg.Done)
 }
 
 func (m *cron) reannounce() {
-	if m.tasks&cronTaskReannounce != 0 {
+	if m.tasks.isEnabled(m.mu.RLocker(), cronTaskReannounce) != 0 {
 		gLog.Debug().Msg("reannounces is locked now; skipping job...")
 		return
 	}
 
-	m.toggleTaskLock(cronTaskReannounce)
+	m.tasks.toggle(m.mu.RLocker(), cronTaskReannounce)
 	gLog.Debug().Msg("reannounces is not locked; running job...")
 
 	m.wg.Add(1)
@@ -165,7 +170,7 @@ func (m *cron) reannounce() {
 			gLog.Error().Err(e).Msg("got an error in deploy failed_announces request")
 		}
 
-		m.toggleTaskLock(cronTaskReannounce)
+		m.tasks.toggle(m.mu.RLocker(), cronTaskReannounce)
 		done()
 	}(m.wg.Done)
 }
