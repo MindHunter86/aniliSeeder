@@ -96,16 +96,19 @@ func (m *cron) runCronTasks() {
 
 	// < 1 min jobs here >
 	gLog.Debug().Msg("running 1min jobs...")
-	m.reannounce()
 
 	if tm.Minute()%5 == 0 {
 		// < 5 min jobs here >
 		gLog.Debug().Msg("running 5min jobs...")
 
+		// reannounce
+		m.reannounce()
+
 		// !! temporary shit
 		// https://github.com/MindHunter86/aniliSeeder/issues/73
-		time.Sleep(10 * time.Second)
+		time.Sleep(30 * time.Second)
 
+		// redeploy
 		m.redeploy()
 	}
 
