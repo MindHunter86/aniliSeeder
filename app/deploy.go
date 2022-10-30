@@ -201,7 +201,7 @@ func (*deploy) assignTorrentsToWorkers(aobjects []*deploymentObject) (assigned b
 
 		// if worker has space leak or worker has not free space - remove from further balancing
 		if worker.GetFreeSpace() == 0 {
-			gLog.Warn().Str("worker_id", id).Uint64("free_space_kb", worker.GetFreeSpace()/1024).
+			gLog.Warn().Str("worker_id", id).Int64("free_space_kb", utils.GetKBytesFromBytes(int64(worker.GetFreeSpace()))).
 				Msg("there is no free space on the worker; the worker will be removed from further deployment...")
 			continue
 		}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
+	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/rs/zerolog"
 )
 
@@ -168,7 +169,8 @@ func (*deploy) sortTitlesByLeechers(ftitles []*deploymentObject) {
 	// debug
 	if zerolog.GlobalLevel() == zerolog.DebugLevel {
 		for _, ftitle := range ftitles {
-			gLog.Debug().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).Int64("torrent_size_mb", ftitle.aniTorrent.TotalSize/1024/1024).
+			gLog.Debug().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).
+				Int64("torrent_size_mb", utils.GetMBytesFromBytes(ftitle.aniTorrent.TotalSize)).
 				Int("torrent_leechers", ftitle.aniTorrent.Leechers).Msg("sorted slice debug")
 		}
 	}

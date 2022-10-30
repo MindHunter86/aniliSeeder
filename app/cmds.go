@@ -54,7 +54,7 @@ func (*cmds) listWorkers() (_ io.ReadWriter, e error) {
 
 	for id, wrk := range gSwarm.GetConnectedWorkers() {
 		tb.AppendRow([]interface{}{
-			id, wrk.Version, wrk.FreeSpace / 1024 / 1024, len(wrk.ActiveTorrents),
+			id, wrk.Version, utils.GetMBytesFromBytes(int64(wrk.FreeSpace)), len(wrk.ActiveTorrents),
 		})
 	}
 
@@ -84,7 +84,7 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 			seedTime := time.Duration(trr.SeedingTime) * time.Second
 			tb.AppendRow([]interface{}{
 				id[0:8], trr.GetShortHash(), trr.GetName(), trr.GetQuality(), utils.GetMBytesFromBytes(trr.TotalSize), trr.Ratio,
-				trr.TotalUploaded / 1024 / 1024, seedTime.String(), trr.GetTrackerStatus(), trr.GetVKScore(),
+				utils.GetMBytesFromBytes(trr.TotalUploaded), seedTime.String(), trr.GetTrackerStatus(), trr.GetVKScore(),
 			})
 
 		}
@@ -161,7 +161,7 @@ func (*cmds) loadAniUpdates() (_ io.ReadWriter, e error) {
 		for _, tr := range tl.Torrents.List {
 			tb.AppendRow([]interface{}{
 				tl.Id, tl.Names.Ru, tl.Status.String, tl.Type.String, tl.Torrents.Series.String,
-				tr.GetShortHash(), tr.TotalSize / 1024 / 1024, tr.Seeders, tr.Leechers,
+				tr.GetShortHash(), utils.GetMBytesFromBytes(tr.TotalSize), tr.Seeders, tr.Leechers,
 			})
 
 		}
@@ -202,7 +202,7 @@ func (*cmds) loadAniChanges() (_ io.ReadWriter, e error) {
 		for _, tr := range tl.Torrents.List {
 			tb.AppendRow([]interface{}{
 				tl.Id, tl.Names.Ru, tl.Status.String, tl.Type.String, tl.Torrents.Series.String,
-				tr.GetShortHash(), tr.TotalSize / 1024 / 1024, tr.Seeders, tr.Leechers,
+				tr.GetShortHash(), utils.GetMBytesFromBytes(tr.TotalSize), tr.Seeders, tr.Leechers,
 			})
 
 		}
@@ -244,7 +244,7 @@ func (*cmds) loadAniSchedule() (_ io.ReadWriter, e error) {
 			for _, tr := range tl.Torrents.List {
 				tb.AppendRow([]interface{}{
 					day.Day, tl.Id, tl.Names.Ru, tl.Status.String, tl.Type.String, tl.Torrents.Series.String,
-					tr.GetShortHash(), tr.TotalSize / 1024 / 1024, tr.Seeders, tr.Leechers,
+					tr.GetShortHash(), utils.GetMBytesFromBytes(tr.TotalSize), tr.Seeders, tr.Leechers,
 				})
 			}
 		}
@@ -416,7 +416,7 @@ func (*cmds) deployFailedAnnounces(dryrun bool) (_ io.ReadWriter, e error) {
 	for _, ft := range ftitles {
 		tb.AppendRow([]interface{}{
 			ft.workerId[0:8], ft.oldTorrent.GetName(), ft.oldTorrent.GetQuality(),
-			ft.oldTorrent.GetShortHash(), ft.aniTorrent.GetShortHash(), ft.sizeChanges / 1024,
+			ft.oldTorrent.GetShortHash(), ft.aniTorrent.GetShortHash(), utils.GetKBytesFromBytes(ft.sizeChanges),
 		})
 	}
 
