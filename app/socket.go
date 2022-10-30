@@ -102,7 +102,7 @@ func (m *SockServer) clientRpcHandler(c net.Conn) {
 		if buf, err = m.runClientCmd(clientCmd); err != nil {
 			gLog.Warn().Str("client", clientId).Str("cmd", msg).Err(err).Msg("could not run received cmd because of internal errors")
 
-			buf = bytes.NewBufferString("internal server error")
+			buf = bytes.NewBufferString("internal server error: " + err.Error())
 			if n, err := io.Copy(c, m.getResponseMessage(buf)); m.checkRespondErrors(n, err, msg, clientId) != nil {
 				return
 			}
