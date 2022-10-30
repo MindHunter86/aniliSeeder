@@ -7,6 +7,7 @@ import (
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
+	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
@@ -87,13 +88,38 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 	}
 
 	tb.SetRowPainter(func(raw table.Row) text.Colors {
-		if raw[8].(float64) >= float64(gCli.Int("cmd-vkscore-warn")) && raw[7] == "OK" {
-			return text.Colors{text.FgGreen}
+		var color = text.FgGreen
+
+		// vkscore
+		if raw[8].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) && raw[4].(float32) < 1 {
+			color = text.FgRed
+		} else if raw[8].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) {
+			color = text.FgYellow
+		} else if raw[4].(float32) < 1 {
+			color = text.FgHiGreen
 		}
-		if raw[4].(float32) < 1 {
-			return text.Colors{text.FgRed}
+
+		// tracker
+		switch raw[7] {
+		case deluge.TrackerStatusOK:
+			raw[7] = "OK"
+			return text.Colors{color}
+		case deluge.TrackerStatusNotRegistered:
+			raw[7] = "ERROR"
+			return text.Colors{text.FgHiYellow}
+		default:
+			raw[7] = "WARNING"
+			return text.Colors{text.FgHiYellow}
 		}
-		return text.Colors{text.FgYellow}
+
+		// legacy
+		// if raw[8].(float64) >= float64(gCli.Int("cmd-vkscore-warn")) && raw[7] == "OK" {
+		// 	return text.Colors{text.FgGreen}
+		// }
+		// if raw[4].(float32) < 1 {
+		// 	return text.Colors{text.FgRed}
+		// }
+		// return text.Colors{text.FgYellow}
 	})
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
@@ -242,7 +268,7 @@ func (*cmds) dryDeployAniUpdates() (_ io.ReadWriter, e error) {
 	})
 
 	dpl := newDeploy()
-	var deployTitles = make(map[string][]anilibria.TitleTorrent)
+	var deployTitles = make(map[string][]*anilibria.TitleTorrent)
 
 	if deployTitles, e = dpl.dryRun(); e != nil {
 		return
@@ -276,11 +302,11 @@ func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
 	buf := bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"Worker", "Torrent", "Size", "Seeders", "Leechers", "Uploaded",
+		"Worker", "Torrent", "Quality", "Size", "Seeders", "Leechers", "Uploaded",
 	})
 
 	dpl := newDeploy()
-	var deployTitles = make(map[string][]anilibria.TitleTorrent)
+	var deployTitles = make(map[string][]*anilibria.TitleTorrent)
 
 	if deployTitles, e = dpl.run(); e != nil {
 		return
@@ -289,7 +315,7 @@ func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
 	for wid, trrs := range deployTitles {
 		for _, trr := range trrs {
 			tb.AppendRow([]interface{}{
-				wid[0:8], trr.GetShortHash(), trr.TotalSize / 1024 / 1024, trr.Seeders, trr.Leechers,
+				wid[0:8], trr.GetShortHash(), trr.Quality.String, utils.GetMBytesFromBytes(trr.TotalSize), trr.Seeders, trr.Leechers,
 				time.Unix(int64(trr.UploadedTimestamp), 0).String(),
 			})
 		}

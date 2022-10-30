@@ -204,21 +204,25 @@ func (*Torrent) roundGivenScore(val float64, precision uint) float64 {
 	return math.Round(val*ratio) / ratio
 }
 
-func (m *Torrent) GetTrackerStatus() string {
+func (m *Torrent) GetTrackerStatus() TrackerStatus {
 	switch m.TrackerStatus {
 	case "Announce OK":
-		return "OK"
+		return TrackerStatusOK
+	case "Announce Sent":
+		return TrackerStatusSent
+	case "Error: Connection timed out":
+		return TrackerStatusConnTimedOut
+	case "Error: timed out":
+		return TrackerStatusTimedOut
+	case "Error: Торрент не зарегистрирован":
+		return TrackerStatusNotRegistered
 	default:
-		return "Error"
+		return TrackerStatusUnknown
 	}
 }
 
-func (m *Torrent) GetTrackerError() string {
+func (m *Torrent) GetTrackerRawError() string {
 	return m.TrackerStatus
-}
-
-func (m *Torrent) IsTrackerOk() bool {
-	return m.TrackerStatus == "Announce OK"
 }
 
 func (m *Torrent) GetName() string {

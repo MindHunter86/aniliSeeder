@@ -15,8 +15,8 @@ type failedTitle struct {
 
 	sizeChanges int64
 
-	noDeploy   bool
-	duplicated bool
+	noDeploy     bool
+	isDuplicated bool
 }
 
 type workerTorrents struct {
@@ -43,6 +43,7 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 	}
 
 	if len(ftitles) == 0 {
+		gLog.Debug().Msg("there is nothing for redeployment")
 		return nil, errNoFailures
 	}
 
@@ -64,14 +65,7 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 			return nil, errFailedDeletions
 		}
 
-		atorrents := m.getTorrentsListForDeploy(ftitles)
-
-		var btorrents = make(map[string][]anilibria.TitleTorrent)
-		if btorrents, e = m.balanceForWorkers(atorrents); e != nil {
-			return
-		}
-
-		m.sendDeployCommand(btorrents)
+		m.sendDeployCommand(m.getTorrentsListForDeploy(ftitles))
 	}
 
 	// TODO
@@ -107,8 +101,18 @@ func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*failedTitle
 	for _, worker := range wtorrents {
 		for _, trr := range worker.torrents {
 
-			// skip the torrents with OK announces
-			if trr.IsTrackerOk() {
+			// skip torrents with OK and WARN status in announce
+			switch trr.GetTrackerStatus() {
+			case deluge.TrackerStatusNotRegistered:
+				gLog.Trace().Str("torrent_hash", trr.GetShortHash()).Str("torrent_status", trr.GetTrackerRawError()).
+					Msg("the torrent has NotRegistered status; processing it...")
+			case deluge.TrackerStatusOK:
+				gLog.Trace().Str("torrent_hash", trr.GetShortHash()).Str("torrent_status", trr.GetTrackerRawError()).
+					Msg("the torrent has OK status; skipping...")
+				continue
+			default:
+				gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Str("torrent_status", trr.GetTrackerRawError()).
+					Msg("there is torrent with warning announce status; skipping...")
 				continue
 			}
 
@@ -251,7 +255,7 @@ func (*deploy) searchForDuplicates(ftitles []*failedTitle, wtorrents []*workerTo
 		for _, worker := range wtorrents {
 			for _, trr := range worker.torrents {
 				if trr.Hash == ftitle.aniTorrent.Hash {
-					ftitle.duplicated = true
+					ftitle.isDuplicated = true
 					gLog.Debug().Str("torrent_name", ftitle.oldTorrent.GetName()).
 						Msg("found duplication in searched titles; the torrent marked as 'duplicated' and will be skipped")
 				}
@@ -260,18 +264,18 @@ func (*deploy) searchForDuplicates(ftitles []*failedTitle, wtorrents []*workerTo
 	}
 }
 
-func (*deploy) getTorrentsListForDeploy(ftitles []*failedTitle) []*anilibria.TitleTorrent {
-	var atorrents []*anilibria.TitleTorrent
+func (*deploy) getTorrentsListForDeploy(ftitles []*failedTitle) map[string][]*anilibria.TitleTorrent {
+	var dtorrents = make(map[string][]*anilibria.TitleTorrent)
 
 	for _, ftitle := range ftitles {
-		if ftitle.noDeploy || ftitle.duplicated {
+		if ftitle.noDeploy || ftitle.isDuplicated {
 			gLog.Debug().Str("torrent_name", ftitle.oldTorrent.GetName()).
-				Msg("the torrent marked as noDeploy or as duplicated, so deploy will be skipped")
+				Msg("the torrent marked as noDeploy or as isDuplicated, skipping deploy...")
 			continue
 		}
 
-		atorrents = append(atorrents, ftitle.aniTorrent)
+		dtorrents[ftitle.workerId] = append(dtorrents[ftitle.workerId], ftitle.aniTorrent)
 	}
 
-	return atorrents
+	return dtorrents
 }

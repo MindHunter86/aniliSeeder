@@ -3,17 +3,18 @@ package app
 import (
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
+	"github.com/MindHunter86/aniliSeeder/utils"
 )
 
-func (m *deploy) run() (map[string][]anilibria.TitleTorrent, error) {
+func (m *deploy) run() (map[string][]*anilibria.TitleTorrent, error) {
 	return m.deploy(false)
 }
 
-func (m *deploy) dryRun() (map[string][]anilibria.TitleTorrent, error) {
+func (m *deploy) dryRun() (map[string][]*anilibria.TitleTorrent, error) {
 	return m.deploy(true)
 }
 
-func (m *deploy) deploy(isDryRun bool) (_ map[string][]anilibria.TitleTorrent, e error) {
+func (m *deploy) deploy(isDryRun bool) (_ map[string][]*anilibria.TitleTorrent, e error) {
 	var titles []*anilibria.TitleTorrent
 	if titles, e = m.getAnilibriaUpdatesTorrents(); e != nil {
 		return
@@ -31,7 +32,7 @@ func (m *deploy) deploy(isDryRun bool) (_ map[string][]anilibria.TitleTorrent, e
 
 	sortedUpdates := m.sortTorrentListByLeechers(titleUpdates)
 
-	var assignedTitles = make(map[string][]anilibria.TitleTorrent)
+	var assignedTitles = make(map[string][]*anilibria.TitleTorrent)
 	if assignedTitles, e = m.balanceForWorkers(sortedUpdates); e != nil {
 		return
 	}
@@ -54,14 +55,16 @@ func (*deploy) getAnilibriaUpdatesTorrents() (trrs []*anilibria.TitleTorrent, e 
 	}
 
 	for _, ttl := range ttls {
-		// !! XXX
-		// boruto-naruto-next-generations exclude
-		// github.com/MindHunter86/aniliSeeder/issues/59
-		if ttl.Id == 3996 || ttl.Id == 8452 {
-			gLog.Error().Msg("ATTENTION!!! Ignoring title with id 3996 or 8452; please, fix this shit immediately")
-			continue
+		for _, trr := range ttl.Torrents.List {
+			if tsize := utils.GetMBytesFromBytes(trr.TotalSize); tsize > int64(gCli.Uint64("anilibria-max-torrent-size")) {
+				gLog.Info().Str("title_name", ttl.Names.En).Str("torrent_hash", trr.GetShortHash()).Int64("torrent_size_mb", tsize).
+					Int("title_id", ttl.Id).Uint64("download_limit", gCli.Uint64("anilibria-max-torrent-size")).
+					Msg("skipping a torrent because the torrent is larger than the download limit...")
+				continue
+			}
+
+			trrs = append(trrs, trr)
 		}
-		// !! XXX
 
 		trrs = append(trrs, ttl.Torrents.List...)
 	}

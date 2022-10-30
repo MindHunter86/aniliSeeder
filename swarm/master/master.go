@@ -2,6 +2,7 @@ package master
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net"
 	"strings"
@@ -147,8 +148,13 @@ func (m *Master) serve(done func()) {
 
 	for {
 		conn, e := m.rawListener.Accept()
-		if e != nil && e != net.ErrClosed {
+		if e != nil {
+			if errors.Is(e, net.ErrClosed) {
+				break
+			}
+
 			gLog.Error().Err(e).Msg("got some error with processing a new tcp client")
+			continue
 		}
 
 		gLog.Debug().Str("master_listen", gCli.String("master-addr")).Str("client_addr", conn.RemoteAddr().String()).
