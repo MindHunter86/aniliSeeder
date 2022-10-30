@@ -152,3 +152,10 @@ func (m *TitleTorrent) GetName() string {
 	name, _, _ = strings.Cut(name, "- AniLibria.TV")
 	return strings.TrimSpace(name)
 }
+
+func (m *TitleTorrent) GetTorrentFileName() string {
+	// https://github.com/MindHunter86/aniliSeeder/issues/74
+	name := strings.ReplaceAll(m.Metadata.Name, "_", " ")
+
+	return strings.Join([]string{name, "torrent"}, ".")
+}
