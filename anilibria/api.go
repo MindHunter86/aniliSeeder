@@ -67,7 +67,7 @@ type (
 		Url               string
 		UploadedTimestamp uint64 `json:"uploaded_timestamp"`
 		Hash              string
-		Metadata          interface{}
+		Metadata          *TorrentMetadata
 		RawBase64File     interface{}
 	}
 	TorrentSeries struct {
@@ -81,6 +81,18 @@ type (
 		Resolution string
 		Encoder    string
 		LqAudio    interface{} `json:"lq_audio"`
+	}
+	TorrentMetadata struct {
+		Hash             string
+		Name             string
+		Announce         []string
+		CreatedTimestamp uint64          `json:"created_timestamp"`
+		FilesList        []*MetadataFile `json:"files_list"`
+	}
+	MetadataFile struct {
+		File   string
+		Size   uint64
+		Offset uint64
 	}
 )
 
