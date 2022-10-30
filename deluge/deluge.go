@@ -8,6 +8,16 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+type TrackerStatus uint8
+
+const (
+	TrackerStatusOK TrackerStatus = iota
+	TrackerStatusUnknown
+	TrackerStatusTimedOut
+	TrackerStatusSent
+	TrackerStatusNotRegistered
+)
+
 type Client struct {
 	deluge *delugeclient.ClientV2
 }
