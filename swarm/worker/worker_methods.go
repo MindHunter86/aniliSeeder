@@ -276,9 +276,20 @@ func (m *WorkerService) GetSystemFreeSpace(ctx context.Context, _ *emptypb.Empty
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 
+	var fspace uint64
 	rspace := gCli.Uint64("deluge-disk-minimal") * 1024 * 1024
+	dspace := utils.CheckDirectoryFreeSpace(gCli.String("deluge-data-path"))
+
+	if rspace > dspace {
+		fspace = 0
+		gLog.Error().Int64("dspace", utils.GetMBytesFromBytes(int64(dspace))).Int64("rspace", utils.GetMBytesFromBytes(int64(rspace))).
+			Msg("deletected space leak! data dir space is less than \"deluge-disk-minimal\"")
+	} else {
+		fspace = dspace - rspace
+	}
+
 	return &pb.SystemSpaceReply{
-		FreeSpace: utils.CheckDirectoryFreeSpace(gCli.String("deluge-data-path")) - rspace,
+		FreeSpace: fspace,
 	}, e
 }
 
