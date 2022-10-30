@@ -258,19 +258,3 @@ func (*deploy) searchForDuplicates(ftitles []*deploymentObject, wtorrents []*wor
 		}
 	}
 }
-
-func (*deploy) getTorrentsListForDeploy(ftitles []*deploymentObject) map[string][]*anilibria.TitleTorrent {
-	var dtorrents = make(map[string][]*anilibria.TitleTorrent)
-
-	for _, ftitle := range ftitles {
-		if ftitle.noDeploy || ftitle.isDuplicated {
-			gLog.Debug().Str("torrent_name", ftitle.oldTorrent.GetName()).
-				Msg("the torrent marked as noDeploy or as isDuplicated, skipping deploy...")
-			continue
-		}
-
-		dtorrents[ftitle.workerId] = append(dtorrents[ftitle.workerId], ftitle.aniTorrent)
-	}
-
-	return dtorrents
-}

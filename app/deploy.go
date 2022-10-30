@@ -33,11 +33,8 @@ type (
 	deploymentObject struct {
 		workerId string
 
-		aniTitle   *anilibria.Title
 		aniTorrent *anilibria.TitleTorrent
-
-		oldTorrent    *deluge.Torrent
-		delugeTorrent *deluge.Torrent
+		oldTorrent *deluge.Torrent
 
 		sizeChanges            int64
 		noDeploy, isDuplicated bool
@@ -284,9 +281,9 @@ func (m *deploy) deployAssignedTorrents(aobjects []*deploymentObject) {
 	for _, aobject := range aobjects {
 		trr := aobject.aniTorrent
 
-		if aobject.noDeploy {
+		if aobject.noDeploy || aobject.isDuplicated {
 			gLog.Debug().Str("torrent_name", trr.GetName()).Str("torrent_hash", trr.GetShortHash()).
-				Msg("skipping torrent because of noDeploy flag detection")
+				Msg("skipping torrent because of noDeploy or isDuplicated flag detection")
 		}
 
 		gLog.Debug().Str("worker_id", aobject.workerId).Str("torrent_name", trr.GetName()).Str("torrent_hash", trr.GetShortHash()).
