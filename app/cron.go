@@ -35,7 +35,7 @@ func (m *cronTask) isEnabled(task ctask) bool {
 	m.RLock()
 	defer m.RUnlock()
 
-	return m.task&task != 0 //? is Mutex works here ???
+	return m.task&task != 0 // ? is Mutex works here ???
 }
 
 func (m *cronTask) getTasks() uint8 {
