@@ -5,15 +5,15 @@ import (
 	"github.com/MindHunter86/aniliSeeder/deluge"
 )
 
-func (m *deploy) run() (map[string][]anilibria.TitleTorrent, error) {
+func (m *deploy) run() (map[string][]*anilibria.TitleTorrent, error) {
 	return m.deploy(false)
 }
 
-func (m *deploy) dryRun() (map[string][]anilibria.TitleTorrent, error) {
+func (m *deploy) dryRun() (map[string][]*anilibria.TitleTorrent, error) {
 	return m.deploy(true)
 }
 
-func (m *deploy) deploy(isDryRun bool) (_ map[string][]anilibria.TitleTorrent, e error) {
+func (m *deploy) deploy(isDryRun bool) (_ map[string][]*anilibria.TitleTorrent, e error) {
 	var titles []*anilibria.TitleTorrent
 	if titles, e = m.getAnilibriaUpdatesTorrents(); e != nil {
 		return
@@ -31,7 +31,7 @@ func (m *deploy) deploy(isDryRun bool) (_ map[string][]anilibria.TitleTorrent, e
 
 	sortedUpdates := m.sortTorrentListByLeechers(titleUpdates)
 
-	var assignedTitles = make(map[string][]anilibria.TitleTorrent)
+	var assignedTitles = make(map[string][]*anilibria.TitleTorrent)
 	if assignedTitles, e = m.balanceForWorkers(sortedUpdates); e != nil {
 		return
 	}
