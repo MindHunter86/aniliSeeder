@@ -43,6 +43,7 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 	}
 
 	if len(ftitles) == 0 {
+		gLog.Debug().Msg("there is nothing for redeployment")
 		return nil, errNoFailures
 	}
 

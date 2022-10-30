@@ -57,7 +57,6 @@ func (m *cron) run() {
 
 	gLog.Debug().Time("time_now", time.Now()).Msg("starting cron subservice...")
 	m.ticker = time.NewTicker(time.Minute)
-	m.tasks = &cronTask{}
 
 loop:
 	for {
@@ -150,7 +149,7 @@ func (m *cron) redeploy() {
 }
 
 func (m *cron) reannounce() {
-	if m.tasks.isEnabled(cronTaskReannounce) {
+	if m.tasks.isEnabled(cronTaskReannounce){
 		gLog.Warn().Msg("reannounces is locked now; skipping job...")
 		return
 	}
