@@ -46,7 +46,9 @@ func (m *cronTask) getTasks() uint8 {
 }
 
 func newCron() *cron {
-	return &cron{}
+	return &cron{
+		tasks: &cronTask{},
+	}
 }
 
 func (m *cron) run() {
@@ -149,7 +151,7 @@ func (m *cron) redeploy() {
 }
 
 func (m *cron) reannounce() {
-	if m.tasks.isEnabled(cronTaskReannounce){
+	if m.tasks.isEnabled(cronTaskReannounce) {
 		gLog.Warn().Msg("reannounces is locked now; skipping job...")
 		return
 	}
