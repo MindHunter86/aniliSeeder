@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
+	"github.com/MindHunter86/aniliSeeder/utils"
 )
 
 func (m *deploy) run() (map[string][]*anilibria.TitleTorrent, error) {
@@ -54,14 +55,16 @@ func (*deploy) getAnilibriaUpdatesTorrents() (trrs []*anilibria.TitleTorrent, e 
 	}
 
 	for _, ttl := range ttls {
-		// !! XXX
-		// boruto-naruto-next-generations exclude
-		// github.com/MindHunter86/aniliSeeder/issues/59
-		if ttl.Id == 3996 || ttl.Id == 8452 {
-			gLog.Error().Msg("ATTENTION!!! Ignoring title with id 3996 or 8452; please, fix this shit immediately")
-			continue
+		for _, trr := range ttl.Torrents.List {
+			if tsize := utils.GetMBytesFromBytes(trr.TotalSize); tsize > int64(gCli.Uint64("anilibria-max-torrent-size")) {
+				gLog.Info().Str("title_name", ttl.Names.En).Str("torrent_hash", trr.Hash[0:9]).Int64("torrent_size_mb", tsize).
+					Int("title_id", ttl.Id).Uint64("download_limit", gCli.Uint64("anilibria-max-torrent-size")).
+					Msg("skipping a torrent because the torrent is larger than the download limit...")
+				continue
+			}
+
+			trrs = append(trrs, trr)
 		}
-		// !! XXX
 
 		trrs = append(trrs, ttl.Torrents.List...)
 	}
