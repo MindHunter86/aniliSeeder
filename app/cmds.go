@@ -87,13 +87,40 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 	}
 
 	tb.SetRowPainter(func(raw table.Row) text.Colors {
-		if raw[8].(float64) >= float64(gCli.Int("cmd-vkscore-warn")) && raw[7] == "OK" {
-			return text.Colors{text.FgGreen}
+		var color = text.FgGreen
+
+		// vkscore
+		if raw[8].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) && raw[4].(float32) < 1 {
+			color = text.FgRed
+		} else if raw[8].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) {
+			color = text.FgYellow
 		}
+
 		if raw[4].(float32) < 1 {
-			return text.Colors{text.FgRed}
+			color = text.FgBlue
 		}
-		return text.Colors{text.FgYellow}
+
+		// tracker
+		switch raw[7] {
+		case deluge.TrackerStatusOK:
+			raw[7] = "OK"
+			return text.Colors{color}
+		case deluge.TrackerStatusNotRegistered:
+			raw[7] = "ERROR"
+			return text.Colors{text.FgHiYellow}
+		default:
+			raw[7] = "WARNING"
+			return text.Colors{text.FgHiCyan}
+		}
+
+		// legacy
+		// if raw[8].(float64) >= float64(gCli.Int("cmd-vkscore-warn")) && raw[7] == "OK" {
+		// 	return text.Colors{text.FgGreen}
+		// }
+		// if raw[4].(float32) < 1 {
+		// 	return text.Colors{text.FgRed}
+		// }
+		// return text.Colors{text.FgYellow}
 	})
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
