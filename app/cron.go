@@ -174,11 +174,11 @@ func (m *cron) reannounce() {
 			return
 		}
 
-		for wid := range wrks {
-			if e = gSwarm.ForceReannounce(wid); e != nil {
-				gLog.Error().Err(e).Msg("got an error in force reannounce request")
-			}
-		}
+		// for wid := range wrks {
+		// 	if e = gSwarm.ForceReannounce(wid); e != nil {
+		// 		gLog.Error().Err(e).Msg("got an error in force reannounce request")
+		// 	}
+		// }
 
 		// wait for reannounces && force redeploy
 		if _, e = newDeploy().deployFailedAnnounces(); e != nil && e != errNoFailures {
