@@ -27,6 +27,8 @@ const (
 
 	cmdDeployAniUpdates
 	cmdDryDeployAniUpdates
+	cmdDeployAniChanges
+	cmdDryDeployAniChanges
 	// cmdDryDeployAniChanges
 	// cmdDryDeployAniSchedule
 
@@ -173,6 +175,7 @@ func (*cmds) loadAniUpdates() (_ io.ReadWriter, e error) {
 
 	return buf, e
 }
+
 func (*cmds) loadAniChanges() (_ io.ReadWriter, e error) {
 	tb := table.NewWriter()
 	defer tb.Render()
@@ -257,30 +260,29 @@ func (*cmds) loadAniSchedule() (_ io.ReadWriter, e error) {
 	return buf, e
 }
 
-func (*cmds) dryDeployAniUpdates() (_ io.ReadWriter, e error) {
+func (*cmds) deployAniUpdates(dryrun ...bool) (_ io.ReadWriter, e error) {
 	tb := table.NewWriter()
 	defer tb.Render()
 
 	buf := bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"Worker", "Torrent", "Size", "Seeders", "Leechers", "Uploaded",
+		"Worker", "Title", "Quality", "Torrent", "Size", "Seeders", "Leechers", "Uploaded",
 	})
 
-	dpl := newDeploy()
-	var deployTitles = make(map[string][]*anilibria.TitleTorrent)
-
-	if deployTitles, e = dpl.dryRun(); e != nil {
+	dryrun = append(dryrun, true)
+	var aobjects []*deploymentObject
+	if aobjects, e = newDeploy().deployFromAniApi(deployTypeAniUpdates, dryrun[0]); e != nil {
 		return
 	}
 
-	for wid, trrs := range deployTitles {
-		for _, trr := range trrs {
-			tb.AppendRow([]interface{}{
-				wid[0:8], trr.GetShortHash(), trr.TotalSize / 1024 / 1024, trr.Seeders, trr.Leechers,
-				time.Unix(int64(trr.UploadedTimestamp), 0).String(),
-			})
-		}
+	for _, aobject := range aobjects {
+		trr := aobject.aniTorrent
+
+		tb.AppendRow([]interface{}{
+			aobject.workerId[0:8], trr.GetName(), trr.Quality.String, trr.GetShortHash(), utils.GetMBytesFromBytes(trr.TotalSize),
+			trr.Seeders, trr.Leechers, time.Unix(int64(trr.UploadedTimestamp), 0).String(),
+		})
 	}
 
 	tb.SortBy([]table.SortBy{
@@ -289,36 +291,36 @@ func (*cmds) dryDeployAniUpdates() (_ io.ReadWriter, e error) {
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
+		{Number: 2, AutoMerge: true},
 	})
 	tb.Style().Options.SeparateRows = true
 
 	return buf, e
 }
 
-func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
+func (*cmds) deployAniChanges(dryrun ...bool) (_ io.ReadWriter, e error) {
 	tb := table.NewWriter()
 	defer tb.Render()
 
 	buf := bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"Worker", "Torrent", "Quality", "Size", "Seeders", "Leechers", "Uploaded",
+		"Worker", "Title", "Quality", "Torrent", "Size", "Seeders", "Leechers", "Uploaded",
 	})
 
-	dpl := newDeploy()
-	var deployTitles = make(map[string][]*anilibria.TitleTorrent)
-
-	if deployTitles, e = dpl.run(); e != nil {
+	dryrun = append(dryrun, true)
+	var aobjects []*deploymentObject
+	if aobjects, e = newDeploy().deployFromAniApi(deployTypeAniChanges, dryrun[0]); e != nil {
 		return
 	}
 
-	for wid, trrs := range deployTitles {
-		for _, trr := range trrs {
-			tb.AppendRow([]interface{}{
-				wid[0:8], trr.GetShortHash(), trr.Quality.String, utils.GetMBytesFromBytes(trr.TotalSize), trr.Seeders, trr.Leechers,
-				time.Unix(int64(trr.UploadedTimestamp), 0).String(),
-			})
-		}
+	for _, aobject := range aobjects {
+		trr := aobject.aniTorrent
+
+		tb.AppendRow([]interface{}{
+			aobject.workerId[0:8], trr.GetName(), trr.Quality.String, trr.GetShortHash(), utils.GetMBytesFromBytes(trr.TotalSize),
+			trr.Seeders, trr.Leechers, time.Unix(int64(trr.UploadedTimestamp), 0).String(),
+		})
 	}
 
 	tb.SortBy([]table.SortBy{
@@ -327,6 +329,7 @@ func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
+		{Number: 2, AutoMerge: true},
 	})
 	tb.Style().Options.SeparateRows = true
 
@@ -395,10 +398,10 @@ func (*cmds) deployFailedAnnounces(dryrun bool) (_ io.ReadWriter, e error) {
 	buf := bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"Worker", "Name", "Quality", "OldHash", "NewHash", "SizeChanges KB", // "Deploied" // TODO
+		"Worker", "Name", "Quality", "OldHash", "NewHash", "SizeChanges KB", // "Deployed" // TODO
 	})
 
-	var ftitles []*failedTitle
+	var ftitles []*deploymentObject
 	if ftitles, e = newDeploy().deployFailedAnnounces(dryrun); e != nil {
 		return
 	}

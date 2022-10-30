@@ -137,7 +137,7 @@ func (m *cron) redeploy() {
 
 	m.wg.Add(1)
 	go func(done func()) {
-		if _, e := newDeploy().run(); e != nil && e != errNothingDeploy && e != errNothingAssigned {
+		if _, e := newDeploy().deployFromAniApi(deployTypeAniUpdates, false); e != nil && e != errNothingDeploy && e != errNothingAssigned {
 			gLog.Error().Err(e).Msg("got an error in cron deployUpdates job")
 		}
 
