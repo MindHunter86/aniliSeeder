@@ -30,6 +30,7 @@ func (m *cronTask) toggle(lock sync.Locker, task cronTask) {
 func (m *cronTask) isEnabled(lock sync.Locker, task cronTask) (ct cronTask) {
 	lock.Lock()
 	defer lock.Unlock()
+
 	ct = *m & task // copy value and unlock main cronTask
 	return ct
 }
