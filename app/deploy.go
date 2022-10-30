@@ -139,7 +139,7 @@ loop:
 			fspaces[w] = fspaces[w] - uint64(trr.TotalSize)
 
 			// assigning the torrent to the worker
-			var atrr *anilibria.TitleTorrent
+			var atrr = new(anilibria.TitleTorrent)
 			*atrr = *trr
 			wtitles[w] = append(wtitles[w], atrr)
 
