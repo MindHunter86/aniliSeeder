@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"io"
+	"math"
 	"time"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
@@ -82,7 +83,7 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 		for _, trr := range trrs {
 			seedTime := time.Duration(trr.SeedingTime) * time.Second
 			tb.AppendRow([]interface{}{
-				id[0:8], trr.GetShortHash(), trr.GetName(), trr.GetQuality(), trr.TotalSize / 1024 / 1024, trr.Ratio,
+				id[0:8], trr.GetShortHash(), trr.GetName(), trr.GetQuality(), utils.GetMBytesFromBytes(trr.TotalSize), trr.Ratio,
 				trr.TotalUploaded / 1024 / 1024, seedTime.String(), trr.GetTrackerStatus(), trr.GetVKScore(),
 			})
 
@@ -91,6 +92,11 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 
 	tb.SetRowPainter(func(raw table.Row) text.Colors {
 		var color = text.FgGreen
+
+		// rename invalid float values
+		if math.IsNaN(raw[9].(float64)) || math.IsInf(raw[9].(float64), 1) {
+			raw[9] = float64(0)
+		}
 
 		// vkscore
 		if raw[9].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) && raw[5].(float32) < 1 {
