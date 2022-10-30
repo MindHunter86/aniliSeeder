@@ -7,6 +7,7 @@ import (
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
+	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
@@ -301,7 +302,7 @@ func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
 	buf := bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"Worker", "Torrent", "Size", "Seeders", "Leechers", "Uploaded",
+		"Worker", "Torrent", "Quality", "Size", "Seeders", "Leechers", "Uploaded",
 	})
 
 	dpl := newDeploy()
@@ -314,7 +315,7 @@ func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
 	for wid, trrs := range deployTitles {
 		for _, trr := range trrs {
 			tb.AppendRow([]interface{}{
-				wid[0:8], trr.GetShortHash(), trr.TotalSize / 1024 / 1024, trr.Seeders, trr.Leechers,
+				wid[0:8], trr.GetShortHash(), trr.Quality.String, utils.GetMBytesFromBytes(trr.TotalSize), trr.Seeders, trr.Leechers,
 				time.Unix(int64(trr.UploadedTimestamp), 0).String(),
 			})
 		}
