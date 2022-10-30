@@ -39,7 +39,7 @@ func NewApp(c *cli.Context, l *zerolog.Logger) *App {
 }
 
 func (m *App) Bootstrap() (e error) {
-	var wg = sync.WaitGroup{}
+	var wg sync.WaitGroup
 	var echan = make(chan error, 32)
 
 	gCtx, gAbort = context.WithCancel(context.Background())
@@ -88,9 +88,9 @@ func (m *App) Bootstrap() (e error) {
 	// cron subservice
 	if gSwarm.IsMaster() {
 		wg.Add(1)
-		go func(done func()) {
+		go func(appDone func()) {
 			newCron().run()
-			done()
+			appDone()
 		}(wg.Done)
 	}
 
