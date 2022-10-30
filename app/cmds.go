@@ -95,7 +95,7 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 		} else if raw[8].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) {
 			color = text.FgYellow
 		} else if raw[4].(float32) < 1 {
-			color = text.FgBlue
+			color = text.FgHiGreen
 		}
 
 		// tracker
@@ -108,7 +108,7 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 			return text.Colors{text.FgHiYellow}
 		default:
 			raw[7] = "WARNING"
-			return text.Colors{text.FgHiCyan}
+			return text.Colors{text.FgHiYellow}
 		}
 
 		// legacy
