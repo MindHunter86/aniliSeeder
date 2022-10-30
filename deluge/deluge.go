@@ -14,6 +14,7 @@ const (
 	TrackerStatusOK TrackerStatus = iota
 	TrackerStatusUnknown
 	TrackerStatusTimedOut
+	TrackerStatusConnTimedOut
 	TrackerStatusSent
 	TrackerStatusNotRegistered
 )
