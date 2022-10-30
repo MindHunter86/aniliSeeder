@@ -100,8 +100,15 @@ func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*failedTitle
 	for _, worker := range wtorrents {
 		for _, trr := range worker.torrents {
 
-			// skip the torrents with OK announces
-			if trr.IsTrackerOk() {
+			// skip torrents with OK and WARN status in announce
+			switch trr.GetTrackerStatus() {
+			case deluge.TrackerStatusOK:
+				continue
+			case deluge.TrackerStatusNotRegistered:
+				break
+			default:
+				gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Str("torrent_status", trr.GetTrackerRawError()).
+					Msg("there is torrent with warning announce status; skipping...")
 				continue
 			}
 

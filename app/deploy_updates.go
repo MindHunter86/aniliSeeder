@@ -57,7 +57,7 @@ func (*deploy) getAnilibriaUpdatesTorrents() (trrs []*anilibria.TitleTorrent, e 
 	for _, ttl := range ttls {
 		for _, trr := range ttl.Torrents.List {
 			if tsize := utils.GetMBytesFromBytes(trr.TotalSize); tsize > int64(gCli.Uint64("anilibria-max-torrent-size")) {
-				gLog.Info().Str("title_name", ttl.Names.En).Str("torrent_hash", trr.Hash[0:9]).Int64("torrent_size_mb", tsize).
+				gLog.Info().Str("title_name", ttl.Names.En).Str("torrent_hash", trr.GetShortHash()).Int64("torrent_size_mb", tsize).
 					Int("title_id", ttl.Id).Uint64("download_limit", gCli.Uint64("anilibria-max-torrent-size")).
 					Msg("skipping a torrent because the torrent is larger than the download limit...")
 				continue

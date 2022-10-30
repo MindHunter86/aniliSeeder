@@ -124,7 +124,7 @@ func (m *cron) runCronTasks() {
 
 func (m *cron) redeploy() {
 	if m.tasks.isEnabled(m.mu.RLocker(), cronTaskDeployUpdates) != 0 {
-		gLog.Debug().Msg("deploy updates is locked now; skipping job...")
+		gLog.Warn().Msg("deploy updates is locked now; skipping job...")
 		return
 	}
 
@@ -148,7 +148,7 @@ func (m *cron) redeploy() {
 
 func (m *cron) reannounce() {
 	if m.tasks.isEnabled(m.mu.RLocker(), cronTaskReannounce) != 0 {
-		gLog.Debug().Msg("reannounces is locked now; skipping job...")
+		gLog.Warn().Msg("reannounces is locked now; skipping job...")
 		return
 	}
 
@@ -157,8 +157,18 @@ func (m *cron) reannounce() {
 
 	m.wg.Add(1)
 	go func(done func()) {
+		defer func() {
+			m.tasks.toggle(m.mu.RLocker(), cronTaskReannounce)
+			done()
+		}()
+
 		var e error
 		wrks := gSwarm.GetConnectedWorkers()
+
+		if len(wrks) == 0 {
+			gLog.Warn().Msg("reannounce failed; there is no workers for running reannounce job")
+			return
+		}
 
 		for wid := range wrks {
 			if e = gSwarm.ForceReannounce(wid); e != nil {
@@ -170,8 +180,5 @@ func (m *cron) reannounce() {
 		if _, e = newDeploy().deployFailedAnnounces(); e != nil && e != errNoFailures {
 			gLog.Error().Err(e).Msg("got an error in deploy failed_announces request")
 		}
-
-		m.tasks.toggle(m.mu.RLocker(), cronTaskReannounce)
-		done()
 	}(m.wg.Done)
 }
