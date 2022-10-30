@@ -71,7 +71,7 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 
 	var buf = bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
-	tb.AppendHeader(table.Row{"Worker", "Hash", "Name", "TotalSize", "Ratio", "Uploaded", "Seedtime", "Announce", "VKScore"})
+	tb.AppendHeader(table.Row{"Worker", "Hash", "Name", "Quality", "TotalSize", "Ratio", "Uploaded", "Seedtime", "Announce", "VKScore"})
 
 	for id, wrk := range gSwarm.GetConnectedWorkers() {
 		var trrs []*deluge.Torrent
@@ -82,7 +82,7 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 		for _, trr := range trrs {
 			seedTime := time.Duration(trr.SeedingTime) * time.Second
 			tb.AppendRow([]interface{}{
-				id[0:8], trr.GetShortHash(), trr.GetName(), trr.TotalSize / 1024 / 1024, trr.Ratio,
+				id[0:8], trr.GetShortHash(), trr.GetName(), trr.GetQuality(), trr.TotalSize / 1024 / 1024, trr.Ratio,
 				trr.TotalUploaded / 1024 / 1024, seedTime.String(), trr.GetTrackerStatus(), trr.GetVKScore(),
 			})
 
@@ -93,24 +93,24 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 		var color = text.FgGreen
 
 		// vkscore
-		if raw[8].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) && raw[4].(float32) < 1 {
+		if raw[9].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) && raw[5].(float32) < 1 {
 			color = text.FgRed
-		} else if raw[8].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) {
+		} else if raw[9].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) {
 			color = text.FgYellow
-		} else if raw[4].(float32) < 1 {
+		} else if raw[5].(float32) < 1 {
 			color = text.FgHiGreen
 		}
 
 		// tracker
-		switch raw[7] {
+		switch raw[8] {
 		case deluge.TrackerStatusOK:
-			raw[7] = "OK"
+			raw[8] = "OK"
 			return text.Colors{color}
 		case deluge.TrackerStatusNotRegistered:
-			raw[7] = "ERROR"
+			raw[8] = "ERROR"
 			return text.Colors{text.FgHiYellow}
 		default:
-			raw[7] = "WARNING"
+			raw[8] = "WARNING"
 			return text.Colors{text.FgHiYellow}
 		}
 
@@ -129,6 +129,7 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 	})
 
 	tb.SortBy([]table.SortBy{
+		{Name: "Announce", Mode: table.DscNumeric},
 		{Name: "VKScore", Mode: table.DscNumeric},
 	})
 
