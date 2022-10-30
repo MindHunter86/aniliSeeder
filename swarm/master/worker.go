@@ -318,8 +318,10 @@ func (m *worker) getFreeSpace() (_ uint64, e error) {
 		return
 	}
 
-	gLog.Debug().Uint64("worker_fspace", rpl.FreeSpace).Msg("got reply from the worker with system free space")
-	return rpl.FreeSpace, e
+	m.wdFreeSpace = rpl.GetFreeSpace()
+
+	gLog.Debug().Uint64("worker_fspace", rpl.GetFreeSpace()).Msg("got reply from the worker with system free space")
+	return rpl.GetFreeSpace(), e
 }
 
 func (m *worker) saveTorrentFile(fname string, fbytes *[]byte) (_ int64, e error) {
@@ -343,8 +345,8 @@ func (m *worker) saveTorrentFile(fname string, fbytes *[]byte) (_ int64, e error
 		return
 	}
 
-	gLog.Debug().Int64("written_bytes", rpl.WrittenBytes).Msg("got reply from the worker with written bytes")
-	return rpl.WrittenBytes, e
+	gLog.Debug().Int64("written_bytes", rpl.GetWrittenBytes()).Msg("got reply from the worker with written bytes")
+	return rpl.GetWrittenBytes(), e
 }
 
 func (m *worker) deleteTorrent(hash, name string, withData bool) (_ uint64, _ uint64, e error) {
@@ -369,10 +371,10 @@ func (m *worker) deleteTorrent(hash, name string, withData bool) (_ uint64, _ ui
 		return
 	}
 
-	gLog.Debug().Uint64("worker_fspace", rpl.GetFreeSpace()).Uint64("worker_freed_space", rpl.FreedSpace).
+	gLog.Debug().Uint64("worker_fspace", rpl.GetFreeSpace()).Uint64("worker_freed_space", rpl.GetFreedSpace()).
 		Msg("got reply from the worker with deleted bytes")
 
-	return rpl.FreedSpace, rpl.FreeSpace, e
+	return rpl.GetFreedSpace(), rpl.GetFreeSpace(), e
 }
 
 func (m *worker) forceReannounce() (e error) {
