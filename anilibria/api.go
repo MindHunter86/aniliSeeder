@@ -268,7 +268,7 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 
 	switch rsp.StatusCode {
 	case http.StatusOK:
-		gLog.Info().Str("api_method", string(apiMethod)).Msg("Correct response")
+		gLog.Debug().Str("api_method", string(apiMethod)).Msg("ani api 200 OK")
 	default:
 		gLog.Warn().Str("api_method", string(apiMethod)).Int("api_response_code", rsp.StatusCode).Msg("Abnormal API response")
 		gLog.Debug().Msg("trying to get error description")

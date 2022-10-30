@@ -37,7 +37,7 @@ func (m *deploy) deployFromAniApi(dtype deployType, dryrun ...bool) (aobjects []
 	// panic avoid
 	dryrun = append(dryrun, true)
 	if !dryrun[0] {
-		m.assignTorrentsToWorkers(aobjects)
+		m.deployAssignedTorrents(aobjects)
 	}
 
 	return
