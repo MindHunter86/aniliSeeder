@@ -223,10 +223,6 @@ func (m *Torrent) GetTrackerRawError() string {
 	return m.TrackerStatus
 }
 
-func (m *Torrent) IsTrackerOk() bool {
-	return m.TrackerStatus == "Announce OK"
-}
-
 func (m *Torrent) GetName() string {
 	// https://github.com/MindHunter86/aniliSeeder/issues/74
 	name := strings.ReplaceAll(m.Name, "_", " ")

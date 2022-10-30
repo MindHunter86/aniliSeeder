@@ -104,8 +104,6 @@ func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*failedTitle
 			switch trr.GetTrackerStatus() {
 			case deluge.TrackerStatusOK:
 				continue
-			case deluge.TrackerStatusNotRegistered:
-				break
 			default:
 				gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Str("torrent_status", trr.GetTrackerRawError()).
 					Msg("there is torrent with warning announce status; skipping...")
