@@ -171,7 +171,7 @@ func (*deploy) sortTorrentsByLeechers(aobjects []*deploymentObject) {
 	}
 }
 
-func (*deploy) assignTorrentsToWorkers(aobjects []*deploymentObject) (ok bool, e error) {
+func (*deploy) assignTorrentsToWorkers(aobjects []*deploymentObject) (assigned bool, e error) {
 	// add fake workers
 	// for i := 0; i < 3; i++ {
 	// 	id, fspace := uuid.NewV4().String(), 21474836480 //20gb
@@ -259,7 +259,7 @@ func (*deploy) assignTorrentsToWorkers(aobjects []*deploymentObject) (ok bool, e
 				Msg("the torrent has been assigned to the worker")
 
 			// the ok flag helps us detect pending deployments
-			ok = true
+			assigned = true
 
 			// put the worker at the end of the queue and try to assign to the next worker
 			queue <- wid

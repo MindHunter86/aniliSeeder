@@ -98,6 +98,7 @@ type (
 
 // https://api.anilibria.tv/v2/getSchedule?days=0&filter=id,code,names,updated,last_change,status,type,torrents
 const defaultApiMethodFilter = "id,code,names,updated,last_change,status,type,torrents"
+const defaultApiMethodInclude = "torrent_meta"
 
 // const defaultApiMethodLimit = "10"
 
@@ -241,6 +242,7 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 
 	var rgs = &url.Values{}
 	rgs.Add("filter", defaultApiMethodFilter)
+	rgs.Add("include", defaultApiMethodInclude)
 	// rgs.Add("limit", defaultApiMethodLimit)
 	rrl.RawQuery = rgs.Encode()
 
