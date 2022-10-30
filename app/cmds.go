@@ -242,7 +242,7 @@ func (*cmds) dryDeployAniUpdates() (_ io.ReadWriter, e error) {
 	})
 
 	dpl := newDeploy()
-	var deployTitles = make(map[string][]anilibria.TitleTorrent)
+	var deployTitles = make(map[string][]*anilibria.TitleTorrent)
 
 	if deployTitles, e = dpl.dryRun(); e != nil {
 		return
@@ -280,7 +280,7 @@ func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
 	})
 
 	dpl := newDeploy()
-	var deployTitles = make(map[string][]anilibria.TitleTorrent)
+	var deployTitles = make(map[string][]*anilibria.TitleTorrent)
 
 	if deployTitles, e = dpl.run(); e != nil {
 		return

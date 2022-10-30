@@ -75,7 +75,7 @@ func (*deploy) sortTorrentListByLeechers(trrs []*anilibria.TitleTorrent) (_ []*a
 	return trrs
 }
 
-func (*deploy) balanceForWorkers(trrs []*anilibria.TitleTorrent) (_ map[string][]anilibria.TitleTorrent, e error) {
+func (*deploy) balanceForWorkers(trrs []*anilibria.TitleTorrent) (_ map[string][]*anilibria.TitleTorrent, e error) {
 	wrks := gSwarm.GetConnectedWorkers()
 	var fspaces = make(map[string]uint64)
 
@@ -114,7 +114,7 @@ func (*deploy) balanceForWorkers(trrs []*anilibria.TitleTorrent) (_ map[string][
 		return nil, errors.New("there is no workers with free space for the balancing process")
 	}
 
-	var wtitles = make(map[string][]anilibria.TitleTorrent)
+	var wtitles = make(map[string][]*anilibria.TitleTorrent)
 
 loop:
 	for {
@@ -139,7 +139,9 @@ loop:
 			fspaces[w] = fspaces[w] - uint64(trr.TotalSize)
 
 			// assigning the torrent to the worker
-			wtitles[w] = append(wtitles[w], *trr)
+			var atrr *anilibria.TitleTorrent
+			*atrr = *trr
+			wtitles[w] = append(wtitles[w], atrr)
 
 			// remove the title from a slice
 			trrs[id] = nil
@@ -167,7 +169,7 @@ loop:
 	return wtitles, e
 }
 
-func (m *deploy) sendDeployCommand(deployTasks map[string][]anilibria.TitleTorrent) {
+func (m *deploy) sendDeployCommand(deployTasks map[string][]*anilibria.TitleTorrent) {
 	var e error
 
 	for wid, trrs := range deployTasks {
