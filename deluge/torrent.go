@@ -210,7 +210,7 @@ func (m *Torrent) GetTrackerStatus() TrackerStatus {
 		return TrackerStatusOK
 	case "Announce Sent":
 		return TrackerStatusSent
-	case "Error: timed out":
+	case "Error: Connection timed out":
 		return TrackerStatusTimedOut
 	case "Error: Торрент не зарегистрирован":
 		return TrackerStatusNotRegistered

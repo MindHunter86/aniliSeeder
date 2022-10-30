@@ -102,7 +102,12 @@ func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*failedTitle
 
 			// skip torrents with OK and WARN status in announce
 			switch trr.GetTrackerStatus() {
+			case deluge.TrackerStatusNotRegistered:
+				gLog.Trace().Str("torrent_hash", trr.GetShortHash()).Str("torrent_status", trr.GetTrackerRawError()).
+					Msg("the torrent has NotRegistered status; processing it...")
 			case deluge.TrackerStatusOK:
+				gLog.Trace().Str("torrent_hash", trr.GetShortHash()).Str("torrent_status", trr.GetTrackerRawError()).
+					Msg("the torrent has OK status; skipping...")
 				continue
 			default:
 				gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Str("torrent_status", trr.GetTrackerRawError()).
