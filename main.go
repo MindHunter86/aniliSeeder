@@ -369,7 +369,7 @@ func main() {
 				}
 
 				titles, e := aniApi.SearchTitlesByName("Urusei Yatsura 2022")
-				for _, title := range titles {
+				for _, title := range *titles {
 					log.Debug().Str("title_name", title.Names.Ru).Msg("")
 				}
 
