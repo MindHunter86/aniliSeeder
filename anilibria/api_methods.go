@@ -71,5 +71,7 @@ func (m *ApiClient) SearchTitlesByName(name string) (titles *Titles, _ error) {
 		return titles, arsp.Err()
 	}
 
+	titles = new(Titles)
+
 	return titles, easyjson.Unmarshal(arsp.payload, titles)
 }

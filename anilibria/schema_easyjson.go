@@ -36,9 +36,9 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria(in *jlexer.
 			continue
 		}
 		switch key {
-		case "Code":
+		case "code":
 			out.Code = int(in.Int())
-		case "Message":
+		case "message":
 			out.Message = string(in.String())
 		default:
 			in.SkipRecursive()
@@ -55,12 +55,12 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria(out *jwrite
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"Code\":"
+		const prefix string = ",\"code\":"
 		out.RawString(prefix[1:])
 		out.Int(int(in.Code))
 	}
 	{
-		const prefix string = ",\"Message\":"
+		const prefix string = ",\"message\":"
 		out.RawString(prefix)
 		out.String(string(in.Message))
 	}
@@ -109,7 +109,7 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria1(in *jlexer
 			continue
 		}
 		switch key {
-		case "Error":
+		case "error":
 			if in.IsNull() {
 				in.Skip()
 				out.Error = nil
@@ -134,7 +134,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria1(out *jwrit
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"Error\":"
+		const prefix string = ",\"error\":"
 		out.RawString(prefix[1:])
 		if in.Error == nil {
 			out.RawString("null")
@@ -187,11 +187,11 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria2(in *jlexer
 			continue
 		}
 		switch key {
-		case "Firest":
+		case "firest":
 			out.Firest = int(in.Int())
-		case "Last":
+		case "last":
 			out.Last = int(in.Int())
-		case "String":
+		case "string":
 			out.String = string(in.String())
 		default:
 			in.SkipRecursive()
@@ -208,17 +208,17 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria2(out *jwrit
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"Firest\":"
+		const prefix string = ",\"firest\":"
 		out.RawString(prefix[1:])
 		out.Int(int(in.Firest))
 	}
 	{
-		const prefix string = ",\"Last\":"
+		const prefix string = ",\"last\":"
 		out.RawString(prefix)
 		out.Int(int(in.Last))
 	}
 	{
-		const prefix string = ",\"String\":"
+		const prefix string = ",\"string\":"
 		out.RawString(prefix)
 		out.String(string(in.String))
 	}
@@ -267,13 +267,13 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria3(in *jlexer
 			continue
 		}
 		switch key {
-		case "String":
+		case "string":
 			out.String = string(in.String())
-		case "Type":
+		case "type":
 			out.Type = string(in.String())
-		case "Resolution":
+		case "resolution":
 			out.Resolution = string(in.String())
-		case "Encoder":
+		case "encoder":
 			out.Encoder = string(in.String())
 		case "lq_audio":
 			if m, ok := out.LqAudio.(easyjson.Unmarshaler); ok {
@@ -298,22 +298,22 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria3(out *jwrit
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"String\":"
+		const prefix string = ",\"string\":"
 		out.RawString(prefix[1:])
 		out.String(string(in.String))
 	}
 	{
-		const prefix string = ",\"Type\":"
+		const prefix string = ",\"type\":"
 		out.RawString(prefix)
 		out.String(string(in.Type))
 	}
 	{
-		const prefix string = ",\"Resolution\":"
+		const prefix string = ",\"resolution\":"
 		out.RawString(prefix)
 		out.String(string(in.Resolution))
 	}
 	{
-		const prefix string = ",\"Encoder\":"
+		const prefix string = ",\"encoder\":"
 		out.RawString(prefix)
 		out.String(string(in.Encoder))
 	}
@@ -373,11 +373,11 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria4(in *jlexer
 			continue
 		}
 		switch key {
-		case "Hash":
+		case "hash":
 			out.Hash = string(in.String())
-		case "Name":
+		case "name":
 			out.Name = string(in.String())
-		case "Announce":
+		case "announce":
 			if in.IsNull() {
 				in.Skip()
 				out.Announce = nil
@@ -448,17 +448,17 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria4(out *jwrit
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"Hash\":"
+		const prefix string = ",\"hash\":"
 		out.RawString(prefix[1:])
 		out.String(string(in.Hash))
 	}
 	{
-		const prefix string = ",\"Name\":"
+		const prefix string = ",\"name\":"
 		out.RawString(prefix)
 		out.String(string(in.Name))
 	}
 	{
-		const prefix string = ",\"Announce\":"
+		const prefix string = ",\"announce\":"
 		out.RawString(prefix)
 		if in.Announce == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 			out.RawString("null")
@@ -623,11 +623,11 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria6(in *jlexer
 		switch key {
 		case "full_string":
 			out.FullString = string(in.String())
-		case "Code":
+		case "code":
 			out.Code = int(in.Int())
-		case "String":
+		case "string":
 			out.String = string(in.String())
-		case "Series":
+		case "series":
 			if m, ok := out.Series.(easyjson.Unmarshaler); ok {
 				m.UnmarshalEasyJSON(in)
 			} else if m, ok := out.Series.(json.Unmarshaler); ok {
@@ -635,7 +635,7 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria6(in *jlexer
 			} else {
 				out.Series = in.Interface()
 			}
-		case "Length":
+		case "length":
 			out.Length = int(in.Int())
 		default:
 			in.SkipRecursive()
@@ -657,17 +657,17 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria6(out *jwrit
 		out.String(string(in.FullString))
 	}
 	{
-		const prefix string = ",\"Code\":"
+		const prefix string = ",\"code\":"
 		out.RawString(prefix)
 		out.Int(int(in.Code))
 	}
 	{
-		const prefix string = ",\"String\":"
+		const prefix string = ",\"string\":"
 		out.RawString(prefix)
 		out.String(string(in.String))
 	}
 	{
-		const prefix string = ",\"Series\":"
+		const prefix string = ",\"series\":"
 		out.RawString(prefix)
 		if m, ok := in.Series.(easyjson.Marshaler); ok {
 			m.MarshalEasyJSON(out)
@@ -678,7 +678,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria6(out *jwrit
 		}
 	}
 	{
-		const prefix string = ",\"Length\":"
+		const prefix string = ",\"length\":"
 		out.RawString(prefix)
 		out.Int(int(in.Length))
 	}
@@ -727,7 +727,7 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria7(in *jlexer
 			continue
 		}
 		switch key {
-		case "Series":
+		case "series":
 			if in.IsNull() {
 				in.Skip()
 				out.Series = nil
@@ -737,7 +737,7 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria7(in *jlexer
 				}
 				(*out.Series).UnmarshalEasyJSON(in)
 			}
-		case "List":
+		case "list":
 			if in.IsNull() {
 				in.Skip()
 				out.List = nil
@@ -783,7 +783,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria7(out *jwrit
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"Series\":"
+		const prefix string = ",\"series\":"
 		out.RawString(prefix[1:])
 		if in.Series == nil {
 			out.RawString("null")
@@ -792,7 +792,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria7(out *jwrit
 		}
 	}
 	{
-		const prefix string = ",\"List\":"
+		const prefix string = ",\"list\":"
 		out.RawString(prefix)
 		if in.List == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 			out.RawString("null")
@@ -858,7 +858,7 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria8(in *jlexer
 		switch key {
 		case "torrent_id":
 			out.TorrentId = int(in.Int())
-		case "Series":
+		case "series":
 			if in.IsNull() {
 				in.Skip()
 				out.Series = nil
@@ -868,7 +868,7 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria8(in *jlexer
 				}
 				(*out.Series).UnmarshalEasyJSON(in)
 			}
-		case "Quality":
+		case "quality":
 			if in.IsNull() {
 				in.Skip()
 				out.Quality = nil
@@ -878,21 +878,21 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria8(in *jlexer
 				}
 				(*out.Quality).UnmarshalEasyJSON(in)
 			}
-		case "Leechers":
+		case "leechers":
 			out.Leechers = int(in.Int())
-		case "Seeders":
+		case "seeders":
 			out.Seeders = int(in.Int())
-		case "Downloads":
+		case "downloads":
 			out.Downloads = int(in.Int())
 		case "total_size":
 			out.TotalSize = int64(in.Int64())
-		case "Url":
+		case "url":
 			out.Url = string(in.String())
 		case "uploaded_timestamp":
 			out.UploadedTimestamp = uint64(in.Uint64())
-		case "Hash":
+		case "hash":
 			out.Hash = string(in.String())
-		case "Metadata":
+		case "metadata":
 			if in.IsNull() {
 				in.Skip()
 				out.Metadata = nil
@@ -902,7 +902,7 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria8(in *jlexer
 				}
 				(*out.Metadata).UnmarshalEasyJSON(in)
 			}
-		case "RawBase64File":
+		case "rawBase64File":
 			if m, ok := out.RawBase64File.(easyjson.Unmarshaler); ok {
 				m.UnmarshalEasyJSON(in)
 			} else if m, ok := out.RawBase64File.(json.Unmarshaler); ok {
@@ -930,7 +930,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria8(out *jwrit
 		out.Int(int(in.TorrentId))
 	}
 	{
-		const prefix string = ",\"Series\":"
+		const prefix string = ",\"series\":"
 		out.RawString(prefix)
 		if in.Series == nil {
 			out.RawString("null")
@@ -939,7 +939,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria8(out *jwrit
 		}
 	}
 	{
-		const prefix string = ",\"Quality\":"
+		const prefix string = ",\"quality\":"
 		out.RawString(prefix)
 		if in.Quality == nil {
 			out.RawString("null")
@@ -948,17 +948,17 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria8(out *jwrit
 		}
 	}
 	{
-		const prefix string = ",\"Leechers\":"
+		const prefix string = ",\"leechers\":"
 		out.RawString(prefix)
 		out.Int(int(in.Leechers))
 	}
 	{
-		const prefix string = ",\"Seeders\":"
+		const prefix string = ",\"seeders\":"
 		out.RawString(prefix)
 		out.Int(int(in.Seeders))
 	}
 	{
-		const prefix string = ",\"Downloads\":"
+		const prefix string = ",\"downloads\":"
 		out.RawString(prefix)
 		out.Int(int(in.Downloads))
 	}
@@ -968,7 +968,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria8(out *jwrit
 		out.Int64(int64(in.TotalSize))
 	}
 	{
-		const prefix string = ",\"Url\":"
+		const prefix string = ",\"url\":"
 		out.RawString(prefix)
 		out.String(string(in.Url))
 	}
@@ -978,12 +978,12 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria8(out *jwrit
 		out.Uint64(uint64(in.UploadedTimestamp))
 	}
 	{
-		const prefix string = ",\"Hash\":"
+		const prefix string = ",\"hash\":"
 		out.RawString(prefix)
 		out.String(string(in.Hash))
 	}
 	{
-		const prefix string = ",\"Metadata\":"
+		const prefix string = ",\"metadata\":"
 		out.RawString(prefix)
 		if in.Metadata == nil {
 			out.RawString("null")
@@ -992,7 +992,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria8(out *jwrit
 		}
 	}
 	{
-		const prefix string = ",\"RawBase64File\":"
+		const prefix string = ",\"rawBase64File\":"
 		out.RawString(prefix)
 		if m, ok := in.RawBase64File.(easyjson.Marshaler); ok {
 			m.MarshalEasyJSON(out)
@@ -1047,9 +1047,9 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria9(in *jlexer
 			continue
 		}
 		switch key {
-		case "String":
+		case "string":
 			out.String = string(in.String())
-		case "Code":
+		case "code":
 			out.Code = int(in.Int())
 		default:
 			in.SkipRecursive()
@@ -1066,12 +1066,12 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria9(out *jwrit
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"String\":"
+		const prefix string = ",\"string\":"
 		out.RawString(prefix[1:])
 		out.String(string(in.String))
 	}
 	{
-		const prefix string = ",\"Code\":"
+		const prefix string = ",\"code\":"
 		out.RawString(prefix)
 		out.Int(int(in.Code))
 	}
@@ -1120,9 +1120,9 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria10(in *jlexe
 			continue
 		}
 		switch key {
-		case "Day":
+		case "day":
 			out.Day = int(in.Int())
-		case "List":
+		case "list":
 			if in.IsNull() {
 				in.Skip()
 				out.List = nil
@@ -1168,12 +1168,12 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria10(out *jwri
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"Day\":"
+		const prefix string = ",\"day\":"
 		out.RawString(prefix[1:])
 		out.Int(int(in.Day))
 	}
 	{
-		const prefix string = ",\"List\":"
+		const prefix string = ",\"list\":"
 		out.RawString(prefix)
 		if in.List == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 			out.RawString("null")
@@ -1237,11 +1237,11 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria11(in *jlexe
 			continue
 		}
 		switch key {
-		case "Ru":
+		case "ru":
 			out.Ru = string(in.String())
-		case "En":
+		case "en":
 			out.En = string(in.String())
-		case "Alternative":
+		case "alternative":
 			out.Alternative = string(in.String())
 		default:
 			in.SkipRecursive()
@@ -1258,17 +1258,17 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria11(out *jwri
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"Ru\":"
+		const prefix string = ",\"ru\":"
 		out.RawString(prefix[1:])
 		out.String(string(in.Ru))
 	}
 	{
-		const prefix string = ",\"En\":"
+		const prefix string = ",\"en\":"
 		out.RawString(prefix)
 		out.String(string(in.En))
 	}
 	{
-		const prefix string = ",\"Alternative\":"
+		const prefix string = ",\"alternative\":"
 		out.RawString(prefix)
 		out.String(string(in.Alternative))
 	}
@@ -1317,15 +1317,15 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria12(in *jlexe
 			continue
 		}
 		switch key {
-		case "Id":
+		case "id":
 			out.Id = int(in.Int())
-		case "Code":
+		case "code":
 			out.Code = string(in.String())
-		case "Updated":
+		case "updated":
 			out.Updated = uint64(in.Uint64())
 		case "last_change":
 			out.LastChange = uint64(in.Uint64())
-		case "Names":
+		case "names":
 			if in.IsNull() {
 				in.Skip()
 				out.Names = nil
@@ -1335,7 +1335,7 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria12(in *jlexe
 				}
 				(*out.Names).UnmarshalEasyJSON(in)
 			}
-		case "Status":
+		case "status":
 			if in.IsNull() {
 				in.Skip()
 				out.Status = nil
@@ -1345,7 +1345,7 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria12(in *jlexe
 				}
 				(*out.Status).UnmarshalEasyJSON(in)
 			}
-		case "Type":
+		case "type":
 			if in.IsNull() {
 				in.Skip()
 				out.Type = nil
@@ -1355,7 +1355,7 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria12(in *jlexe
 				}
 				(*out.Type).UnmarshalEasyJSON(in)
 			}
-		case "Torrents":
+		case "torrents":
 			if in.IsNull() {
 				in.Skip()
 				out.Torrents = nil
@@ -1380,17 +1380,17 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria12(out *jwri
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"Id\":"
+		const prefix string = ",\"id\":"
 		out.RawString(prefix[1:])
 		out.Int(int(in.Id))
 	}
 	{
-		const prefix string = ",\"Code\":"
+		const prefix string = ",\"code\":"
 		out.RawString(prefix)
 		out.String(string(in.Code))
 	}
 	{
-		const prefix string = ",\"Updated\":"
+		const prefix string = ",\"updated\":"
 		out.RawString(prefix)
 		out.Uint64(uint64(in.Updated))
 	}
@@ -1400,7 +1400,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria12(out *jwri
 		out.Uint64(uint64(in.LastChange))
 	}
 	{
-		const prefix string = ",\"Names\":"
+		const prefix string = ",\"names\":"
 		out.RawString(prefix)
 		if in.Names == nil {
 			out.RawString("null")
@@ -1409,7 +1409,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria12(out *jwri
 		}
 	}
 	{
-		const prefix string = ",\"Status\":"
+		const prefix string = ",\"status\":"
 		out.RawString(prefix)
 		if in.Status == nil {
 			out.RawString("null")
@@ -1418,7 +1418,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria12(out *jwri
 		}
 	}
 	{
-		const prefix string = ",\"Type\":"
+		const prefix string = ",\"type\":"
 		out.RawString(prefix)
 		if in.Type == nil {
 			out.RawString("null")
@@ -1427,7 +1427,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria12(out *jwri
 		}
 	}
 	{
-		const prefix string = ",\"Torrents\":"
+		const prefix string = ",\"torrents\":"
 		out.RawString(prefix)
 		if in.Torrents == nil {
 			out.RawString("null")
@@ -1480,11 +1480,11 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria13(in *jlexe
 			continue
 		}
 		switch key {
-		case "File":
+		case "file":
 			out.File = string(in.String())
-		case "Size":
+		case "size":
 			out.Size = uint64(in.Uint64())
-		case "Offset":
+		case "offset":
 			out.Offset = uint64(in.Uint64())
 		default:
 			in.SkipRecursive()
@@ -1501,17 +1501,17 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria13(out *jwri
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"File\":"
+		const prefix string = ",\"file\":"
 		out.RawString(prefix[1:])
 		out.String(string(in.File))
 	}
 	{
-		const prefix string = ",\"Size\":"
+		const prefix string = ",\"size\":"
 		out.RawString(prefix)
 		out.Uint64(uint64(in.Size))
 	}
 	{
-		const prefix string = ",\"Offset\":"
+		const prefix string = ",\"offset\":"
 		out.RawString(prefix)
 		out.Uint64(uint64(in.Offset))
 	}

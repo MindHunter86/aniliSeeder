@@ -13,7 +13,7 @@ type (
 		List []*Title
 	}
 	Title struct {
-		Id         int
+		Id         int `json:"id"`
 		Code       string
 		Updated    uint64 // sometimes the anilibria project mark their update time as a NULL
 		LastChange uint64 `json:"last_change"` // I dont know how to mark this fields as "if time.Parse fails - ignore"

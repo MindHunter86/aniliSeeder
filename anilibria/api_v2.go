@@ -91,8 +91,8 @@ func (m *ApiClient) getApiResponseV2(hmethod string, amethod ApiRequestMethod, p
 	}
 	defer rsp.Body.Close()
 
-	m.debugHttpHandshake(req)
-	m.debugHttpHandshake(rsp)
+	m.debugHttpHandshake(req, true)
+	m.debugHttpHandshake(rsp, true)
 
 	if arsp.payload, arsp.err = io.ReadAll(rsp.Body); arsp.Err() != nil {
 		return
