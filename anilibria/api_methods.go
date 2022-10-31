@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/mailru/easyjson"
 )
 
 func (m *ApiClient) GetApiAuthorization() (e error) {
@@ -62,8 +64,12 @@ func (m *ApiClient) GetTitlesSchedule() (schedule []*TitleSchedule, e error) {
 
 // V2
 
-func (m *ApiClient) SearchTitlesByName(name string) (titles []*Title, e error) {
-	params := []string{"search", name}
-	e = m.getApiResponseV2(http.MethodGet, apiMethodSearchTitles, params).parseApiResponse(&titles)
-	return
+func (m *ApiClient) SearchTitlesByName(name string) (titles *Titles, _ error) {
+	params, arsp := []string{"search", name}, new(apiResponse)
+
+	if arsp = m.getApiResponseV2(http.MethodGet, apiMethodSearchTitles, params); arsp.Err() != nil {
+		return titles, arsp.Err()
+	}
+
+	return titles, easyjson.Unmarshal(arsp.payload, titles)
 }

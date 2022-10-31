@@ -79,15 +79,15 @@ func newDeploy() *deploy {
 // }
 
 func (*deploy) getAnilibriaTorrents(dtype deployType, payload ...interface{}) (trrs []*anilibria.TitleTorrent, e error) {
-	var titles []*anilibria.Title
+	var titles *anilibria.Titles
 
 	switch dtype {
 	case deployTypeAniUpdates:
-		if titles, e = gAniApi.GetLastUpdates(); e != nil {
+		if *titles, e = gAniApi.GetLastUpdates(); e != nil {
 			return
 		}
 	case deployTypeAniChanges:
-		if titles, e = gAniApi.GetLastChanges(); e != nil {
+		if *titles, e = gAniApi.GetLastChanges(); e != nil {
 			return
 		}
 	case deployTypeFailedAnnounces:
@@ -102,18 +102,18 @@ func (*deploy) getAnilibriaTorrents(dtype deployType, payload ...interface{}) (t
 			return
 		}
 
-		if ltitles := len(titles); ltitles != 1 {
+		if ltitles := len(*titles); ltitles != 1 {
 			gLog.Warn().Str("title_name", payload[0].(*deluge.Torrent).GetName()).Int("titles_count", ltitles).
 				Msg("got a problem in searching failed titles; there are none, two or more titles in the result; manual search required")
 			return nil, errTitlesCount
 		}
 	}
 
-	if len(titles) == 0 {
+	if len(*titles) == 0 {
 		return nil, errNoTitles
 	}
 
-	for _, title := range titles {
+	for _, title := range *titles {
 		for _, trr := range title.Torrents.List {
 			if tsize := utils.GetMBytesFromBytes(trr.TotalSize); tsize > int64(gCli.Uint64("anilibria-max-torrent-size")) {
 				gLog.Info().Str("title_name", title.Names.En).Str("torrent_hash", trr.GetShortHash()).Int64("torrent_size_mb", tsize).
