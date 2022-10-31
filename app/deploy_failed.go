@@ -115,12 +115,12 @@ func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*deploymentO
 			// get titltes from anilibria API for failed torrents
 			gLog.Debug().Str("torrents_hash", trr.GetShortHash()).Msg("torrent marked as failed")
 
-			var titles []*anilibria.Title
+			var titles *anilibria.Titles
 			if titles, e = gAniApi.SearchTitlesByName(trr.GetName()); e != nil {
 				return
 			}
 
-			if ltitles := len(titles); ltitles != 1 {
+			if ltitles := len(*titles); ltitles != 1 {
 				gLog.Warn().Str("torrent_hash", trr.GetShortHash()).Str("title_name", trr.GetName()).Int("titles_count", ltitles).
 					Msg("got a problem in searching failed titles; there are none, two or more titles in the result; manual search required")
 
@@ -133,7 +133,8 @@ func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*deploymentO
 
 			// trying to find failed torrent by quality
 			var found bool
-			for _, anitrr := range titles[0].Torrents.List {
+			var fuckyou []*anilibria.Title = *titles
+			for _, anitrr := range fuckyou[0].Torrents.List {
 				if trr.GetQuality() != anitrr.Quality.String {
 					gLog.Debug().Str("title_name", trr.GetName()).Str("torrent_found_quality", anitrr.Quality.String).
 						Msg("anilibria quality found but skipped")

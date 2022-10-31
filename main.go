@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -369,7 +370,13 @@ func main() {
 				}
 
 				titles, e := aniApi.SearchTitlesByName("Urusei Yatsura 2022")
-				for _, title := range titles {
+				fmt.Println(titles)
+				for _, title := range *titles {
+					if title == nil {
+						fmt.Println("title nil")
+						continue
+					}
+					fmt.Println(title.Id)
 					log.Debug().Str("title_name", title.Names.Ru).Msg("")
 				}
 
