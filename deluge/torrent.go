@@ -112,13 +112,19 @@ type Torrent struct {
 	TotalUploaded int64
 	TrackerStatus string
 
-	// Files          []delugeclient.File
+	Files []*TorrentFile
 	// Peers          []delugeclient.Peer
 	// FilePriorities []int64
 	// FileProgress   []float32
 }
+type TorrentFile struct {
+	Index  int64
+	Size   int64
+	Offset int64
+	Path   string
+}
 
-func (*Client) newTorrentFromStatus(hash string, t *delugeclient.TorrentStatus) *Torrent {
+func (m *Client) newTorrentFromStatus(hash string, t *delugeclient.TorrentStatus) *Torrent {
 	return &Torrent{
 		Hash:          hash,
 		ActiveTime:    t.ActiveTime,
@@ -138,7 +144,24 @@ func (*Client) newTorrentFromStatus(hash string, t *delugeclient.TorrentStatus) 
 		TotalUploaded: t.TotalUploaded,
 		TotalSize:     t.TotalSize,
 		TrackerStatus: t.TrackerStatus,
+
+		Files: m.newTorrentFilesFromStatus(&t.Files),
 	}
+}
+
+func (*Client) newTorrentFilesFromStatus(t *[]delugeclient.File) []*TorrentFile {
+	var tfiles []*TorrentFile
+
+	for _, file := range *t {
+		tfiles = append(tfiles, &TorrentFile{
+			Index:  file.Index,
+			Size:   file.Size,
+			Offset: file.Offset,
+			Path:   file.Path,
+		})
+	}
+
+	return tfiles
 }
 
 func (m *Client) GetTorrentsV2() (_ []*Torrent, e error) {

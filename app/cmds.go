@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"io"
+	"math"
 	"time"
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
@@ -27,6 +28,8 @@ const (
 
 	cmdDeployAniUpdates
 	cmdDryDeployAniUpdates
+	cmdDeployAniChanges
+	cmdDryDeployAniChanges
 	// cmdDryDeployAniChanges
 	// cmdDryDeployAniSchedule
 
@@ -51,7 +54,7 @@ func (*cmds) listWorkers() (_ io.ReadWriter, e error) {
 
 	for id, wrk := range gSwarm.GetConnectedWorkers() {
 		tb.AppendRow([]interface{}{
-			id, wrk.Version, wrk.FreeSpace / 1024 / 1024, len(wrk.ActiveTorrents),
+			id, wrk.Version, utils.GetMBytesFromBytes(int64(wrk.FreeSpace)), len(wrk.ActiveTorrents),
 		})
 	}
 
@@ -69,7 +72,7 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 
 	var buf = bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
-	tb.AppendHeader(table.Row{"Worker", "Hash", "Name", "TotalSize", "Ratio", "Uploaded", "Seedtime", "Announce", "VKScore"})
+	tb.AppendHeader(table.Row{"Worker", "Hash", "Name", "Quality", "TotalSize", "Ratio", "Uploaded", "Seedtime", "Announce", "VKScore"})
 
 	for id, wrk := range gSwarm.GetConnectedWorkers() {
 		var trrs []*deluge.Torrent
@@ -80,8 +83,8 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 		for _, trr := range trrs {
 			seedTime := time.Duration(trr.SeedingTime) * time.Second
 			tb.AppendRow([]interface{}{
-				id[0:8], trr.GetShortHash(), trr.GetName(), trr.TotalSize / 1024 / 1024, trr.Ratio,
-				trr.TotalUploaded / 1024 / 1024, seedTime.String(), trr.GetTrackerStatus(), trr.GetVKScore(),
+				id[0:8], trr.GetShortHash(), trr.GetName(), trr.GetQuality(), utils.GetMBytesFromBytes(trr.TotalSize), trr.Ratio,
+				utils.GetMBytesFromBytes(trr.TotalUploaded), seedTime.String(), trr.GetTrackerStatus(), trr.GetVKScore(),
 			})
 
 		}
@@ -90,25 +93,30 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 	tb.SetRowPainter(func(raw table.Row) text.Colors {
 		var color = text.FgGreen
 
+		// rename invalid float values
+		if math.IsNaN(raw[9].(float64)) || math.IsInf(raw[9].(float64), 1) {
+			raw[9] = float64(0)
+		}
+
 		// vkscore
-		if raw[8].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) && raw[4].(float32) < 1 {
+		if raw[9].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) && raw[5].(float32) < 1 {
 			color = text.FgRed
-		} else if raw[8].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) {
+		} else if raw[9].(float64) <= float64(gCli.Int("cmd-vkscore-warn")) {
 			color = text.FgYellow
-		} else if raw[4].(float32) < 1 {
+		} else if raw[5].(float32) < 1 {
 			color = text.FgHiGreen
 		}
 
 		// tracker
-		switch raw[7] {
+		switch raw[8] {
 		case deluge.TrackerStatusOK:
-			raw[7] = "OK"
+			raw[8] = "OK"
 			return text.Colors{color}
 		case deluge.TrackerStatusNotRegistered:
-			raw[7] = "ERROR"
+			raw[8] = "ERROR"
 			return text.Colors{text.FgHiYellow}
 		default:
-			raw[7] = "WARNING"
+			raw[8] = "WARNING"
 			return text.Colors{text.FgHiYellow}
 		}
 
@@ -127,6 +135,7 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 	})
 
 	tb.SortBy([]table.SortBy{
+		{Name: "Announce", Mode: table.Dsc},
 		{Name: "VKScore", Mode: table.DscNumeric},
 	})
 
@@ -152,7 +161,7 @@ func (*cmds) loadAniUpdates() (_ io.ReadWriter, e error) {
 		for _, tr := range tl.Torrents.List {
 			tb.AppendRow([]interface{}{
 				tl.Id, tl.Names.Ru, tl.Status.String, tl.Type.String, tl.Torrents.Series.String,
-				tr.GetShortHash(), tr.TotalSize / 1024 / 1024, tr.Seeders, tr.Leechers,
+				tr.GetShortHash(), utils.GetMBytesFromBytes(tr.TotalSize), tr.Seeders, tr.Leechers,
 			})
 
 		}
@@ -173,6 +182,7 @@ func (*cmds) loadAniUpdates() (_ io.ReadWriter, e error) {
 
 	return buf, e
 }
+
 func (*cmds) loadAniChanges() (_ io.ReadWriter, e error) {
 	tb := table.NewWriter()
 	defer tb.Render()
@@ -192,7 +202,7 @@ func (*cmds) loadAniChanges() (_ io.ReadWriter, e error) {
 		for _, tr := range tl.Torrents.List {
 			tb.AppendRow([]interface{}{
 				tl.Id, tl.Names.Ru, tl.Status.String, tl.Type.String, tl.Torrents.Series.String,
-				tr.GetShortHash(), tr.TotalSize / 1024 / 1024, tr.Seeders, tr.Leechers,
+				tr.GetShortHash(), utils.GetMBytesFromBytes(tr.TotalSize), tr.Seeders, tr.Leechers,
 			})
 
 		}
@@ -234,7 +244,7 @@ func (*cmds) loadAniSchedule() (_ io.ReadWriter, e error) {
 			for _, tr := range tl.Torrents.List {
 				tb.AppendRow([]interface{}{
 					day.Day, tl.Id, tl.Names.Ru, tl.Status.String, tl.Type.String, tl.Torrents.Series.String,
-					tr.GetShortHash(), tr.TotalSize / 1024 / 1024, tr.Seeders, tr.Leechers,
+					tr.GetShortHash(), utils.GetMBytesFromBytes(tr.TotalSize), tr.Seeders, tr.Leechers,
 				})
 			}
 		}
@@ -257,30 +267,29 @@ func (*cmds) loadAniSchedule() (_ io.ReadWriter, e error) {
 	return buf, e
 }
 
-func (*cmds) dryDeployAniUpdates() (_ io.ReadWriter, e error) {
+func (*cmds) deployAniUpdates(dryrun ...bool) (_ io.ReadWriter, e error) {
 	tb := table.NewWriter()
 	defer tb.Render()
 
 	buf := bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"Worker", "Torrent", "Size", "Seeders", "Leechers", "Uploaded",
+		"Worker", "Title", "Quality", "Torrent", "Size", "Seeders", "Leechers", "Uploaded",
 	})
 
-	dpl := newDeploy()
-	var deployTitles = make(map[string][]*anilibria.TitleTorrent)
-
-	if deployTitles, e = dpl.dryRun(); e != nil {
+	dryrun = append(dryrun, true)
+	var aobjects []*deploymentObject
+	if aobjects, e = newDeploy().deployFromAniApi(deployTypeAniUpdates, dryrun[0]); e != nil {
 		return
 	}
 
-	for wid, trrs := range deployTitles {
-		for _, trr := range trrs {
-			tb.AppendRow([]interface{}{
-				wid[0:8], trr.GetShortHash(), trr.TotalSize / 1024 / 1024, trr.Seeders, trr.Leechers,
-				time.Unix(int64(trr.UploadedTimestamp), 0).String(),
-			})
-		}
+	for _, aobject := range aobjects {
+		trr := aobject.aniTorrent
+
+		tb.AppendRow([]interface{}{
+			aobject.workerId[0:8], trr.GetName(), trr.Quality.String, trr.GetShortHash(), utils.GetMBytesFromBytes(trr.TotalSize),
+			trr.Seeders, trr.Leechers, time.Unix(int64(trr.UploadedTimestamp), 0).String(),
+		})
 	}
 
 	tb.SortBy([]table.SortBy{
@@ -289,36 +298,36 @@ func (*cmds) dryDeployAniUpdates() (_ io.ReadWriter, e error) {
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
+		{Number: 2, AutoMerge: true},
 	})
 	tb.Style().Options.SeparateRows = true
 
 	return buf, e
 }
 
-func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
+func (*cmds) deployAniChanges(dryrun ...bool) (_ io.ReadWriter, e error) {
 	tb := table.NewWriter()
 	defer tb.Render()
 
 	buf := bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"Worker", "Torrent", "Quality", "Size", "Seeders", "Leechers", "Uploaded",
+		"Worker", "Title", "Quality", "Torrent", "Size", "Seeders", "Leechers", "Uploaded",
 	})
 
-	dpl := newDeploy()
-	var deployTitles = make(map[string][]*anilibria.TitleTorrent)
-
-	if deployTitles, e = dpl.run(); e != nil {
+	dryrun = append(dryrun, true)
+	var aobjects []*deploymentObject
+	if aobjects, e = newDeploy().deployFromAniApi(deployTypeAniChanges, dryrun[0]); e != nil {
 		return
 	}
 
-	for wid, trrs := range deployTitles {
-		for _, trr := range trrs {
-			tb.AppendRow([]interface{}{
-				wid[0:8], trr.GetShortHash(), trr.Quality.String, utils.GetMBytesFromBytes(trr.TotalSize), trr.Seeders, trr.Leechers,
-				time.Unix(int64(trr.UploadedTimestamp), 0).String(),
-			})
-		}
+	for _, aobject := range aobjects {
+		trr := aobject.aniTorrent
+
+		tb.AppendRow([]interface{}{
+			aobject.workerId[0:8], trr.GetName(), trr.Quality.String, trr.GetShortHash(), utils.GetMBytesFromBytes(trr.TotalSize),
+			trr.Seeders, trr.Leechers, time.Unix(int64(trr.UploadedTimestamp), 0).String(),
+		})
 	}
 
 	tb.SortBy([]table.SortBy{
@@ -327,6 +336,7 @@ func (*cmds) deployAniUpdates() (_ io.ReadWriter, e error) {
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
+		{Number: 2, AutoMerge: true},
 	})
 	tb.Style().Options.SeparateRows = true
 
@@ -395,10 +405,10 @@ func (*cmds) deployFailedAnnounces(dryrun bool) (_ io.ReadWriter, e error) {
 	buf := bytes.NewBuffer(nil)
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"Worker", "Name", "Quality", "OldHash", "NewHash", "SizeChanges KB", // "Deploied" // TODO
+		"Worker", "Name", "Quality", "OldHash", "NewHash", "SizeChanges KB", // "Deployed" // TODO
 	})
 
-	var ftitles []*failedTitle
+	var ftitles []*deploymentObject
 	if ftitles, e = newDeploy().deployFailedAnnounces(dryrun); e != nil {
 		return
 	}
@@ -406,7 +416,7 @@ func (*cmds) deployFailedAnnounces(dryrun bool) (_ io.ReadWriter, e error) {
 	for _, ft := range ftitles {
 		tb.AppendRow([]interface{}{
 			ft.workerId[0:8], ft.oldTorrent.GetName(), ft.oldTorrent.GetQuality(),
-			ft.oldTorrent.GetShortHash(), ft.aniTorrent.GetShortHash(), ft.sizeChanges / 1024,
+			ft.oldTorrent.GetShortHash(), ft.aniTorrent.GetShortHash(), utils.GetKBytesFromBytes(ft.sizeChanges),
 		})
 	}
 

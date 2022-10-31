@@ -67,7 +67,7 @@ type (
 		Url               string
 		UploadedTimestamp uint64 `json:"uploaded_timestamp"`
 		Hash              string
-		Metadata          interface{}
+		Metadata          *TorrentMetadata
 		RawBase64File     interface{}
 	}
 	TorrentSeries struct {
@@ -82,10 +82,23 @@ type (
 		Encoder    string
 		LqAudio    interface{} `json:"lq_audio"`
 	}
+	TorrentMetadata struct {
+		Hash             string
+		Name             string
+		Announce         []string
+		CreatedTimestamp uint64          `json:"created_timestamp"`
+		FilesList        []*MetadataFile `json:"files_list"`
+	}
+	MetadataFile struct {
+		File   string
+		Size   uint64
+		Offset uint64
+	}
 )
 
 // https://api.anilibria.tv/v2/getSchedule?days=0&filter=id,code,names,updated,last_change,status,type,torrents
 const defaultApiMethodFilter = "id,code,names,updated,last_change,status,type,torrents"
+const defaultApiMethodInclude = "torrent_meta"
 
 // const defaultApiMethodLimit = "10"
 
@@ -229,6 +242,7 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 
 	var rgs = &url.Values{}
 	rgs.Add("filter", defaultApiMethodFilter)
+	rgs.Add("include", defaultApiMethodInclude)
 	// rgs.Add("limit", defaultApiMethodLimit)
 	rrl.RawQuery = rgs.Encode()
 
@@ -254,7 +268,7 @@ func (m *ApiClient) getApiResponse(httpMethod string, apiMethod ApiRequestMethod
 
 	switch rsp.StatusCode {
 	case http.StatusOK:
-		gLog.Info().Str("api_method", string(apiMethod)).Msg("Correct response")
+		gLog.Debug().Str("api_method", string(apiMethod)).Msg("ani api 200 OK")
 	default:
 		gLog.Warn().Str("api_method", string(apiMethod)).Int("api_response_code", rsp.StatusCode).Msg("Abnormal API response")
 		gLog.Debug().Msg("trying to get error description")

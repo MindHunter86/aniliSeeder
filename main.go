@@ -220,8 +220,8 @@ func main() {
 		&cli.Uint64Flag{
 			Name:        "anilibria-max-torrent-size",
 			Usage:       "limiting torrents size",
-			DefaultText: "20GB",
-			Value:       20480,
+			DefaultText: "15GB",
+			Value:       15360,
 		},
 
 		// deluge settings

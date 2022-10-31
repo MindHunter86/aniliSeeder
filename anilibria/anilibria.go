@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -142,4 +143,19 @@ func (m *ApiClient) DropActiveSessions(sids ...string) {
 
 func (m *TitleTorrent) GetShortHash() string {
 	return m.Hash[0:9]
+}
+
+func (m *TitleTorrent) GetName() string {
+	// https://github.com/MindHunter86/aniliSeeder/issues/74
+	name := strings.ReplaceAll(m.Metadata.Name, "_", " ")
+
+	name, _, _ = strings.Cut(name, "- AniLibria.TV")
+	return strings.TrimSpace(name)
+}
+
+func (m *TitleTorrent) GetTorrentFileName() string {
+	// https://github.com/MindHunter86/aniliSeeder/issues/74
+	name := strings.ReplaceAll(m.Metadata.Name, "_", " ")
+
+	return strings.Join([]string{name, "torrent"}, ".")
 }

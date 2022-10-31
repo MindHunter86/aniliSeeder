@@ -5,30 +5,26 @@ import (
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
+	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/rs/zerolog"
 )
 
-type failedTitle struct {
-	workerId   string
-	oldTorrent *deluge.Torrent
-	aniTorrent *anilibria.TitleTorrent
+// type failedTitle struct {
+// 	workerId   string
+// 	oldTorrent *deluge.Torrent
+// 	aniTorrent *anilibria.TitleTorrent
 
-	sizeChanges int64
+// 	sizeChanges int64
 
-	noDeploy     bool
-	isDuplicated bool
-}
-
-type workerTorrents struct {
-	wid      string
-	torrents []*deluge.Torrent
-}
+// 	noDeploy     bool
+// 	isDuplicated bool
+// }
 
 // func (m *deploy) dryDeployFailedAnnounces() ([]*failedTitle, error) {
 // 	return m.deployFailedAnnounces(true)
 // }
 
-func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, e error) {
+func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*deploymentObject, e error) {
 	wtorrents, ok := m.getWorkersTorrentsV2()
 	if !ok {
 		return nil, errFailedWorker
@@ -65,7 +61,7 @@ func (m *deploy) deployFailedAnnounces(dryrun ...bool) (ftitles []*failedTitle, 
 			return nil, errFailedDeletions
 		}
 
-		m.sendDeployCommand(m.getTorrentsListForDeploy(ftitles))
+		m.deployAssignedTorrents(ftitles)
 	}
 
 	// TODO
@@ -95,8 +91,8 @@ func (*deploy) getWorkersTorrentsV2() (_ []*workerTorrents, ok bool) {
 	return wts, ok
 }
 
-func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*failedTitle, e error) {
-	var ftitles []*failedTitle
+func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*deploymentObject, e error) {
+	var ftitles []*deploymentObject
 
 	for _, worker := range wtorrents {
 		for _, trr := range worker.torrents {
@@ -147,7 +143,7 @@ func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*failedTitle
 				gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Str("title_name", trr.GetName()).
 					Str("new_torrent_hash", anitrr.GetShortHash()).Msg("the title's torrent replacement has been found")
 
-				ftitles = append(ftitles, &failedTitle{
+				ftitles = append(ftitles, &deploymentObject{
 					workerId:   worker.wid,
 					oldTorrent: trr,
 					aniTorrent: anitrr,
@@ -165,7 +161,7 @@ func (*deploy) searchFailedTitles(wtorrents []*workerTorrents) (_ []*failedTitle
 	return ftitles, e
 }
 
-func (*deploy) sortTitlesByLeechers(ftitles []*failedTitle) {
+func (*deploy) sortTitlesByLeechers(ftitles []*deploymentObject) {
 	sort.Slice(ftitles, func(i, j int) bool {
 		return ftitles[i].aniTorrent.Leechers > ftitles[j].aniTorrent.Leechers
 	})
@@ -173,13 +169,14 @@ func (*deploy) sortTitlesByLeechers(ftitles []*failedTitle) {
 	// debug
 	if zerolog.GlobalLevel() == zerolog.DebugLevel {
 		for _, ftitle := range ftitles {
-			gLog.Debug().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).Int64("torrent_size_mb", ftitle.aniTorrent.TotalSize/1024/1024).
+			gLog.Debug().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).
+				Int64("torrent_size_mb", utils.GetMBytesFromBytes(ftitle.aniTorrent.TotalSize)).
 				Int("torrent_leechers", ftitle.aniTorrent.Leechers).Msg("sorted slice debug")
 		}
 	}
 }
 
-func (*deploy) isSpaceEnoughForUpdate(ftitles []*failedTitle) (ok bool) {
+func (*deploy) isSpaceEnoughForUpdate(ftitles []*deploymentObject) (ok bool) {
 	var fspaces = make(map[string]uint64)
 
 	ok = true
@@ -211,7 +208,7 @@ func (*deploy) isSpaceEnoughForUpdate(ftitles []*failedTitle) (ok bool) {
 	return
 }
 
-func (*deploy) dropFailedTorrent(ftitles []*failedTitle) (ok bool) {
+func (*deploy) dropFailedTorrent(ftitles []*deploymentObject) (ok bool) {
 	ok = true
 
 	for _, ftitle := range ftitles {
@@ -246,7 +243,7 @@ func (*deploy) dropFailedTorrent(ftitles []*failedTitle) (ok bool) {
 	return ok
 }
 
-func (*deploy) searchForDuplicates(ftitles []*failedTitle, wtorrents []*workerTorrents) {
+func (*deploy) searchForDuplicates(ftitles []*deploymentObject, wtorrents []*workerTorrents) {
 	for _, ftitle := range ftitles {
 		if ftitle.noDeploy {
 			continue
@@ -262,20 +259,4 @@ func (*deploy) searchForDuplicates(ftitles []*failedTitle, wtorrents []*workerTo
 			}
 		}
 	}
-}
-
-func (*deploy) getTorrentsListForDeploy(ftitles []*failedTitle) map[string][]*anilibria.TitleTorrent {
-	var dtorrents = make(map[string][]*anilibria.TitleTorrent)
-
-	for _, ftitle := range ftitles {
-		if ftitle.noDeploy || ftitle.isDuplicated {
-			gLog.Debug().Str("torrent_name", ftitle.oldTorrent.GetName()).
-				Msg("the torrent marked as noDeploy or as isDuplicated, skipping deploy...")
-			continue
-		}
-
-		dtorrents[ftitle.workerId] = append(dtorrents[ftitle.workerId], ftitle.aniTorrent)
-	}
-
-	return dtorrents
 }

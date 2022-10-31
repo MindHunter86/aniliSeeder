@@ -102,7 +102,7 @@ func (m *SockServer) clientRpcHandler(c net.Conn) {
 		if buf, err = m.runClientCmd(clientCmd); err != nil {
 			gLog.Warn().Str("client", clientId).Str("cmd", msg).Err(err).Msg("could not run received cmd because of internal errors")
 
-			buf = bytes.NewBufferString("internal server error")
+			buf = bytes.NewBufferString("internal server error: " + err.Error())
 			if n, err := io.Copy(c, m.getResponseMessage(buf)); m.checkRespondErrors(n, err, msg, clientId) != nil {
 				return
 			}
@@ -155,6 +155,10 @@ func (*SockServer) parseClientCmd(cmd string) rpcCommand {
 		return cmdDryDeployAniUpdates
 	case "deployAniUpdates":
 		return cmdDeployAniUpdates
+	case "dryDeployAniChanges":
+		return cmdDryDeployAniChanges
+	case "deployAniChanges":
+		return cmdDeployAniChanges
 	case "getActiveSessions":
 		return cmdGetActiveSessions
 	case "dropActiveSessions":
@@ -182,9 +186,13 @@ func (m *SockServer) runClientCmd(cmd rpcCommand) (io.ReadWriter, error) {
 	case cmdLoadAniSchedule:
 		return m.cmd.loadAniSchedule()
 	case cmdDryDeployAniUpdates:
-		return m.cmd.dryDeployAniUpdates()
-	case cmdDeployAniUpdates:
 		return m.cmd.deployAniUpdates()
+	case cmdDeployAniUpdates:
+		return m.cmd.deployAniUpdates(false)
+	case cmdDryDeployAniChanges:
+		return m.cmd.deployAniChanges()
+	case cmdDeployAniChanges:
+		return m.cmd.deployAniChanges(false)
 	case cmdGetActiveSessions:
 		return m.cmd.getActiveSessions()
 	case cmdDropAllActiveSessions:

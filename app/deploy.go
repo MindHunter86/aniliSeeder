@@ -8,6 +8,7 @@ import (
 
 	"github.com/MindHunter86/aniliSeeder/anilibria"
 	"github.com/MindHunter86/aniliSeeder/deluge"
+	"github.com/MindHunter86/aniliSeeder/utils"
 	"github.com/rs/zerolog"
 )
 
@@ -17,39 +18,136 @@ var (
 	errFailedWorker      = errors.New("could not continue the delpoy process because one of workers errors")
 	errNoFailures        = errors.New("there is nothing to redeploy; all torrents with OK announces")
 	errNoWorkers         = errors.New("there is nothing to redeploy; all workers are unavailable")
+	errNoTitles          = errors.New("there are no titles in the api response")
+
+	errEmptyWorkerQueue = errors.New("no workers in balancing queue; seems that all workers haven't free space")
 
 	errNothingDeploy   = errors.New("there is nothing to deploy")
 	errNothingAssigned = errors.New("found some updates but there is now assigned titles")
+
+	errSearchFailed = errors.New("there is abnormal name for searching title")
+	errTitlesCount  = errors.New("abnormal titles length in the api response")
 )
 
-type deploy struct{}
+type (
+	deploymentObject struct {
+		workerId string
 
-// type deployType uint8
+		aniTorrent *anilibria.TitleTorrent
+		oldTorrent *deluge.Torrent
 
-// const (
-// 	dplAnilibriaUpdates deployType = iota
-// 	// dplAnilibriaSchedule
-// 	// dplAnilibriaWatchingNow
-// )
+		sizeChanges            int64
+		noDeploy, isDuplicated bool
+	}
+	workerTorrents struct {
+		wid      string
+		torrents []*deluge.Torrent
+	}
+	deploy struct{}
+
+	deployType uint8
+)
+
+const (
+	deployTypeAniUpdates deployType = iota
+	deployTypeAniChanges
+	deployTypeFailedAnnounces
+
+	// TODO
+	// deployTypeAniWatchers
+	// deployTypeScheduler
+)
+
+func newWorkerTorrents(wid string) *workerTorrents {
+	return &workerTorrents{
+		wid: wid,
+	}
+}
 
 func newDeploy() *deploy {
 	return &deploy{}
 }
 
-func (*deploy) getWorkersTorrents() (trrs []*deluge.Torrent, e error) {
-	for id := range gSwarm.GetConnectedWorkers() {
-		var wtrrs []*deluge.Torrent
-		if wtrrs, e = gSwarm.RequestTorrentsFromWorker(id); e != nil {
-			gLog.Error().Str("worker_id", id).Err(e).Msg("could not get torrents from the given worker id; skipping...")
-			continue
+// TODO
+// func (*deploy) getAnilibriaScheduleTorrents() (e error) {
+// 	return
+// }
+
+// TODO
+// func (*deploy) getAnilibriaWatchingNowTorrents() (e error) {
+// 	return
+// }
+
+func (*deploy) getAnilibriaTorrents(dtype deployType, payload ...interface{}) (trrs []*anilibria.TitleTorrent, e error) {
+	var titles []*anilibria.Title
+
+	switch dtype {
+	case deployTypeAniUpdates:
+		if titles, e = gAniApi.GetLastUpdates(); e != nil {
+			return
+		}
+	case deployTypeAniChanges:
+		if titles, e = gAniApi.GetLastChanges(); e != nil {
+			return
+		}
+	case deployTypeFailedAnnounces:
+		// panic avoid
+		payload = append(payload, nil)
+
+		if payload[0] == nil {
+			return nil, errSearchFailed
 		}
 
-		trrs = append(trrs, wtrrs...)
+		if titles, e = gAniApi.SearchTitlesByName(payload[0].(*deluge.Torrent).GetName()); e != nil {
+			return
+		}
+
+		if ltitles := len(titles); ltitles != 1 {
+			gLog.Warn().Str("title_name", payload[0].(*deluge.Torrent).GetName()).Int("titles_count", ltitles).
+				Msg("got a problem in searching failed titles; there are none, two or more titles in the result; manual search required")
+			return nil, errTitlesCount
+		}
 	}
 
+	if len(titles) == 0 {
+		return nil, errNoTitles
+	}
+
+	for _, title := range titles {
+		for _, trr := range title.Torrents.List {
+			if tsize := utils.GetMBytesFromBytes(trr.TotalSize); tsize > int64(gCli.Uint64("anilibria-max-torrent-size")) {
+				gLog.Info().Str("title_name", title.Names.En).Str("torrent_hash", trr.GetShortHash()).Int64("torrent_size_mb", tsize).
+					Int("title_id", title.Id).Uint64("download_limit", gCli.Uint64("anilibria-max-torrent-size")).
+					Msg("skipping a torrent because the torrent is larger than the download limit...")
+				continue
+			}
+
+			trrs = append(trrs, trr)
+		}
+	}
 	return
 }
 
+func (*deploy) getWorkersTorrents() (wts []*workerTorrents, _ bool) {
+	ok, err := true, error(nil)
+
+	for id := range gSwarm.GetConnectedWorkers() {
+		wt := newWorkerTorrents(id)
+
+		if wt.torrents, err = gSwarm.RequestTorrentsFromWorker(id); err != nil {
+			ok = false
+
+			gLog.Error().Str("worker_id", id).Err(err).Msg("could not get torrents from the given worker id; skipping...")
+			continue
+		}
+
+		wts = append(wts, wt)
+	}
+
+	return wts, ok
+}
+
+// sometimes anilibria api forget to set the correct quality; on HEVC torrents it respond with [WEBRip 1080p]
 func (*deploy) fixTorrentFileName(fname, quality, series string) (_ string, e error) {
 	tname, _, ok := strings.Cut(fname, "AniLibria.TV")
 	if !ok {
@@ -59,26 +157,21 @@ func (*deploy) fixTorrentFileName(fname, quality, series string) (_ string, e er
 	return tname + "AniLibria.TV" + " [" + quality + "][" + series + "]" + ".torrent", nil
 }
 
-func (*deploy) sortTorrentListByLeechers(trrs []*anilibria.TitleTorrent) (_ []*anilibria.TitleTorrent) {
-	sort.Slice(trrs, func(i, j int) bool {
-		return trrs[i].Leechers > trrs[j].Leechers
+func (*deploy) sortTorrentsByLeechers(aobjects []*deploymentObject) {
+	sort.Slice(aobjects, func(i, j int) bool {
+		return aobjects[i].aniTorrent.Leechers > aobjects[j].aniTorrent.Leechers
 	})
 
-	// debug
 	if zerolog.GlobalLevel() == zerolog.DebugLevel {
-		for _, trr := range trrs {
-			gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Int64("torrent_size_mb", trr.TotalSize/1024/1024).
-				Int("torrent_leechers", trr.Leechers).Msg("sorted slice debug")
+		for _, obj := range aobjects {
+			gLog.Debug().Str("torrent_hash", obj.aniTorrent.GetShortHash()).
+				Int64("torrent_size_mb", utils.GetMBytesFromBytes(obj.aniTorrent.TotalSize)).
+				Int("torrent_leechers", obj.aniTorrent.Leechers).Msg("sorted slice debug")
 		}
 	}
-
-	return trrs
 }
 
-func (*deploy) balanceForWorkers(trrs []*anilibria.TitleTorrent) (_ map[string][]*anilibria.TitleTorrent, e error) {
-	wrks := gSwarm.GetConnectedWorkers()
-	var fspaces = make(map[string]uint64)
-
+func (*deploy) assignTorrentsToWorkers(aobjects []*deploymentObject) (assigned bool, e error) {
 	// add fake workers
 	// for i := 0; i < 3; i++ {
 	// 	id, fspace := uuid.NewV4().String(), 21474836480 //20gb
@@ -93,114 +186,132 @@ func (*deploy) balanceForWorkers(trrs []*anilibria.TitleTorrent) (_ map[string][
 	// 	gLog.Debug().Str("worker_id", id).Msg("added fake worker")
 	// }
 
-	if len(wrks) == 0 {
-		return nil, errors.New("there is no avaliable workers for the balancing process")
-	}
-	blncr := make(chan string, len(wrks))
+	workers := gSwarm.GetConnectedWorkers()
+	// no len(workers) check because it was previously
 
-	for id := range wrks {
-		if fspaces[id] == 0 {
-			if fspaces[id], e = gSwarm.RequestFreeSpaceFromWorker(id); e != nil {
-				gLog.Error().Err(e).Str("worker_id", id).Msg("got an error in free space request to the worker")
-				continue
-			}
-		}
+	queue := make(chan string, len(workers))
 
-		gLog.Debug().Str("worker_id", id).Msg("collecting the worker for further balancing")
-		blncr <- id
-	}
-
-	if len(blncr) == 0 {
-		return nil, errors.New("there is no workers with free space for the balancing process")
-	}
-
-	var wtitles = make(map[string][]*anilibria.TitleTorrent)
-
-loop:
-	for {
-
-		w := <-blncr
-		var assigned bool
-
-		for id, trr := range trrs {
-			if trr == nil {
-				continue
-			}
-
-			if uint64(trr.TotalSize) > fspaces[w] {
-				gLog.Info().Str("worker_id", w).Str("torrent_hash", trr.GetShortHash()).Int64("fspace", int64(fspaces[w])).Int64("tspace", trr.TotalSize).
-					Msg("skipping torrents because of insufficient disk space on the worker")
-				continue
-			}
-
-			// decrease the workers free space
-			gLog.Debug().Uint64("old_fspace", fspaces[w]).Int64("torrent_size", trr.TotalSize).
-				Uint64("new_fspace", fspaces[w]-uint64(trr.TotalSize)).Msg("decreasing the worker's free space")
-			fspaces[w] = fspaces[w] - uint64(trr.TotalSize)
-
-			// assigning the torrent to the worker
-			var atrr = new(anilibria.TitleTorrent)
-			*atrr = *trr
-			wtitles[w] = append(wtitles[w], atrr)
-
-			// remove the title from a slice
-			trrs[id] = nil
-
-			assigned = true
-			gLog.Debug().Str("worker_id", w).Str("torrent_hash", trr.GetShortHash()).Msg("the torrent has been assigned")
-
-			break
-		}
-
-		if assigned {
-			gLog.Debug().Str("worker_id", w).Msg("put the worker into balancer chan")
-			blncr <- w
-		}
-
-		if len(blncr) != 0 {
-			gLog.Debug().Int("balance_queue", len(blncr)).Msg("found workers in the balancing chan")
+	// check workers for free space
+	for id, worker := range workers {
+		if _, e = gSwarm.RequestFreeSpaceFromWorker(id); e != nil {
+			gLog.Error().Err(e).Str("worker_id", id).
+				Msg("got an error in get free space from worker request; the worker will be removed from further deployment...")
 			continue
 		}
 
-		gLog.Debug().Msg("there is no avaliable workers for the balancing process")
-		break loop
+		// if worker has space leak or worker has not free space - remove from further balancing
+		if worker.GetFreeSpace() == 0 {
+			gLog.Warn().Str("worker_id", id).Int64("free_space_kb", utils.GetKBytesFromBytes(int64(worker.GetFreeSpace()))).
+				Msg("there is no free space on the worker; the worker will be removed from further deployment...")
+			continue
+		}
+
+		// put worker in "balancer" (queue channel)
+		gLog.Debug().Str("worker_id", id).Msg("collecting the worker for further balancing")
+		queue <- id
 	}
 
-	return wtitles, e
-}
+	// shit happens...
+	if len(queue) == 0 {
+		return false, errEmptyWorkerQueue
+	}
 
-func (m *deploy) sendDeployCommand(deployTasks map[string][]*anilibria.TitleTorrent) {
-	var e error
+	// balancing titles
+	var trr *anilibria.TitleTorrent
+	for _, aobject := range aobjects {
+		// if no workers in the queue...
+		if len(queue) == 0 {
+			gLog.Debug().Msg("no free workers for further balancing; cancellation of the assignment process...")
+		}
 
-	for wid, trrs := range deployTasks {
-		gLog.Debug().Str("worker_id", wid).Msg("starting deploy process for the worker...")
+		trr = aobject.aniTorrent
 
-		for _, trr := range trrs {
-			name, fbytes, err := gAniApi.GetTitleTorrentFile(strconv.Itoa(trr.TorrentId))
-			if err != nil {
-				gLog.Error().Err(e).Msg("got an error in receiving the deploy file form the anilibria")
+		for wcount := len(queue); wcount != 0; wcount-- {
+			// get worker id from balancer (queue)
+			wid, ok := <-queue
+			if !ok {
+				gLog.Debug().Int("wcount", wcount).Msg("could not get worker id from the queue; ok is false; cancellation of the assignment...")
 				break
 			}
 
-			gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Str("old_torrent_name", name).Msg("fixing torrent name...")
-			if name, e = m.fixTorrentFileName(name, trr.Quality.String, trr.Series.String); e != nil {
-				gLog.Error().Err(e).Msg("got an error in fixing torrent name")
-				break
-			}
+			// check worker free space for title deployment
+			if !workers[wid].HasEnoughSpace(uint64(trr.TotalSize)) {
+				gLog.Debug().Str("worker_id", wid).Str("torrent_name", trr.GetName()).Str("torrent_hash", trr.GetShortHash()).
+					Int64("worker_size_mb", utils.GetMBytesFromBytes(int64(workers[wid].GetFreeSpace()))).
+					Int64("torrent_size_mb", utils.GetMBytesFromBytes(trr.TotalSize)).
+					Msg("the worker hasn't free space for the title's torrent; skipping the worker...")
 
-			gLog.Debug().Str("torrent_name", name).Str("torrent_hash", trr.GetShortHash()).
-				Msg("sendind deploy request to the worker...")
-
-			var wbytes int64
-			if wbytes, e = gSwarm.SaveTorrentFile(wid, name, fbytes); e != nil {
-				gLog.Error().Err(e).Msg("got an error while processing the deploy request")
+				// put the worker at the end of the queue and try to assign to the next worker
+				queue <- wid
 				continue
 			}
 
-			gLog.Info().Str("worker_id", wid).Int64("written_bytes", wbytes).
-				Msg("the torrent file has been sended to the worker")
+			// decrease the worker's free space for next torrents
+			if !workers[wid].DecreaseFreeSpace(uint64(trr.TotalSize)) {
+				gLog.Error().Str("worker_id", wid).Str("torrent_name", trr.GetName()).Str("torrent_hash", trr.GetShortHash()).
+					Msg("got non ok in descrease free space for worker request; the worker will be removed from further deployment...")
+				continue
+			}
+
+			// assign a deployment object (the torrent) to a worker
+			aobject.workerId = wid
+			gLog.Debug().Str("worker_id", wid).Str("torrent_name", trr.GetName()).Str("torrent_hash", trr.GetShortHash()).
+				Msg("the torrent has been assigned to the worker")
+
+			// the ok flag helps us detect pending deployments
+			assigned = true
+
+			// put the worker at the end of the queue and try to assign to the next worker
+			queue <- wid
+			break
 		}
 
-		gLog.Debug().Str("worker_id", wid).Msg("deploy process for the worker has been finished")
+		// set noDeploy flag for further sendDeployCommand func()
+		if aobject.workerId == "" {
+			gLog.Info().Str("torrent_name", trr.GetName()).Str("torrent_hash", trr.GetShortHash()).
+				Msg("there is no worker assignment found; the worker will be removed from further deployment...")
+			aobject.noDeploy = true
+		}
+	}
+
+	return
+}
+
+func (m *deploy) deployAssignedTorrents(aobjects []*deploymentObject) {
+	for _, aobject := range aobjects {
+		trr := aobject.aniTorrent
+
+		if aobject.noDeploy || aobject.isDuplicated {
+			gLog.Debug().Str("torrent_name", trr.GetName()).Str("torrent_hash", trr.GetShortHash()).
+				Msg("skipping torrent because of noDeploy or isDuplicated flag detection")
+		}
+
+		gLog.Debug().Str("worker_id", aobject.workerId).Str("torrent_name", trr.GetName()).Str("torrent_hash", trr.GetShortHash()).
+			Msg("starting deploy process for the torrent...")
+
+		name, fbytes, err := gAniApi.GetTitleTorrentFile(strconv.Itoa(trr.TorrentId))
+		if err != nil {
+			gLog.Error().Err(err).Msg("got an error in receiving the deploy file form the anilibria")
+			break
+		}
+
+		// fix quality in torrentfile name (see func comments)
+		gLog.Debug().Str("torrent_hash", trr.GetShortHash()).Str("old_torrent_name", name).Msg("fixing torrent name...")
+		if name, err = m.fixTorrentFileName(name, trr.Quality.String, trr.Series.String); err != nil {
+			gLog.Error().Err(err).Msg("got an error in fixing torrent name")
+			break
+		}
+
+		gLog.Debug().Str("torrent_name", name).Str("torrent_hash", trr.GetShortHash()).
+			Msg("sending deploy request to the worker...")
+
+		var wbytes int64
+		if wbytes, err = gSwarm.SaveTorrentFile(aobject.workerId, name, fbytes); err != nil {
+			gLog.Error().Err(err).Msg("got an error while processing the deploy request")
+			continue
+		}
+
+		gLog.Info().Str("worker_id", aobject.workerId).Str("torrent_name", trr.GetName()).Str("torrent_hash", trr.GetShortHash()).
+			Int64("written_bytes", wbytes).Msg("the torrent file has been sended to the worker")
 	}
 }
