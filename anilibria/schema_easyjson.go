@@ -902,7 +902,7 @@ func easyjsonCef4e921DecodeGithubComMindHunter86AniliSeederAnilibria8(in *jlexer
 				}
 				(*out.Metadata).UnmarshalEasyJSON(in)
 			}
-		case "rawBase64File":
+		case "raw_base64_file":
 			if m, ok := out.RawBase64File.(easyjson.Unmarshaler); ok {
 				m.UnmarshalEasyJSON(in)
 			} else if m, ok := out.RawBase64File.(json.Unmarshaler); ok {
@@ -992,7 +992,7 @@ func easyjsonCef4e921EncodeGithubComMindHunter86AniliSeederAnilibria8(out *jwrit
 		}
 	}
 	{
-		const prefix string = ",\"rawBase64File\":"
+		const prefix string = ",\"raw_base64_file\":"
 		out.RawString(prefix)
 		if m, ok := in.RawBase64File.(easyjson.Marshaler); ok {
 			m.MarshalEasyJSON(out)
