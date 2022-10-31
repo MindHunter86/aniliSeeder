@@ -169,7 +169,7 @@ func (*deploy) sortTitlesByLeechers(ftitles []*deploymentObject) {
 	// debug
 	if zerolog.GlobalLevel() == zerolog.DebugLevel {
 		for _, ftitle := range ftitles {
-			gLog.Debug().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).
+			gLog.Debug().Str("torrent_hash", ftitle.oldTorrent.GetShortHash()).Str("torrent_hash_new", ftitle.aniTorrent.GetShortHash()).
 				Int64("torrent_size_mb", utils.GetMBytesFromBytes(ftitle.aniTorrent.TotalSize)).
 				Int("torrent_leechers", ftitle.aniTorrent.Leechers).Msg("sorted slice debug")
 		}

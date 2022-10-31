@@ -181,7 +181,7 @@ func (m *cron) reannounce() {
 		// }
 
 		// wait for reannounces && force redeploy
-		if _, e = newDeploy().deployFailedAnnounces(); e != nil && e != errNoFailures {
+		if _, e = newDeploy().deployFailedAnnounces(false); e != nil && e != errNoFailures {
 			gLog.Error().Err(e).Msg("got an error in deploy failed_announces request")
 		}
 	}(m.wg.Done)
