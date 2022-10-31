@@ -14,9 +14,6 @@ type SockServer struct {
 	cmd *cmds
 }
 
-// !!
-// socket.Close()
-
 func NewSockServer() *SockServer {
 	return &SockServer{}
 }
