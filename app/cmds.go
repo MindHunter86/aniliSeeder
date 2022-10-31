@@ -135,9 +135,11 @@ func (*cmds) getMasterTorrents() (_ io.ReadWriter, e error) {
 	})
 
 	tb.SortBy([]table.SortBy{
-		{Name: "Announce", Mode: table.Dsc},
-		{Name: "VKScore", Mode: table.DscNumeric},
+		{Number: 9, Mode: table.Asc},
+		{Number: 10, Mode: table.DscNumeric},
 	})
+
+	// custom sort for Announce column
 
 	return buf, e
 }
