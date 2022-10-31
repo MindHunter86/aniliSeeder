@@ -59,7 +59,7 @@ func (*cmds) listWorkers() (_ io.ReadWriter, e error) {
 	}
 
 	tb.SortBy([]table.SortBy{
-		{Name: "ID", Mode: table.Dsc},
+		{Number: 1, Mode: table.Dsc},
 	})
 
 	return buf, e
@@ -170,7 +170,7 @@ func (*cmds) loadAniUpdates() (_ io.ReadWriter, e error) {
 	}
 
 	tb.SortBy([]table.SortBy{
-		{Name: "Name", Mode: table.Asc},
+		{Number: 2, Mode: table.Asc},
 	})
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
@@ -211,7 +211,7 @@ func (*cmds) loadAniChanges() (_ io.ReadWriter, e error) {
 	}
 
 	tb.SortBy([]table.SortBy{
-		{Name: "Name", Mode: table.Asc},
+		{Number: 2, Mode: table.Asc},
 	})
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
@@ -253,7 +253,7 @@ func (*cmds) loadAniSchedule() (_ io.ReadWriter, e error) {
 	}
 
 	tb.SortBy([]table.SortBy{
-		{Name: "Weekday", Mode: table.Asc},
+		{Number: 1, Mode: table.Asc},
 	})
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
@@ -295,7 +295,7 @@ func (*cmds) deployAniUpdates(dryrun ...bool) (_ io.ReadWriter, e error) {
 	}
 
 	tb.SortBy([]table.SortBy{
-		{Name: "Worker", Mode: table.Asc},
+		{Number: 1, Mode: table.Asc},
 	})
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
@@ -333,7 +333,7 @@ func (*cmds) deployAniChanges(dryrun ...bool) (_ io.ReadWriter, e error) {
 	}
 
 	tb.SortBy([]table.SortBy{
-		{Name: "Worker", Mode: table.Asc},
+		{Number: 1, Mode: table.Asc},
 	})
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
@@ -373,8 +373,8 @@ func (*cmds) getActiveSessions() (_ io.ReadWriter, e error) {
 	}
 
 	tb.SortBy([]table.SortBy{
-		{Name: "IP", Mode: table.Asc},
-		{Name: "Time", Mode: table.Asc},
+		{Number: 1, Mode: table.Asc},
+		{Number: 3, Mode: table.Asc},
 	})
 
 	tb.SetColumnConfigs([]table.ColumnConfig{
