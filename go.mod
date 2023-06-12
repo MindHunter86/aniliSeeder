@@ -12,7 +12,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/rs/zerolog v1.29.0
 	github.com/satori/go.uuid v1.2.0
-	github.com/urfave/cli/v2 v2.25.5
+	github.com/urfave/cli/v2 v2.25.6
 	golang.org/x/net v0.10.0
 	golang.org/x/sys v0.8.0
 	google.golang.org/grpc v1.55.0
