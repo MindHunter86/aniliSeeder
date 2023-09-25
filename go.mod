@@ -10,11 +10,11 @@ require (
 	github.com/MindHunter86/go-libdeluge v0.0.0-20221002035026-4eeeac7cd2bf
 	github.com/hashicorp/yamux v0.1.1
 	github.com/jedib0t/go-pretty/v6 v6.4.6
-	github.com/rs/zerolog v1.29.0
+	github.com/rs/zerolog v1.31.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/urfave/cli/v2 v2.25.5
 	golang.org/x/net v0.10.0
-	golang.org/x/sys v0.8.0
+	golang.org/x/sys v0.12.0
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
 )
@@ -24,8 +24,8 @@ require (
 	github.com/gdm85/go-rencode v0.1.8 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
